@@ -12,10 +12,10 @@ export default function Header() {
   const pathname = usePathname();
   const isOwner = pathname.startsWith("/owner");
 
-  const homeHref = isOwner ? "/owner" : "/home";
+  const homeHref = isOwner ? "/owner" : "/";
   const profileHref = isOwner ? "/owner/profile" : "/profile";
   const switchLabel = isOwner ? "Switch to Customer" : "Switch to Owner";
-  const switchHref = isOwner ? "/home" : "/owner";
+  const switchHref = isOwner ? "/" : "/owner";
 
   const menuItems = [
     { label: "Notifications", href: "#", icon: Bell },

@@ -27,6 +27,45 @@
   border-radius: 9999px;
 }
 
+.statsGrid {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.statCard {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.statCardActive {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.statLabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.statValue {
+  font-size: 18px;
+  font-weight: 900;
+  color: #111827;
+}
+
 .toolbar {
   margin-top: 18px;
   display: flex;
@@ -262,7 +301,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 800px;
+  min-width: 700px;
 }
 
 .table th {
@@ -305,6 +344,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  background: linear-gradient(135deg, #22d3ee, #2563eb);
 }
 
 .ownerName {
@@ -430,6 +470,44 @@
   flex-wrap: wrap;
 }
 
+.pagination {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.paginationMeta {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.paginationActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pageBtn {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pageBtn:disabled {
+  color: #9ca3af;
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 767px) {
   .tabs {
     width: 100%;
@@ -442,6 +520,10 @@
 }
 
 @media (min-width: 768px) {
+  .statsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .card {
     display: block;
   }

@@ -76,7 +76,7 @@ export default function CustomerProfileApprovedPage() {
 
       {/* ---------- Sticky CTA ---------- */}
       <div className={styles.ctaBar}>
-        <Link href="/home" className={`${styles.ctaBtn} btn-primary`}>
+        <Link href="/" className={`${styles.ctaBtn} btn-primary`}>
           Go to Dashboard
         </Link>
       </div>

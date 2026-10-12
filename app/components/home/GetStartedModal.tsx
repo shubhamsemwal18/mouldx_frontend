@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Package, Factory, ArrowRight } from "lucide-react";
+import { setSelectedSignupRole, type SignupRole } from "@/app/lib/role-selection";
 
 interface GetStartedModalProps {
   open: boolean;
@@ -27,14 +28,10 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
 
   if (!open) return null;
 
-  const goAsCustomer = () => {
+  const chooseRole = (role: SignupRole) => {
+    setSelectedSignupRole(role);
     onClose();
     router.push("/signup");
-  };
-
-  const goAsHost = () => {
-    onClose();
-    router.push("/owner/onboarding/profile");
   };
 
   return (
@@ -73,7 +70,7 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
           <div className="mt-6 flex flex-col gap-3 sm:mt-7">
             <button
               type="button"
-              onClick={goAsCustomer}
+              onClick={() => chooseRole("customer")}
               className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/60 px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-transparent hover:bg-[#2563EB] hover:shadow-lg hover:shadow-blue-500/25 sm:px-5"
             >
               <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#2563EB] text-white shadow-sm transition-transform duration-200 group-hover:scale-110 group-hover:bg-white/15">
@@ -95,7 +92,7 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
 
             <button
               type="button"
-              onClick={goAsHost}
+              onClick={() => chooseRole("owner")}
               className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/60 px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-transparent hover:bg-[#2563EB] hover:shadow-lg hover:shadow-blue-500/25 sm:px-5"
             >
               <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#2563EB] text-white shadow-sm transition-transform duration-200 group-hover:scale-110 group-hover:bg-white/15">

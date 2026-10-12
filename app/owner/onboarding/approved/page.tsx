@@ -1,15 +1,47 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/lib/auth-context";
 import styles from "./ProfileApproved.module.css";
 
-// TEMP dummy data — real admin approval API will provide this
-const APPROVAL = {
-  approvedAt: "15 Sep · 9:10 AM",
-  firmName: "Sharma Industries",
-};
-
 export default function ProfileApprovedPage() {
+  const router = useRouter();
+  const { user, ownerProfileVerification, loading } = useAuth();
+  const status = ownerProfileVerification?.status || user?.profileVerificationStatus;
+  const approvedAt = ownerProfileVerification?.reviewedAt
+    ? new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(ownerProfileVerification.reviewedAt))
+    : "Approved";
+  const firmName = ownerProfileVerification?.firmDetails?.name || "Your firm";
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (status === "in_review") {
+      router.replace("/owner/onboarding/review");
+      return;
+    }
+
+    if (status === "rejected") {
+      router.replace("/owner/onboarding/rejected");
+      return;
+    }
+
+    if (status !== "approved") {
+      router.replace("/owner/onboarding/profile");
+    }
+  }, [loading, router, status]);
+
+  if (loading || status !== "approved") {
+    return null;
+  }
+
   return (
     <div className={styles.page}>
      
@@ -46,9 +78,9 @@ export default function ProfileApprovedPage() {
 
           <h1 className={styles.title}>Profile approved!</h1>
           <p className={styles.subtitle}>
-            {APPROVAL.firmName} is now verified on MouldX.
+            {firmName} is now verified on MouldX.
           </p>
-          <p className={styles.approvedMeta}>Approved · {APPROVAL.approvedAt}</p>
+          <p className={styles.approvedMeta}>Approved · {approvedAt}</p>
         </div>
 
         {/* ---------- What's next card ---------- */}

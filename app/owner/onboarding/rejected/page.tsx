@@ -1,22 +1,53 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/lib/auth-context";
 import styles from "./ProfileRejected.module.css";
-
-// TEMP dummy data — real admin review API will provide this
-const REJECTION = {
-  remarks: "Please upload a clearer GST Certificate and the latest electricity bill.",
-  documentsToFix: ["GST Certificate", "Electricity Bill (last month)"],
-};
 
 export default function ProfileRejectedPage() {
   const router = useRouter();
+  const { user, ownerProfileVerification, loading, refreshCurrentUser } = useAuth();
+  const [checkedServerStatus, setCheckedServerStatus] = useState(false);
+  const status = ownerProfileVerification?.status || user?.profileVerificationStatus;
+  const remarks =
+    ownerProfileVerification?.rejectionReason ||
+    "Please review the admin remarks and resubmit your profile.";
+
+  useEffect(() => {
+    if (loading) return;
+
+    refreshCurrentUser()
+      .catch(() => undefined)
+      .finally(() => setCheckedServerStatus(true));
+  }, [loading, refreshCurrentUser]);
+
+  useEffect(() => {
+    if (loading || !checkedServerStatus) return;
+
+    if (status === "approved") {
+      router.replace("/owner/onboarding/approved");
+      return;
+    }
+
+    if (status === "in_review") {
+      router.replace("/owner/onboarding/review");
+      return;
+    }
+
+    if (status !== "rejected") {
+      router.replace("/owner/onboarding/profile");
+    }
+  }, [checkedServerStatus, loading, router, status]);
 
   const handleResubmit = () => {
-    // TODO: prefill the form with previous data if available
     router.push("/owner/onboarding/profile");
   };
+
+  if (loading || !checkedServerStatus || status !== "rejected") {
+    return null;
+  }
 
   return (
     <div className={styles.page}>
@@ -29,7 +60,7 @@ export default function ProfileRejectedPage() {
         <div className={styles.remarksCard}>
           <span className={styles.reviewPill}>REVIEW REQUIRED</span>
           <h2 className={styles.remarksTitle}>Admin Remarks</h2>
-          <p className={styles.remarksText}>{REJECTION.remarks}</p>
+          <p className={styles.remarksText}>{remarks}</p>
         </div>
 
         {/* ---------- Documents to fix ---------- */}
@@ -39,7 +70,7 @@ export default function ProfileRejectedPage() {
           </span>
           <div>
             <p className={styles.docsTitle}>Documents to fix</p>
-            <p className={styles.docsList}>{REJECTION.documentsToFix.join(" · ")}</p>
+            <p className={styles.docsList}>Update the requested details and upload fresh documents.</p>
           </div>
         </div>
       </div>

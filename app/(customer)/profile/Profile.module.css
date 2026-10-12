@@ -45,6 +45,31 @@
   text-decoration: none;
 }
 
+.statusBadge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.status-pending,
+.status-in_review {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-approved {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.status-rejected {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 /* ---------- Stats card ---------- */
 .statsCard {
   background: #2563eb;
@@ -139,6 +164,33 @@
   font-weight: 800;
   color: #111827;
   margin: 0 0 8px;
+}
+
+.fieldGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.fieldItem {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.fieldLabel {
+  color: #9ca3af;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.fieldValue {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Billing ---------- */
@@ -253,6 +305,11 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.logoutRow:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .switchProfileBtn {

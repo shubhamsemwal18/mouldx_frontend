@@ -2,22 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/lib/auth-context";
+import type { ProfileVerificationStatus, UserRole } from "@/app/lib/types";
 import styles from "./Profile.module.css";
-import { useRouter } from "next/router";
 
-const CUSTOMER = {
-  name: "Rohit Sharma",
-  phone: "+91 90XXXXXX45",
-  city: "Pune",
-  email: "rohit@example.com",
-  gstin: "27ABCDE1234F1Z5",
-  savedCard: "HDFC •• 4021",
-  stats: {
-    totalRented: 9,
-    activeRentals: 1,
-    completed: 7,
-    ratingsGiven: 12,
-  },
+const STATUS_LABELS: Record<ProfileVerificationStatus, string> = {
+  pending: "Profile pending",
+  in_review: "Under review",
+  approved: "Verified",
+  rejected: "Rejected",
 };
 
 const MORE_LINKS = [
@@ -27,13 +21,56 @@ const MORE_LINKS = [
   { label: "Settings", href: "/profile/settings", icon: "▽️" },
 ];
 
+const formatPhone = (phone?: string) => {
+  if (!phone) return "Not added";
+  return phone.startsWith("+") ? phone : `+91 ${phone}`;
+};
+
+const getInitials = (name?: string) =>
+  (name || "MouldX User")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+const formatRoles = (roles: UserRole[] = []) => {
+  const visibleRoles = roles.filter((role) => role !== "admin");
+  if (!visibleRoles.length) return "Customer";
+  return visibleRoles.map((role) => role[0].toUpperCase() + role.slice(1)).join(", ");
+};
+
+const formatDate = (date?: string) => {
+  if (!date) return "Not submitted";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(date));
+};
+
 export default function CustomerProfilePage() {
   const [moreOpen, setMoreOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const { user, ownerProfileVerification, logout } = useAuth();
+  const router = useRouter();
+  const status = ownerProfileVerification?.status || user?.profileVerificationStatus || "pending";
+  const firmDetails = ownerProfileVerification?.firmDetails;
+  const personalDetails = ownerProfileVerification?.personalDetails;
+  const payoutDetails = ownerProfileVerification?.payoutDetails;
+  const displayName = user?.fullName || "MouldX User";
+  const roleLabel = formatRoles(user?.approvedRoles);
 
-  const handleLogout = () => {
-    const router = useRouter();
-    router.replace("/login");
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await logout();
+      router.replace("/");
+    } finally {
+      setLoggingOut(false);
+    }
   };
+
   return (
     <div className={styles.page}>
       <h1 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">Profile</h1>
@@ -41,44 +78,48 @@ export default function CustomerProfilePage() {
       {/* ---------- Identity card ---------- */}
       <div className={styles.identityCard}>
         <div className={styles.avatar}>
-          {CUSTOMER.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+          {getInitials(displayName)}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-bold text-gray-900">{CUSTOMER.name}</p>
+          <p className="truncate text-[15px] font-bold text-gray-900">{displayName}</p>
           <p className="truncate text-xs text-gray-400">
-            {CUSTOMER.phone} · {CUSTOMER.city}
+            {formatPhone(user?.phone)} · {roleLabel}
           </p>
         </div>
-        <Link href="/profile/edit" className={styles.editBtn}>
-          Edit
-        </Link>
+        <span className={`${styles.statusBadge} ${styles[`status-${status}`]}`}>
+          {STATUS_LABELS[status]}
+        </span>
       </div>
 
-      {/* ---------- Rental stats ---------- */}
+      {/* ---------- Verification status ---------- */}
       <div className={styles.statsCard}>
         <div className={styles.statsHeader}>
           <div>
-            <p className={styles.statsLabel}>Total Moulds Rented</p>
-            <p className={styles.statsValue}>{CUSTOMER.stats.totalRented}</p>
+            <p className={styles.statsLabel}>Profile verification</p>
+            <p className={styles.statsValue}>{STATUS_LABELS[status]}</p>
           </div>
-          <Link href="/bookings" className={styles.statsCta}>
-            View all bookings <span aria-hidden>→</span>
-          </Link>
+          {status === "rejected" ? (
+            <Link href="/owner/onboarding/rejected" className={styles.statsCta}>
+              View remarks <span aria-hidden>→</span>
+            </Link>
+          ) : (
+            <span className={styles.statsCta}>Submitted {formatDate(ownerProfileVerification?.submittedAt)}</span>
+          )}
         </div>
 
         <div className={styles.statsGrid}>
-          <Link href="/bookings?tab=active" className={styles.statChip}>
-            <span className={styles.statChipValue}>{CUSTOMER.stats.activeRentals}</span>
-            <span className={styles.statChipLabel}>Active</span>
-          </Link>
-          <Link href="/bookings?tab=completed" className={styles.statChip}>
-            <span className={styles.statChipValue}>{CUSTOMER.stats.completed}</span>
-            <span className={styles.statChipLabel}>Completed</span>
-          </Link>
-          <Link href="/profile/ratings" className={styles.statChip}>
-            <span className={styles.statChipValue}>{CUSTOMER.stats.ratingsGiven}</span>
-            <span className={styles.statChipLabel}>Ratings given</span>
-          </Link>
+          <div className={styles.statChip}>
+            <span className={styles.statChipValue}>{ownerProfileVerification?.resubmissionCount || 0}</span>
+            <span className={styles.statChipLabel}>Resubmits</span>
+          </div>
+          <div className={styles.statChip}>
+            <span className={styles.statChipValue}>{ownerProfileVerification?.reviewedAt ? "Yes" : "No"}</span>
+            <span className={styles.statChipLabel}>Reviewed</span>
+          </div>
+          <div className={styles.statChip}>
+            <span className={styles.statChipValue}>{user?.emailVerifiedAt ? "Yes" : "No"}</span>
+            <span className={styles.statChipLabel}>Email verified</span>
+          </div>
         </div>
       </div>
 
@@ -86,25 +127,35 @@ export default function CustomerProfilePage() {
       <Section title="Personal Details">
         <FieldList
           items={[
-            { label: "Name", value: CUSTOMER.name },
-            { label: "Phone No.", value: CUSTOMER.phone },
-            { label: "Email ID", value: CUSTOMER.email },
-            { label: "City", value: CUSTOMER.city },
+            { label: "Name", value: displayName },
+            { label: "Phone No.", value: formatPhone(user?.phone) },
+            { label: "Email ID", value: user?.email || "Not added" },
+            { label: "PAN", value: personalDetails?.panNumber || "Not submitted" },
           ]}
         />
       </Section>
 
-      {/* ---------- Billing Details ---------- */}
-      <Section title="Billing Details">
+      {/* ---------- Firm Details ---------- */}
+      <Section title="Firm Details">
         <FieldList
           items={[
-            { label: "GSTIN", value: CUSTOMER.gstin },
-            { label: "Saved Payment Method", value: CUSTOMER.savedCard, badge: "Default" },
+            { label: "Firm", value: firmDetails?.name || "Not submitted" },
+            { label: "GSTIN", value: firmDetails?.gstNumber || "Not submitted" },
+            { label: "Email", value: firmDetails?.email || "Not submitted" },
+            { label: "Address", value: firmDetails?.address || "Not submitted" },
           ]}
         />
-        <button type="button" className={styles.addPaymentBtn}>
-          + Add Payment Method
-        </button>
+      </Section>
+
+      <Section title="Payout Details">
+        <FieldList
+          items={[
+            { label: "Account Holder", value: payoutDetails?.accountHolderName || "Not submitted" },
+            { label: "Bank", value: payoutDetails?.bankName || "Not submitted" },
+            { label: "IFSC", value: payoutDetails?.ifscCode || "Not submitted" },
+            { label: "UPI", value: payoutDetails?.upiId || "Not added" },
+          ]}
+        />
       </Section>
 
       {/* ---------- More (dropdown) ---------- */}
@@ -137,8 +188,8 @@ export default function CustomerProfilePage() {
       </div>
 
       {/* ---------- Logout + Switch Profile — always visible ---------- */}
-      <button type="button" className={styles.logoutRow} onClick={handleLogout}>
-        Logout
+      <button type="button" className={styles.logoutRow} onClick={handleLogout} disabled={loggingOut}>
+        {loggingOut ? "Logging out..." : "Logout"}
       </button>
 
       <Link href="/switch-profile" className={styles.switchProfileBtn}>
@@ -163,17 +214,19 @@ function FieldList({
   items: { label: string; value: string; badge?: string }[];
 }) {
   return (
-    <div className="flex flex-wrap gap-x-1.5 gap-y-1 text-[13px] text-gray-500">
-      {items.map((item, i) => (
-        <span key={item.label} className="inline-flex items-center gap-1.5">
-          {item.value}
+    <div className={styles.fieldGrid}>
+      {items.map((item) => (
+        <div key={item.label} className={styles.fieldItem}>
+          <span className={styles.fieldLabel}>{item.label}</span>
+          <span className={styles.fieldValue}>
+            {item.value}
+          </span>
           {item.badge && (
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
               {item.badge}
             </span>
           )}
-          {i < items.length - 1 && <span className="text-gray-300">·</span>}
-        </span>
+        </div>
       ))}
     </div>
   );

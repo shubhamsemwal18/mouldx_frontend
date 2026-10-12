@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Calendar, Box, Inbox, User } from "lucide-react";
+import { Home, Calendar, Inbox, User } from "lucide-react";
 import styles from "./BottomNav.module.css";
 
 const NAV_ITEMS = [
-  { label: "Explore", href: "/home", icon: Home },
+  { label: "Explore", href: "/", icon: Home },
   { label: "Booking", href: "/bookings", icon: Calendar },
   { label: "Inbox", href: "/inbox", icon: Inbox },
   { label: "Profile", href: "/profile", icon: User },
@@ -18,7 +18,7 @@ export default function BottomNav() {
   return (
     <nav className={styles.nav}>
       {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-        const active = pathname === href;
+        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
         return (
           <Link
             key={href}

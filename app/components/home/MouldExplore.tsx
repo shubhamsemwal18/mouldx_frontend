@@ -120,11 +120,6 @@ export default function MouldExplore({ search: searchProp, onSearchChange }: Mou
     });
   }, [search, activeCategory, activePriceRange, activeAvailability]);
 
-  // Reset to page 1 whenever the search or any filter changes
-  useEffect(() => {
-    setPage(1);
-  }, [search, activeCategory, activePriceLabel, activeAvailability]);
-
   useEffect(() => {
     if (prevPageRef.current !== page) {
       listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -133,7 +128,8 @@ export default function MouldExplore({ search: searchProp, onSearchChange }: Mou
   }, [page]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMoulds.length / PAGE_SIZE));
-  const paginatedMoulds = filteredMoulds.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const currentPage = Math.min(page, totalPages);
+  const paginatedMoulds = filteredMoulds.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const goToPage = (p: number) => {
     if (p < 1 || p > totalPages) return;
@@ -278,7 +274,7 @@ export default function MouldExplore({ search: searchProp, onSearchChange }: Mou
 
       {!isBrowsing && filteredMoulds.length > 0 && totalPages > 1 && (
         <div className={styles.pagination}>
-          <button onClick={() => goToPage(page - 1)} disabled={page === 1} className={styles.pageBtn}>
+          <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1} className={styles.pageBtn}>
             ← Prev
           </button>
 
@@ -286,13 +282,13 @@ export default function MouldExplore({ search: searchProp, onSearchChange }: Mou
             <button
               key={p}
               onClick={() => goToPage(p)}
-              className={`${styles.pageBtn} ${p === page ? styles.pageBtnActive : ""}`}
+              className={`${styles.pageBtn} ${p === currentPage ? styles.pageBtnActive : ""}`}
             >
               {p}
             </button>
           ))}
 
-          <button onClick={() => goToPage(page + 1)} disabled={page === totalPages} className={styles.pageBtn}>
+          <button onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages} className={styles.pageBtn}>
             Next →
           </button>
         </div>
