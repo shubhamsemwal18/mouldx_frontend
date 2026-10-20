@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import MouldExplore from "./MouldExplore";
 import GetStartedModal from "./GetStartedModal";
@@ -9,12 +9,42 @@ import SearchOverlay from "../shared/SearchOverlay";
 import styles from "./CustomerHome.module.css";
 import mouldchair from "@/public/images/mould-and-chair.webp";
 import { useAuth } from "@/app/lib/auth-context";
+import { publicApi } from "@/app/lib/public-api";
 
 export default function CustomerHome() {
   const { user, loading } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [autoVoice, setAutoVoice] = useState(false);
+  // Shared by the hero bar, the search sheet and the results section below,
+  // so a search made anywhere filters the listings on this page.
   const [search, setSearch] = useState("");
+  const [categoryNames, setCategoryNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = window.setTimeout(() => {
+      publicApi
+        .listSections(1)
+        .then((sections) => {
+          if (!cancelled) setCategoryNames(sections.map((section) => section.category.title));
+        })
+        .catch(() => {
+          if (!cancelled) setCategoryNames([]);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  const openSearch = (options?: { voice?: boolean }) => {
+    setAutoVoice(Boolean(options?.voice));
+    setSearchOpen(true);
+  };
 
   return (
     <div className={styles.page}>
@@ -33,7 +63,8 @@ export default function CustomerHome() {
             <SearchBar
               value={search}
               onChange={setSearch}
-              onOpen={() => setSearchOpen(true)}
+              onOpen={openSearch}
+              suggestions={categoryNames}
             />
           </div>
 
@@ -58,7 +89,7 @@ export default function CustomerHome() {
       </section>
 
       
-      <MouldExplore />
+      <MouldExplore search={search} onSearchChange={setSearch} />
 
       <GetStartedModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
@@ -67,7 +98,11 @@ export default function CustomerHome() {
         open={searchOpen}
         query={search}
         onQueryChange={setSearch}
-        onClose={() => setSearchOpen(false)}
+        onClose={() => {
+          setSearchOpen(false);
+          setAutoVoice(false);
+        }}
+        autoVoice={autoVoice}
       />
     </div>
   );

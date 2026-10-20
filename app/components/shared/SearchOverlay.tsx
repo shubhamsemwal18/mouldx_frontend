@@ -1,90 +1,60 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Search, Mic, X } from "lucide-react";
-import { DUMMY_MOULDS } from "@/app/data/moulds";
+import { ArrowLeft, Search, Mic, X, Clock } from "lucide-react";
 import styles from "./SearchOverlay.module.css";
+import { getApiErrorMessage } from "@/app/lib/api";
+import { publicApi } from "@/app/lib/public-api";
+import { useRecentSearches } from "@/app/lib/recent-searches";
+import { useVoiceSearch } from "@/app/lib/use-voice-search";
+import type { PublicProductCard } from "@/app/lib/types";
 
-const POPULAR = ["Chair", "Table", "Stool", "Crate", "Bucket", "Injection", "Blow"];
-const MAX_RESULTS = 50;
+const MAX_RESULTS = 24;
+const SEARCH_DEBOUNCE_MS = 300;
 
-type SpeechRecognitionLike = {
-  lang: string;
-  interimResults: boolean;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onend: (() => void) | null;
-  onerror: (() => void) | null;
-  start: () => void;
-};
+const formatPrice = (value?: number) =>
+  value === undefined ? "Price on request" : `₹${value.toLocaleString("en-IN")}/day`;
 
-// Strip a trailing "s" so plural search terms still match (e.g. "tables" -> "table")
-function normalizeToken(t: string) {
-  return t.length > 3 ? t.replace(/s$/, "") : t;
-}
-
-interface BigCardProps {
-  id: string | number;
-  name: string;
-  code: string;
-  city: string;
-  category: string;
-  price: string;
-  image?: string;
-  rating?: number;
+function ResultCard({
+  product,
+  onNavigate,
+}: {
+  product: PublicProductCard;
   onNavigate?: () => void;
-}
-
-function BigCard({ id, name, code, city, category, price, image, rating, onNavigate }: BigCardProps) {
-  const [liked, setLiked] = useState(false);
+}) {
   const [imgError, setImgError] = useState(false);
+  const imageUrl = product.image?.url;
 
   return (
     <article className={styles.card}>
-      {/* The whole card (image + text) opens the detail page */}
-      <Link href={`/explore/${id}`} className={styles.cardLink} onClick={onNavigate}>
+      <Link href={`/explore/${product.slug}`} className={styles.cardLink} onClick={onNavigate}>
         <div className={styles.imageWrap}>
-          {image && !imgError ? (
+          {imageUrl && !imgError ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={image}
-              alt={name}
+              src={imageUrl}
+              alt={product.name}
               className={styles.image}
               loading="lazy"
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className={styles.placeholder} aria-hidden>▽</div>
+            <div className={styles.placeholder} aria-hidden>
+              ▽
+            </div>
           )}
         </div>
 
-        <h3 className={styles.name}>{name}</h3>
-        <p className={styles.meta}>
-          {price}
-          {rating ? <span> · ★ {rating.toFixed(2)}</span> : null}
-        </p>
+        <h3 className={styles.name}>{product.name}</h3>
+        <p className={styles.meta}>{formatPrice(product.pricing?.perDayCharges)}</p>
         <p className={styles.sub}>
-          {category} · {city} · {code}
+          {[product.category?.title, product.mouldTypes?.join(" · "), product.code]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
       </Link>
-
-      {/* Kept outside the Link so toggling the wishlist does not navigate */}
-      <button
-        type="button"
-        className={styles.heart}
-        aria-label={liked ? "Remove from wishlist" : "Add to wishlist"}
-        onClick={() => setLiked((v) => !v)}
-      >
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden>
-          <path
-            d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"
-            fill={liked ? "#ff385c" : "rgba(0,0,0,0.45)"}
-            stroke="#ffffff"
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
     </article>
   );
 }
@@ -94,65 +64,141 @@ interface Props {
   query: string;
   onQueryChange: (q: string) => void;
   onClose: () => void;
+  /** Start dictation as soon as the sheet opens (mic tapped in the hero bar). */
+  autoVoice?: boolean;
 }
 
-export default function SearchOverlay({ open, query, onQueryChange, onClose }: Props) {
+export default function SearchOverlay({
+  open,
+  query,
+  onQueryChange,
+  onClose,
+  autoVoice = false,
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [listening, setListening] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState(query.trim());
+  const [results, setResults] = useState<PublicProductCard[]>([]);
+  const [popular, setPopular] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const { recent, add: addRecent, remove: removeRecent, clear: clearRecent } = useRecentSearches();
+
+  const commitSearch = useCallback(
+    (term: string) => {
+      const trimmed = term.trim();
+      if (trimmed.length >= 2) addRecent(trimmed);
+    },
+    [addRecent]
+  );
+
+  const voice = useVoiceSearch({
+    onTranscript: onQueryChange,
+    onFinal: commitSearch,
+  });
+
+  const hasQuery = debouncedQuery.length > 0;
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  // Lock scroll, focus the field and wire Escape while the sheet is open.
+  useEffect(() => {
     if (!open) return;
+
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    const t = setTimeout(() => inputRef.current?.focus(), 50);
+    const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 50);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
 
     return () => {
-      clearTimeout(t);
+      window.clearTimeout(focusTimer);
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
+      voice.stop();
     };
+    // `voice.stop` is stable; re-running on it would restart the effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, onClose]);
 
-  const results = useMemo(() => {
-    const tokens = query
-      .toLowerCase()
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map(normalizeToken);
+  // Dictation requested from the hero search bar.
+  useEffect(() => {
+    if (!open || !autoVoice || !voice.supported) return;
 
-    if (tokens.length === 0) return DUMMY_MOULDS;
+    const timer = window.setTimeout(() => voice.start(), 250);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoVoice, voice.supported]);
 
-    return DUMMY_MOULDS.filter((m) => {
-      const haystack = `${m.name} ${m.code} ${m.city} ${m.category}`.toLowerCase();
-      return tokens.every((t) => haystack.includes(t));
-    });
-  }, [query]);
+  // Popular terms come from the real category list, not a hardcoded list.
+  useEffect(() => {
+    if (!open) return;
 
-  const hasQuery = query.trim().length > 0;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      publicApi
+        .listSections(1)
+        .then((sections) => {
+          if (!cancelled) setPopular(sections.map((section) => section.category.title).slice(0, 8));
+        })
+        .catch(() => {
+          if (!cancelled) setPopular([]);
+        });
+    }, 0);
 
-  const handleVoice = () => {
-    const w = window as unknown as {
-      SpeechRecognition?: new () => SpeechRecognitionLike;
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
     };
-    const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!SR) return;
+  }, [open]);
 
-    const rec = new SR();
-    rec.lang = "en-IN";
-    rec.interimResults = false;
-    rec.onresult = (e) => onQueryChange(e.results[0][0].transcript);
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    setListening(true);
-    rec.start();
-  };
+  // Live results for whatever is typed.
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      setError("");
+
+      publicApi
+        .listProducts({
+          ...(debouncedQuery ? { search: debouncedQuery } : {}),
+          limit: MAX_RESULTS,
+          page: 1,
+        })
+        .then((data) => {
+          if (!cancelled) setResults(data.products);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setError(getApiErrorMessage(err, "Could not load results"));
+          setResults([]);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [debouncedQuery, open]);
+
+  const voiceHint = useMemo(() => {
+    if (voice.listening) return "Listening… speak now";
+    if (voice.error === "denied") return "Microphone permission was denied";
+    if (voice.error === "unsupported") return "Voice search is not supported in this browser";
+    if (voice.error === "failed") return "Could not hear that — try again";
+    return "";
+  }, [voice.error, voice.listening]);
 
   return (
     <AnimatePresence>
@@ -165,7 +211,7 @@ export default function SearchOverlay({ open, query, onQueryChange, onClose }: P
           transition={{ duration: 0.2 }}
           role="dialog"
           aria-modal="true"
-          aria-label="Search moulds"
+          aria-label="Search listings"
         >
           <div className={styles.topBar}>
             <button type="button" onClick={onClose} className={styles.backBtn} aria-label="Back">
@@ -177,6 +223,7 @@ export default function SearchOverlay({ open, query, onQueryChange, onClose }: P
               role="search"
               onSubmit={(e) => {
                 e.preventDefault();
+                commitSearch(query);
                 inputRef.current?.blur();
               }}
             >
@@ -186,13 +233,14 @@ export default function SearchOverlay({ open, query, onQueryChange, onClose }: P
                 type="text"
                 value={query}
                 onChange={(e) => onQueryChange(e.target.value)}
-                placeholder="Search chair, table, stool mould..."
+                onBlur={() => commitSearch(query)}
+                placeholder="Search product, mould or component..."
                 className={styles.input}
                 autoComplete="off"
                 enterKeyHint="search"
-                aria-label="Search moulds"
+                aria-label="Search listings"
               />
-              {hasQuery && (
+              {query.trim().length > 0 && (
                 <button
                   type="button"
                   className={styles.clearBtn}
@@ -205,30 +253,75 @@ export default function SearchOverlay({ open, query, onQueryChange, onClose }: P
                   <X size={14} />
                 </button>
               )}
-              <button
-                type="button"
-                onClick={handleVoice}
-                className={`${styles.micBtn} ${listening ? styles.micActive : ""}`}
-                aria-label="Voice search"
-              >
-                <Mic size={16} />
-              </button>
+              {voice.supported && (
+                <button
+                  type="button"
+                  onClick={voice.toggle}
+                  className={`${styles.micBtn} ${voice.listening ? styles.micActive : ""}`}
+                  aria-label={voice.listening ? "Stop voice search" : "Search by voice"}
+                  aria-pressed={voice.listening}
+                >
+                  <Mic size={16} />
+                </button>
+              )}
             </form>
           </div>
 
           <div className={styles.body}>
-            {!hasQuery && (
+            {voiceHint && <p className={styles.sectionLabel}>{voiceHint}</p>}
+
+            {!hasQuery && recent.length > 0 && (
               <div className={styles.popular}>
-                <p className={styles.sectionLabel}>Popular searches</p>
+                <div className={styles.recentHeader}>
+                  <p className={styles.sectionLabel}>Recent searches</p>
+                  <button
+                    type="button"
+                    onClick={clearRecent}
+                    className={styles.clearAllBtn}
+                  >
+                    Clear all
+                  </button>
+                </div>
                 <div className={styles.chips}>
-                  {POPULAR.map((p) => (
+                  {recent.map((term) => (
+                    <span key={term} className={styles.recentChip}>
+                      <button
+                        type="button"
+                        className={styles.recentChipTerm}
+                        onClick={() => onQueryChange(term)}
+                      >
+                        <Clock size={12} aria-hidden />
+                        {term}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.recentChipRemove}
+                        onClick={() => removeRecent(term)}
+                        aria-label={`Remove ${term} from recent searches`}
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!hasQuery && popular.length > 0 && (
+              <div className={styles.popular}>
+                <p className={styles.sectionLabel}>Browse categories</p>
+                <div className={styles.chips}>
+                  {popular.map((term) => (
                     <button
-                      key={p}
+                      key={term}
                       type="button"
                       className={styles.chip}
-                      onClick={() => onQueryChange(p)}
+                      onClick={() => {
+                        onQueryChange(term);
+                        commitSearch(term);
+                      }}
                     >
-                      {p}
+                      {term}
                     </button>
                   ))}
                 </div>
@@ -236,20 +329,33 @@ export default function SearchOverlay({ open, query, onQueryChange, onClose }: P
             )}
 
             <p className={styles.sectionLabel}>
-              {hasQuery
-                ? `${results.length} result${results.length === 1 ? "" : "s"} for “${query.trim()}”`
-                : "All moulds"}
+              {loading
+                ? "Searching…"
+                : hasQuery
+                  ? `${results.length} result${results.length === 1 ? "" : "s"} for “${debouncedQuery}”`
+                  : "All listings"}
             </p>
 
+            {error && <p className={styles.emptyText}>{error}</p>}
+
             <div className={styles.list}>
-              {results.slice(0, MAX_RESULTS).map((m) => (
-                <BigCard key={m.id} {...m} onNavigate={onClose} />
+              {results.map((product) => (
+                <ResultCard
+                  key={product._id}
+                  product={product}
+                  onNavigate={() => {
+                    commitSearch(query);
+                    onClose();
+                  }}
+                />
               ))}
 
-              {results.length === 0 && (
+              {!loading && results.length === 0 && !error && (
                 <div className={styles.empty}>
-                  <p className={styles.emptyTitle}>No moulds found</p>
-                  <p className={styles.emptyText}>Try a different name, like “chair” or “table”.</p>
+                  <p className={styles.emptyTitle}>No listings found</p>
+                  <p className={styles.emptyText}>
+                    Try a product, mould or component name — or browse the categories above.
+                  </p>
                 </div>
               )}
             </div>

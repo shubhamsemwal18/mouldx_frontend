@@ -1,370 +1,53 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./MyMoulds.module.css";
+import { getApiErrorMessage } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
+import { productApi } from "@/app/lib/product-api";
+import type { Pagination } from "@/app/lib/product-api";
+import type { Product, ProductStatus, ProductStatusStats } from "@/app/lib/types";
 
-type AvailabilityStatus = "AVAILABLE" | "RENTED" | "MAINTENANCE";
-type EditableStatus = Exclude<AvailabilityStatus, "RENTED">;
-type StatusFilter = "ALL" | AvailabilityStatus;
-
-interface Mould {
-  id: string;
-  name: string;
-  code: string;
-  rating: number;
-  status: AvailabilityStatus;
-  pricePerDay: number;
-  image: string;
-  maintenanceNote?: string;
-  maintenanceUntil?: string;
-}
+type StatusFilter = "ALL" | ProductStatus;
 
 const PAGE_SIZE = 10;
 
-// TEMP dummy data (24 records so pagination can be tested) — will be replaced by the real moulds API
-const MOULD_NAMES = [
-  "Bottle Cap Mould",
-  "PET Preform Mould",
-  "Chair Leg Mould",
-  "Blow Mould — 5L Can",
-  "Die-Cast Housing Mould",
-  "Bucket Handle Mould",
-];
-
-const STATUS_CYCLE: AvailabilityStatus[] = ["AVAILABLE", "RENTED", "MAINTENANCE", "AVAILABLE"];
-
-const MAINTENANCE_NOTES = [
-  "Cooling channel cleaning",
-  "Cavity polishing",
-  "Ejector pin replacement",
-];
-
-const INITIAL_MOULDS: Mould[] = Array.from({ length: 24 }, (_, i) => {
-  const status = STATUS_CYCLE[i % STATUS_CYCLE.length];
-  const isMaintenance = status === "MAINTENANCE";
-
-  return {
-    id: String(i + 1),
-    name: MOULD_NAMES[i % MOULD_NAMES.length],
-    code: `MX-${String(100 + i * 7).padStart(6, "0")}`,
-    rating: Number((4.3 + ((i * 3) % 7) / 10).toFixed(1)),
-    status,
-    pricePerDay: 15000 + (i % 5) * 2000,
-    image: `https://picsum.photos/seed/owner-mould-${i + 1}/600/600`,
-    maintenanceNote: isMaintenance ? MAINTENANCE_NOTES[i % MAINTENANCE_NOTES.length] : undefined,
-    maintenanceUntil: isMaintenance ? "2026-10-20" : undefined,
-  };
-});
-
-const STATUS_CLASS: Record<AvailabilityStatus, string> = {
-  AVAILABLE: "badgeAvailable",
-  RENTED: "badgeRented",
-  MAINTENANCE: "badgeMaintenance",
+const STATUS_LABEL: Record<ProductStatus, string> = {
+  draft: "DRAFT",
+  in_review: "UNDER REVIEW",
+  approved: "LIVE",
+  rejected: "CHANGES REQUESTED",
 };
 
-// The owner can only switch between these two. "Rented" is set automatically by bookings.
-const STATUS_OPTIONS: {
-  value: EditableStatus;
-  label: string;
-  description: string;
-  dot: string;
-}[] = [
-  {
-    value: "AVAILABLE",
-    label: "Available",
-    description: "Visible to customers and open for booking",
-    dot: "dotAvailable",
-  },
-  {
-    value: "MAINTENANCE",
-    label: "Under maintenance",
-    description: "Hidden from booking until you mark it available",
-    dot: "dotMaintenance",
-  },
-];
+const STATUS_CLASS: Record<ProductStatus, string> = {
+  draft: "badgeDraft",
+  in_review: "badgeRented",
+  approved: "badgeAvailable",
+  rejected: "badgeMaintenance",
+};
 
 const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "ALL", label: "All" },
-  { value: "AVAILABLE", label: "Available" },
-  { value: "RENTED", label: "Rented" },
-  { value: "MAINTENANCE", label: "Maintenance" },
+  { value: "draft", label: "Draft" },
+  { value: "in_review", label: "Under review" },
+  { value: "approved", label: "Live" },
+  { value: "rejected", label: "Rejected" },
 ];
 
-const MAX_NOTE = 140;
+const formatPrice = (value?: number) =>
+  value === undefined ? "—" : `₹${value.toLocaleString("en-IN")}`;
 
-function formatDate(iso: string) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-  });
-}
+/* ---------- Listing image with placeholder fallback ---------- */
 
-function todayISO() {
-  return new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 10);
-}
-
-async function updateMouldStatus(payload: {
-  mouldId: string;
-  status: AvailabilityStatus;
-  maintenanceNote?: string;
-  maintenanceUntil?: string;
-}) {
-  await new Promise((resolve) => setTimeout(resolve, 600));
-  return payload;
-}
-
-/* ---------- Status bottom sheet ---------- */
-
-interface StatusSheetProps {
-  mould: Mould;
-  onClose: () => void;
-  onSave: (
-    status: AvailabilityStatus,
-    note: string,
-    until: string
-  ) => Promise<void>;
-}
-
-function StatusSheet({ mould, onClose, onSave }: StatusSheetProps) {
-  const [status, setStatus] = useState<AvailabilityStatus>(mould.status);
-  const [note, setNote] = useState(mould.maintenanceNote ?? "");
-  const [until, setUntil] = useState(mould.maintenanceUntil ?? "");
-  const [saving, setSaving] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState("");
-
-  const isRented = mould.status === "RENTED";
-
-  // Lock the page scroll while the sheet is open
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, []);
-
-  // Escape closes the confirmation popup first, then the sheet
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || saving) return;
-      if (confirming) {
-        setConfirming(false);
-      } else {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, confirming, saving]);
-
-  const unchanged =
-    status === mould.status &&
-    (status !== "MAINTENANCE" ||
-      (note === (mould.maintenanceNote ?? "") &&
-        until === (mould.maintenanceUntil ?? "")));
-
-  const handleSaveClick = () => {
-    if (unchanged || saving || isRented) return;
-    setError("");
-    setConfirming(true);
-  };
-
-  const handleConfirm = async () => {
-    if (saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      await onSave(status, note.trim(), until);
-      onClose();
-    } catch {
-      setConfirming(false);
-      setSaving(false);
-      setError("Could not update the status. Please try again.");
-    }
-  };
-
-  const confirmTitle =
-    status === "MAINTENANCE" ? "Mark as under maintenance?" : "Mark as available?";
-
-  const confirmText =
-    status === "MAINTENANCE"
-      ? `${mould.name} will be hidden from booking until you mark it available.${
-          until ? ` Expected back on ${formatDate(until)}.` : ""
-        }`
-      : `${mould.name} will be visible to customers and open for booking.`;
-
-  return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div
-        className={styles.sheet}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Update mould status"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className={styles.sheetHandle} aria-hidden />
-
-        <h2 className={styles.sheetTitle}>Update status</h2>
-        <p className={styles.sheetSub}>
-          {mould.name} · {mould.code}
-        </p>
-
-        {isRented && (
-          <p className={styles.notice}>
-            This mould is currently rented. Its status updates automatically once it is
-            returned.
-          </p>
-        )}
-
-        <div className={styles.options} role="radiogroup" aria-label="Status">
-          {STATUS_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              role="radio"
-              aria-checked={status === opt.value}
-              disabled={isRented}
-              className={`${styles.option} ${
-                status === opt.value ? styles.optionActive : ""
-              }`}
-              onClick={() => setStatus(opt.value)}
-            >
-              <span className={`${styles.dot} ${styles[opt.dot]}`} aria-hidden />
-              <span className={styles.optionText}>
-                <span className={styles.optionLabel}>{opt.label}</span>
-                <span className={styles.optionDesc}>{opt.description}</span>
-              </span>
-              <span
-                className={`${styles.radio} ${
-                  status === opt.value ? styles.radioOn : ""
-                }`}
-                aria-hidden
-              />
-            </button>
-          ))}
-        </div>
-
-        {status === "MAINTENANCE" && !isRented && (
-          <div className={styles.maintenanceFields}>
-            <label htmlFor="maintenance-note" className={styles.fieldLabel}>
-              Reason <span className={styles.optional}>(optional)</span>
-            </label>
-            <textarea
-              id="maintenance-note"
-              className={styles.textarea}
-              rows={2}
-              maxLength={MAX_NOTE}
-              placeholder="e.g. Cavity polishing, cooling line repair"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-
-            <label htmlFor="maintenance-until" className={styles.fieldLabel}>
-              Expected back on <span className={styles.optional}>(optional)</span>
-            </label>
-            <input
-              id="maintenance-until"
-              type="date"
-              className={styles.dateInput}
-              min={todayISO()}
-              value={until}
-              onChange={(e) => setUntil(e.target.value)}
-            />
-          </div>
-        )}
-
-        {error && <p className={styles.error}>{error}</p>}
-
-        <div className={styles.sheetActions}>
-          <button
-            type="button"
-            className={styles.cancelBtn}
-            onClick={onClose}
-            disabled={saving}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className={styles.saveBtn}
-            onClick={handleSaveClick}
-            disabled={unchanged || saving || isRented}
-          >
-            Save status
-          </button>
-        </div>
-      </div>
-
-      {/* ---------- Confirmation popup ---------- */}
-      {confirming && (
-        <div
-          className={styles.confirmOverlay}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!saving) setConfirming(false);
-          }}
-        >
-          <div
-            className={styles.confirmBox}
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="confirm-title"
-            aria-describedby="confirm-text"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span
-              className={`${styles.confirmIcon} ${
-                status === "MAINTENANCE" ? styles.confirmIconRed : styles.confirmIconGreen
-              }`}
-              aria-hidden
-            >
-              {status === "MAINTENANCE" ? "🔧" : "✓"}
-            </span>
-
-            <h3 id="confirm-title" className={styles.confirmTitle}>
-              {confirmTitle}
-            </h3>
-            <p id="confirm-text" className={styles.confirmText}>
-              {confirmText}
-            </p>
-
-            <div className={styles.confirmActions}>
-              <button
-                type="button"
-                className={styles.cancelBtn}
-                onClick={() => setConfirming(false)}
-                disabled={saving}
-              >
-                Go back
-              </button>
-              <button
-                type="button"
-                className={styles.saveBtn}
-                onClick={handleConfirm}
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Confirm"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ---------- Mould image with placeholder fallback ---------- */
-
-function MouldImage({ src, alt }: { src: string; alt: string }) {
+function ListingImage({ src, alt }: { src?: string | null; alt: string }) {
   const [imgError, setImgError] = useState(false);
 
   return (
     <div className={styles.imageWrap}>
-      {!imgError ? (
+      {src && !imgError ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={src}
           alt={alt}
@@ -385,63 +68,83 @@ function MouldImage({ src, alt }: { src: string; alt: string }) {
   );
 }
 
-/* ---------- Mould card (same design as the review card) ---------- */
+/* ---------- Listing card ---------- */
 
-function MouldCard({
-  mould,
-  onEditStatus,
+function ListingCard({
+  listing,
+  onDelete,
+  deleting,
 }: {
-  mould: Mould;
-  onEditStatus: (id: string) => void;
+  listing: Product;
+  onDelete: (id: string) => void;
+  deleting: boolean;
 }) {
+  const canEdit = listing.status === "draft" || listing.status === "rejected";
+
   return (
     <div className={styles.card}>
       <div className={styles.cardTop}>
-        <MouldImage src={mould.image} alt={mould.name} />
+        <ListingImage src={listing.image?.url} alt={listing.name} />
 
         <div className={styles.cardInfo}>
-          <h3 className={styles.mouldName}>{mould.name}</h3>
+          <h3 className={styles.mouldName}>{listing.name}</h3>
           <p className={styles.mouldMeta}>
-            {mould.code} · <span className={styles.ratingStar}>★</span> {mould.rating}
+            {listing.code}
+            {listing.category?.title ? ` · ${listing.category.title}` : ""}
           </p>
           <p className={styles.mouldLine}>
-            <strong>Rent:</strong> ₹{mould.pricePerDay.toLocaleString("en-IN")}/day
+            <strong>Rent:</strong> {formatPrice(listing.pricing?.perDayCharges)}/day
           </p>
-          <span className={`${styles.badge} ${styles[STATUS_CLASS[mould.status]]}`}>
-            {mould.status}
+          <p className={styles.mouldMeta}>
+            {listing.mouldCount ?? 0} mould{(listing.mouldCount ?? 0) === 1 ? "" : "s"}
+            {(listing.resubmissionCount ?? 0) > 0
+              ? ` · resubmitted ${listing.resubmissionCount}×`
+              : ""}
+          </p>
+          <span className={`${styles.badge} ${styles[STATUS_CLASS[listing.status]]}`}>
+            {STATUS_LABEL[listing.status]}
           </span>
         </div>
       </div>
 
-      {mould.status === "MAINTENANCE" && (mould.maintenanceNote || mould.maintenanceUntil) && (
+      {listing.status === "rejected" && listing.rejectionReason && (
         <div className={styles.maintenanceInfo}>
-          {mould.maintenanceNote && (
-            <p className={styles.maintenanceNote}>{mould.maintenanceNote}</p>
-          )}
-          {mould.maintenanceUntil && (
-            <p className={styles.maintenanceUntil}>
-              Back on {formatDate(mould.maintenanceUntil)}
-            </p>
-          )}
+          <p className={styles.maintenanceNote}>{listing.rejectionReason}</p>
         </div>
       )}
 
       <hr className={styles.divider} />
 
       <div className={styles.actionsRow}>
-        <Link href={`/owner/moulds/${mould.id}/calendar`} className={styles.actionBtn}>
-          <span aria-hidden>📅</span> Calendar
-        </Link>
-        <button
-          type="button"
-          className={styles.actionBtn}
-          onClick={() => onEditStatus(mould.id)}
-        >
-          <span aria-hidden>🔧</span> Status
-        </button>
-        <Link href={`/owner/moulds/${mould.id}/edit`} className={styles.actionBtn}>
-          <span aria-hidden>✎</span> Edit
-        </Link>
+        {canEdit ? (
+          <Link
+            href={`/owner/moulds/new/product?id=${listing._id}`}
+            className={styles.actionBtn}
+          >
+            <span aria-hidden>✎</span> {listing.status === "rejected" ? "Fix & resubmit" : "Edit"}
+          </Link>
+        ) : (
+          <Link href={`/owner/moulds/new/product?id=${listing._id}`} className={styles.actionBtn}>
+            <span aria-hidden>👁</span> View
+          </Link>
+        )}
+
+        {listing.status === "approved" && (
+          <Link href={`/owner/moulds/${listing._id}/calendar`} className={styles.actionBtn}>
+            <span aria-hidden>📅</span> Calendar
+          </Link>
+        )}
+
+        {listing.status === "draft" && (
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={() => onDelete(listing._id)}
+            disabled={deleting}
+          >
+            <span aria-hidden>🗑</span> {deleting ? "Deleting..." : "Delete"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -450,55 +153,94 @@ function MouldCard({
 /* ---------- Page ---------- */
 
 export default function MyMouldsPage() {
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [moulds, setMoulds] = useState<Mould[]>(INITIAL_MOULDS);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [toast, setToast] = useState("");
   const [page, setPage] = useState(1);
+
+  const [listings, setListings] = useState<Product[]>([]);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [stats, setStats] = useState<ProductStatusStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [toast, setToast] = useState("");
+
+  const isApprovedOwner =
+    Boolean(user?.approvedRoles.includes("owner")) && user?.profileVerificationStatus === "approved";
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent("/owner/moulds")}`);
+      return;
+    }
+    if (!isApprovedOwner) router.replace("/owner/onboarding");
+  }, [authLoading, isApprovedOwner, router, user]);
+
+  // Debounce the search box so typing does not fire a request per keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(""), 2600);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(""), 2600);
+    return () => clearTimeout(timer);
   }, [toast]);
 
-  const counts = useMemo(() => {
-    const base: Record<StatusFilter, number> = {
-      ALL: moulds.length,
-      AVAILABLE: 0,
-      RENTED: 0,
-      MAINTENANCE: 0,
-    };
-    moulds.forEach((m) => {
-      base[m.status] += 1;
-    });
-    return base;
-  }, [moulds]);
+  const load = useCallback(async () => {
+    if (!isApprovedOwner) return;
 
-  const filtered = useMemo(() => {
-    const tokens = search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    setLoading(true);
+    setError("");
 
-    return moulds.filter((m) => {
-      const matchesStatus = statusFilter === "ALL" || m.status === statusFilter;
-      const haystack = `${m.name} ${m.code} ${m.status}`.toLowerCase();
-      const matchesSearch = tokens.every((t) => haystack.includes(t));
-      return matchesStatus && matchesSearch;
-    });
-  }, [search, statusFilter, moulds]);
+    try {
+      const data = await productApi.list({
+        page,
+        limit: PAGE_SIZE,
+        ...(statusFilter === "ALL" ? {} : { status: statusFilter }),
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      });
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const startIndex = (currentPage - 1) * PAGE_SIZE;
-  const pageItems = filtered.slice(startIndex, startIndex + PAGE_SIZE);
+      setListings(data.products);
+      setPagination(data.pagination);
+      setStats(data.stats);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not load your listings"));
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, isApprovedOwner, page, statusFilter]);
 
-  const activeFilterCount = statusFilter !== "ALL" ? 1 : 0;
-  const isFiltering = search.trim() !== "" || activeFilterCount > 0;
+  // Deferred to a macrotask so the fetch's setState calls do not run
+  // synchronously inside the effect.
+  useEffect(() => {
+    const timer = window.setTimeout(load, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setPage(1);
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+
+    try {
+      await productApi.remove(id);
+      setToast("Draft deleted");
+      await load();
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not delete the draft"));
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleStatusFilterChange = (value: StatusFilter) => {
@@ -519,45 +261,22 @@ export default function MyMouldsPage() {
     }
   };
 
-  const editingMould = moulds.find((m) => m.id === editingId) ?? null;
-
-  const handleSave = async (
-    status: AvailabilityStatus,
-    note: string,
-    until: string
-  ) => {
-    if (!editingMould) return;
-    const id = editingMould.id;
-    const previous = moulds;
-
-    setMoulds((list) =>
-      list.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              status,
-              maintenanceNote: status === "MAINTENANCE" ? note : undefined,
-              maintenanceUntil:
-                status === "MAINTENANCE" && until ? until : undefined,
-            }
-          : m
-      )
-    );
-
-    try {
-      await updateMouldStatus({
-        mouldId: id,
-        status,
-        maintenanceNote: status === "MAINTENANCE" ? note : undefined,
-        maintenanceUntil: status === "MAINTENANCE" && until ? until : undefined,
-      });
-      const label = STATUS_OPTIONS.find((o) => o.value === status)?.label;
-      setToast(`${editingMould.name} marked as ${label?.toLowerCase()}`);
-    } catch (err) {
-      setMoulds(previous);
-      throw err;
-    }
+  const counts: Record<StatusFilter, number> = {
+    ALL: stats?.total ?? 0,
+    draft: stats?.draft ?? 0,
+    in_review: stats?.in_review ?? 0,
+    approved: stats?.approved ?? 0,
+    rejected: stats?.rejected ?? 0,
   };
+
+  const activeFilterCount = statusFilter !== "ALL" ? 1 : 0;
+  const isFiltering = debouncedSearch !== "" || activeFilterCount > 0;
+  const totalPages = pagination?.pages ?? 1;
+  const startIndex = ((pagination?.page ?? 1) - 1) * PAGE_SIZE;
+
+  if (authLoading || !isApprovedOwner) {
+    return null;
+  }
 
   return (
     <div className={styles.page}>
@@ -571,17 +290,17 @@ export default function MyMouldsPage() {
             </span>
             <input
               type="text"
-              placeholder="Search Moulds"
+              placeholder="Search by name or code"
               value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               className={styles.searchInput}
-              aria-label="Search moulds"
+              aria-label="Search listings"
             />
             {search && (
               <button
                 type="button"
                 className={styles.clearSearchBtn}
-                onClick={() => handleSearchChange("")}
+                onClick={() => setSearch("")}
                 aria-label="Clear search"
               >
                 ✕
@@ -595,12 +314,10 @@ export default function MyMouldsPage() {
             }`}
             onClick={() => setIsFilterOpen((v) => !v)}
             aria-expanded={isFilterOpen}
-            aria-label="Filter moulds"
+            aria-label="Filter listings"
           >
             <span aria-hidden>▽</span>
-            {activeFilterCount > 0 && (
-              <span className={styles.filterCount}>{activeFilterCount}</span>
-            )}
+            {activeFilterCount > 0 && <span className={styles.filterCount}>{activeFilterCount}</span>}
           </button>
         </div>
 
@@ -613,9 +330,7 @@ export default function MyMouldsPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => handleStatusFilterChange(opt.value)}
-                  className={`${styles.chip} ${
-                    statusFilter === opt.value ? styles.chipActive : ""
-                  }`}
+                  className={`${styles.chip} ${statusFilter === opt.value ? styles.chipActive : ""}`}
                 >
                   {opt.label}
                   <span className={styles.chipCount}>{counts[opt.value]}</span>
@@ -635,25 +350,41 @@ export default function MyMouldsPage() {
           </div>
         )}
 
-        {/* ---------- Add New Listing button (below search + filter) ---------- */}
         <Link href="/owner/moulds/new/product" className={`${styles.addBtn} btn-primary`}>
           + Add New Listing
         </Link>
 
-        {isFiltering && (
+        {error && <p className={styles.errorText}>{error}</p>}
+
+        {isFiltering && pagination && (
           <p className={styles.resultsText}>
-            {filtered.length} mould{filtered.length === 1 ? "" : "s"} found
+            {pagination.total} listing{pagination.total === 1 ? "" : "s"} found
           </p>
         )}
 
         <div className={styles.list}>
-          {pageItems.map((m) => (
-            <MouldCard key={m.id} mould={m} onEditStatus={setEditingId} />
+          {loading && listings.length === 0 && (
+            <div className={styles.emptyBox}>
+              <p className={styles.emptyText}>Loading your listings...</p>
+            </div>
+          )}
+
+          {listings.map((listing) => (
+            <ListingCard
+              key={listing._id}
+              listing={listing}
+              onDelete={handleDelete}
+              deleting={deletingId === listing._id}
+            />
           ))}
 
-          {filtered.length === 0 && (
+          {!loading && listings.length === 0 && (
             <div className={styles.emptyBox}>
-              <p className={styles.emptyText}>No moulds match your search or filter.</p>
+              <p className={styles.emptyText}>
+                {isFiltering
+                  ? "No listings match your search or filter."
+                  : "You have not created any listings yet."}
+              </p>
               {isFiltering && (
                 <button type="button" className={styles.clearFilters} onClick={clearAll}>
                   Clear search &amp; filter
@@ -663,32 +394,31 @@ export default function MyMouldsPage() {
           )}
         </div>
 
-        {/* ---------- Pagination (only when there is more than one page) ---------- */}
-        {totalPages > 1 && (
-          <nav className={styles.pagination} aria-label="Moulds pagination">
+        {totalPages > 1 && pagination && (
+          <nav className={styles.pagination} aria-label="Listings pagination">
             <p className={styles.paginationInfo}>
-              Showing {startIndex + 1}–{startIndex + pageItems.length} of {filtered.length}
+              Showing {startIndex + 1}–{startIndex + listings.length} of {pagination.total}
             </p>
 
             <div className={styles.paginationControls}>
               <button
                 type="button"
                 className={styles.pageBtn}
-                onClick={() => goToPage(currentPage - 1)}
-                disabled={currentPage === 1}
+                onClick={() => goToPage(pagination.page - 1)}
+                disabled={!pagination.hasPrevPage || loading}
               >
                 ← Previous
               </button>
 
               <span className={styles.pageIndicator}>
-                {currentPage} / {totalPages}
+                {pagination.page} / {totalPages}
               </span>
 
               <button
                 type="button"
                 className={`${styles.pageBtn} ${styles.pageBtnPrimary}`}
-                onClick={() => goToPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
+                onClick={() => goToPage(pagination.page + 1)}
+                disabled={!pagination.hasNextPage || loading}
               >
                 Next →
               </button>
@@ -696,15 +426,6 @@ export default function MyMouldsPage() {
           </nav>
         )}
       </div>
-
-      {editingMould && (
-        <StatusSheet
-          key={editingMould.id}
-          mould={editingMould}
-          onClose={() => setEditingId(null)}
-          onSave={handleSave}
-        />
-      )}
 
       {toast && (
         <div className={styles.toast} role="status">

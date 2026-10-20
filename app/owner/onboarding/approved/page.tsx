@@ -117,7 +117,7 @@ export default function ProfileApprovedPage() {
 
       {/* ---------- Sticky CTA ---------- */}
       <div className={styles.ctaBar}>
-        <Link href="/owner/moulds/new" className={`${styles.ctaBtn} btn-primary`}>
+        <Link href="/owner/moulds/new/product" className={`${styles.ctaBtn} btn-primary`}>
           + List a Mould
         </Link>
         <Link href="/owner" className={styles.skipLink}>

@@ -1,5 +1,24 @@
 import { apiClient, type ApiResponse } from "@/app/lib/api";
-import type { Category, OwnerProfileVerification, ProfileVerificationStatus } from "@/app/lib/types";
+import type {
+  Category,
+  OwnerProfileVerification,
+  ProductDetail,
+  ProductStatus,
+  ProfileVerificationStatus,
+} from "@/app/lib/types";
+import type { Pagination, ProductListResponse } from "@/app/lib/product-api";
+
+export interface AdminProductListParams {
+  status?: ProductStatus;
+  search?: string;
+  ownerId?: string;
+  submittedFrom?: string;
+  submittedTo?: string;
+  page?: number;
+  limit?: number;
+}
+
+export type { Pagination };
 
 export interface AdminKycListParams {
   search?: string;
@@ -103,5 +122,25 @@ export const adminApi = {
         payload
       )
       .then((response) => response.data.data.profileVerification);
+  },
+
+  /* ---------------- Listings ---------------- */
+
+  listProducts(params?: AdminProductListParams) {
+    return apiClient
+      .get<ApiResponse<ProductListResponse>>("/admin/products", { params })
+      .then((response) => response.data.data);
+  },
+
+  getProduct(id: string) {
+    return apiClient
+      .get<ApiResponse<ProductDetail>>(`/admin/products/${id}`)
+      .then((response) => response.data.data);
+  },
+
+  reviewProduct(id: string, payload: { status: "approved" | "rejected"; reason?: string }) {
+    return apiClient
+      .patch<ApiResponse<ProductDetail>>(`/admin/products/${id}/review`, payload)
+      .then((response) => response.data.data);
   },
 };
