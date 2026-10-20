@@ -1,79 +1,93 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import styles from "./MouldExplore.module.css";
-import { DUMMY_MOULDS } from "@/app/data/moulds";
+import { getApiErrorMessage } from "@/app/lib/api";
+import { publicApi, type CatalogueSort } from "@/app/lib/public-api";
+import type {
+  CatalogueFilterOptions,
+  CategorySection,
+  MouldType,
+  PublicProductCard,
+} from "@/app/lib/types";
 
-const CATEGORIES = ["All", "Injection", "Blow", "Die-Cast", "Nearby"] as const;
-const ROW_CATEGORIES = ["Injection", "Blow", "Die-Cast"] as const;
-const AVAILABILITY_OPTIONS = ["All", "FREE", "2 LEFT", "BOOKED"] as const;
+const PAGE_SIZE = 12;
+const SEARCH_DEBOUNCE_MS = 350;
+
 const PRICE_RANGES = [
-  { label: "Any price", min: 0, max: Infinity },
-  { label: "Under ₹2,000", min: 0, max: 1999 },
+  { label: "Any price", min: undefined, max: undefined },
+  { label: "Under ₹2,000", min: undefined, max: 1999 },
   { label: "₹2,000 – ₹3,500", min: 2000, max: 3500 },
-  { label: "Above ₹3,500", min: 3501, max: Infinity },
+  { label: "Above ₹3,500", min: 3501, max: undefined },
 ] as const;
 
-const PAGE_SIZE = 10;
+const SORT_LABELS: { value: CatalogueSort; label: string }[] = [
+  { value: "recent", label: "Newest" },
+  { value: "price_asc", label: "Price: low to high" },
+  { value: "price_desc", label: "Price: high to low" },
+];
 
-function parsePrice(price: string) {
-  return Number(price.replace(/[^0-9]/g, "")) || 0;
-}
+/** axios reports offline as the bare string "Network Error"; say something useful. */
+const friendlyError = (err: unknown, fallback: string) => {
+  const message = getApiErrorMessage(err, fallback);
+  return /network error/i.test(message)
+    ? "We couldn't reach the server. Please check your connection."
+    : message;
+};
 
-// Strip a trailing "s" so plural search terms still match (e.g. "tables" -> "table")
-function normalizeToken(t: string) {
-  return t.length > 3 ? t.replace(/s$/, "") : t;
-}
+const formatPrice = (value?: number) =>
+  value === undefined ? "Price on request" : `₹${value.toLocaleString("en-IN")}/day`;
 
-interface BigCardProps {
-  id: string | number;
-  name: string;
-  code: string;
-  city: string;
-  category: string;
-  price: string;
-  image?: string;
-  rating?: number;
+/* ---------- Listing card ---------- */
+
+function ListingCard({
+  product,
+  variant,
+}: {
+  product: PublicProductCard;
   variant: "row" | "grid";
-}
-
-function BigCard({ id, name, code, city, category, price, image, rating, variant }: BigCardProps) {
-  
+}) {
   const [imgError, setImgError] = useState(false);
+  const imageUrl = product.image?.url;
 
   return (
     <article className={`${styles.card} ${variant === "grid" ? styles.cardGrid : styles.cardRow}`}>
-      {/* The whole card (image + text) opens the detail page */}
-      <Link href={`/explore/${id}`} className={styles.cardLink}>
+      <Link href={`/explore/${product.slug}`} className={styles.cardLink}>
         <div className={styles.imageWrap}>
-          {image && !imgError ? (
+          {imageUrl && !imgError ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={image}
-              alt={name}
+              src={imageUrl}
+              alt={product.name}
               className={styles.image}
               loading="lazy"
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className={styles.placeholder} aria-hidden>▽</div>
+            <div className={styles.placeholder} aria-hidden>
+              ▽
+            </div>
           )}
         </div>
 
-        <h3 className={styles.name}>{name}</h3>
-        <p className={styles.meta}>
-          {price}
-          {rating ? <span> · ★ {rating.toFixed(2)}</span> : null}
-        </p>
+        <h3 className={styles.name}>{product.name}</h3>
+        <p className={styles.meta}>{formatPrice(product.pricing?.perDayCharges)}</p>
         <p className={styles.sub}>
-          {category} · {city} · {code}
+          {[
+            product.category?.title,
+            product.mouldTypes?.length ? product.mouldTypes.join(" · ") : null,
+            product.code,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
       </Link>
-
-     
     </article>
   );
 }
+
+/* ---------- Page section ---------- */
 
 interface MouldExploreProps {
   search?: string;
@@ -81,103 +95,241 @@ interface MouldExploreProps {
 }
 
 export default function MouldExplore({ search: searchProp, onSearchChange }: MouldExploreProps) {
-  // Use the parent's search value if provided, otherwise fall back to local state
+  // The landing page owns the search term so the hero bar, the search sheet
+  // and this section all stay on the same query.
   const [localSearch, setLocalSearch] = useState("");
   const search = searchProp ?? localSearch;
   const setSearch = onSearchChange ?? setLocalSearch;
 
+  const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<(typeof CATEGORIES)[number]>("All");
-  const [activePriceLabel, setActivePriceLabel] = useState<(typeof PRICE_RANGES)[number]["label"]>("Any price");
-  const [activeAvailability, setActiveAvailability] = useState<(typeof AVAILABILITY_OPTIONS)[number]>("All");
+  const [categorySlug, setCategorySlug] = useState("");
+  const [mouldType, setMouldType] = useState<MouldType | "">("");
+  const [priceLabel, setPriceLabel] = useState<string>(PRICE_RANGES[0].label);
+  const [sort, setSort] = useState<CatalogueSort>("recent");
+
+  const [sections, setSections] = useState<CategorySection[]>([]);
+  const [filterOptions, setFilterOptions] = useState<CatalogueFilterOptions | null>(null);
+  const [products, setProducts] = useState<PublicProductCard[]>([]);
   const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [matching, setMatching] = useState(0);
+  const [totalPublished, setTotalPublished] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState("");
+  const [sectionsFailed, setSectionsFailed] = useState(false);
+  // Bumped by "Try again" to re-run both loaders.
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const listTopRef = useRef<HTMLDivElement | null>(null);
-  const prevPageRef = useRef(page);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // Guards against the observer firing repeatedly for the same page.
+  const loadingMoreRef = useRef(false);
 
-  const activePriceRange = PRICE_RANGES.find((r) => r.label === activePriceLabel) ?? PRICE_RANGES[0];
-
-  const filteredMoulds = useMemo(() => {
-    const tokens = search
-      .toLowerCase()
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .map(normalizeToken);
-
-    return DUMMY_MOULDS.filter((m) => {
-      const matchesCategory =
-        activeCategory === "All" || activeCategory === "Nearby" || m.category === activeCategory;
-
-      // Search across name, code, city and category
-      const haystack = `${m.name} ${m.code} ${m.city} ${m.category}`.toLowerCase();
-      const matchesSearch = tokens.every((t) => haystack.includes(t));
-
-      const priceValue = parsePrice(m.price);
-      const matchesPrice = priceValue >= activePriceRange.min && priceValue <= activePriceRange.max;
-      const matchesAvailability = activeAvailability === "All" || m.availability === activeAvailability;
-      return matchesCategory && matchesSearch && matchesPrice && matchesAvailability;
-    });
-  }, [search, activeCategory, activePriceRange, activeAvailability]);
-
-  // Reset to page 1 whenever the search or any filter changes
-  useEffect(() => {
-    setPage(1);
-  }, [search, activeCategory, activePriceLabel, activeAvailability]);
-
-  useEffect(() => {
-    if (prevPageRef.current !== page) {
-      listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    prevPageRef.current = page;
-  }, [page]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredMoulds.length / PAGE_SIZE));
-  const paginatedMoulds = filteredMoulds.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const goToPage = (p: number) => {
-    if (p < 1 || p > totalPages) return;
-    setPage(p);
-  };
-
+  const activeRange = PRICE_RANGES.find((range) => range.label === priceLabel) ?? PRICE_RANGES[0];
   const activeFilterCount =
-    (activeCategory !== "All" ? 1 : 0) +
-    (activePriceLabel !== "Any price" ? 1 : 0) +
-    (activeAvailability !== "All" ? 1 : 0);
+    (categorySlug ? 1 : 0) + (mouldType ? 1 : 0) + (priceLabel !== PRICE_RANGES[0].label ? 1 : 0);
+  const hasQuery = debouncedSearch.length > 0;
+  // Browse-by-category is the default view. Any query, filter or explicit sort
+  // switches to the flat results grid — otherwise sorting would appear to do
+  // nothing, since the category rows have their own order.
+  const isBrowsing = !hasQuery && activeFilterCount === 0 && sort === "recent";
+
+  const queryParams = useMemo(
+    () => ({
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(categorySlug ? { categorySlug } : {}),
+      ...(mouldType ? { mouldType } : {}),
+      ...(activeRange.min !== undefined ? { minPrice: activeRange.min } : {}),
+      ...(activeRange.max !== undefined ? { maxPrice: activeRange.max } : {}),
+      sort,
+      limit: PAGE_SIZE,
+    }),
+    [activeRange.max, activeRange.min, categorySlug, debouncedSearch, mouldType, sort]
+  );
+
+  // Identity of the query a load-more was started for, so a page that lands
+  // after the visitor searched again is discarded instead of appended.
+  const queryParamsRef = useRef(queryParams);
+
+  // Debounce typing so every keystroke does not hit the API.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // Static-ish data: the category rows and the filter options.
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = window.setTimeout(() => {
+      Promise.all([publicApi.listSections(10), publicApi.listFilterOptions()])
+        .then(([loadedSections, options]) => {
+          if (cancelled) return;
+          setSections(loadedSections);
+          setFilterOptions(options);
+          setSectionsFailed(false);
+        })
+        .catch(() => {
+          if (!cancelled) setSectionsFailed(true);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [reloadKey]);
+
+  // First page for the current query. Filters and search reset to page 1.
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+      setError("");
+
+      publicApi
+        .listProducts({ ...queryParams, page: 1 })
+        .then((data) => {
+          if (cancelled) return;
+          setProducts(data.products);
+          setPage(1);
+          setHasNextPage(data.pagination.hasNextPage);
+          setMatching(data.stats.matching);
+          setTotalPublished(data.stats.totalPublished);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          setError(friendlyError(err, "Could not load listings"));
+          setProducts([]);
+          setHasNextPage(false);
+          setMatching(0);
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [queryParams, reloadKey]);
+
+  useEffect(() => {
+    queryParamsRef.current = queryParams;
+  }, [queryParams]);
+
+  const loadMore = useCallback(() => {
+    if (loadingMoreRef.current || !hasNextPage) return;
+
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+
+    const nextPage = page + 1;
+    const requestedFor = queryParams;
+
+    publicApi
+      .listProducts({ ...queryParams, page: nextPage })
+      .then((data) => {
+        // The visitor searched or filtered while this page was loading.
+        if (queryParamsRef.current !== requestedFor) return;
+
+        // De-duplicate: offset paging can repeat an item if a listing is
+        // published while the visitor is scrolling.
+        setProducts((current) => {
+          const seen = new Set(current.map((item) => item._id));
+          return [...current, ...data.products.filter((item) => !seen.has(item._id))];
+        });
+        setPage(nextPage);
+        setHasNextPage(data.pagination.hasNextPage);
+      })
+      .catch((err) => {
+        if (queryParamsRef.current !== requestedFor) return;
+        setError(friendlyError(err, "Could not load more listings"));
+        setHasNextPage(false);
+      })
+      .finally(() => {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      });
+  }, [hasNextPage, page, queryParams]);
+
+  // Infinite scroll: fetch the next page as the sentinel comes into view.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || isBrowsing || !hasNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { rootMargin: "320px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isBrowsing, loadMore]);
 
   const clearFilters = () => {
-    setActiveCategory("All");
-    setActivePriceLabel("Any price");
-    setActiveAvailability("All");
+    setCategorySlug("");
+    setMouldType("");
+    setPriceLabel(PRICE_RANGES[0].label);
   };
 
-  // Browsing mode = no search and no filters, shows horizontal rows per category
-  const isBrowsing = !search.trim() && activeFilterCount === 0;
+  const clearAll = () => {
+    clearFilters();
+    setSearch("");
+  };
+
+  const categoryChips = useMemo(
+    () => sections.map((section) => ({ slug: section.category.slug, title: section.category.title })),
+    [sections]
+  );
+
+  const subtitle = (() => {
+    if (loading && totalPublished === null) return "Loading listings…";
+    // The count never arrived (offline or API error) — do not render "null".
+    if (totalPublished === null) return "Browse available moulds";
+    if (hasQuery || activeFilterCount > 0) {
+      return `${matching} ${matching === 1 ? "listing" : "listings"} found${
+        hasQuery ? ` for “${debouncedSearch}”` : ""
+      }`;
+    }
+    if (totalPublished === 0) return "No listings published yet";
+    return `${totalPublished} verified ${totalPublished === 1 ? "listing" : "listings"}`;
+  })();
 
   return (
     <section id="mould-explore" className={styles.section}>
       <h2 className={styles.title}>Find a mould</h2>
-      <p className={styles.subtitle}>
-        {search.trim()
-          ? `${filteredMoulds.length} result${filteredMoulds.length === 1 ? "" : "s"} for “${search.trim()}”`
-          : "1,240+ verified listings"}
-      </p>
+      <p className={styles.subtitle}>{subtitle}</p>
 
       <div className={styles.searchRow}>
         <div className={styles.searchWrap}>
-          <span className={styles.searchIcon} aria-hidden>🔍</span>
+          <span className={styles.searchIcon} aria-hidden>
+            🔍
+          </span>
           <input
             type="text"
-            placeholder="Search by mould type, cavity, size..."
+            placeholder="Search by product, mould or component..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={styles.searchInput}
+            aria-label="Search listings"
           />
         </div>
 
         <button
+          type="button"
           onClick={() => setIsFilterOpen((v) => !v)}
           className={`${styles.filterToggle} ${isFilterOpen ? styles.filterToggleActive : ""}`}
+          aria-expanded={isFilterOpen}
+          aria-label="Filter listings"
         >
           <span aria-hidden>▽</span>
           {activeFilterCount > 0 && <span className={styles.filterCount}>{activeFilterCount}</span>}
@@ -186,20 +338,57 @@ export default function MouldExplore({ search: searchProp, onSearchChange }: Mou
 
       {isFilterOpen && (
         <div className={styles.filterPanel}>
-          <div className={styles.filterGroup}>
-            <p className={styles.filterLabel}>Category</p>
-            <div className={styles.chipsRow}>
-              {CATEGORIES.map((cat) => (
+          {categoryChips.length > 0 && (
+            <div className={styles.filterGroup}>
+              <p className={styles.filterLabel}>Category</p>
+              <div className={styles.chipsRow}>
                 <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`${styles.chip} ${activeCategory === cat ? styles.chipActive : ""}`}
+                  type="button"
+                  onClick={() => setCategorySlug("")}
+                  className={`${styles.chip} ${categorySlug === "" ? styles.chipActive : ""}`}
                 >
-                  {cat}
+                  All
                 </button>
-              ))}
+                {categoryChips.map((category) => (
+                  <button
+                    key={category.slug}
+                    type="button"
+                    onClick={() => setCategorySlug(category.slug)}
+                    className={`${styles.chip} ${
+                      categorySlug === category.slug ? styles.chipActive : ""
+                    }`}
+                  >
+                    {category.title}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {(filterOptions?.mouldTypes.length ?? 0) > 0 && (
+            <div className={styles.filterGroup}>
+              <p className={styles.filterLabel}>Mould type</p>
+              <div className={styles.chipsRow}>
+                <button
+                  type="button"
+                  onClick={() => setMouldType("")}
+                  className={`${styles.chip} ${mouldType === "" ? styles.chipActive : ""}`}
+                >
+                  All
+                </button>
+                {filterOptions?.mouldTypes.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setMouldType(type)}
+                    className={`${styles.chip} ${mouldType === type ? styles.chipActive : ""}`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className={styles.filterGroup}>
             <p className={styles.filterLabel}>Price</p>
@@ -207,8 +396,9 @@ export default function MouldExplore({ search: searchProp, onSearchChange }: Mou
               {PRICE_RANGES.map((range) => (
                 <button
                   key={range.label}
-                  onClick={() => setActivePriceLabel(range.label)}
-                  className={`${styles.chip} ${activePriceLabel === range.label ? styles.chipActive : ""}`}
+                  type="button"
+                  onClick={() => setPriceLabel(range.label)}
+                  className={`${styles.chip} ${priceLabel === range.label ? styles.chipActive : ""}`}
                 >
                   {range.label}
                 </button>
@@ -217,85 +407,106 @@ export default function MouldExplore({ search: searchProp, onSearchChange }: Mou
           </div>
 
           <div className={styles.filterGroup}>
-            <p className={styles.filterLabel}>Availability</p>
+            <p className={styles.filterLabel}>Sort</p>
             <div className={styles.chipsRow}>
-              {AVAILABILITY_OPTIONS.map((opt) => (
+              {SORT_LABELS.map((option) => (
                 <button
-                  key={opt}
-                  onClick={() => setActiveAvailability(opt)}
-                  className={`${styles.chip} ${activeAvailability === opt ? styles.chipActive : ""}`}
+                  key={option.value}
+                  type="button"
+                  onClick={() => setSort(option.value)}
+                  className={`${styles.chip} ${sort === option.value ? styles.chipActive : ""}`}
                 >
-                  {opt}
+                  {option.label}
                 </button>
               ))}
             </div>
           </div>
 
           {activeFilterCount > 0 && (
-            <button onClick={clearFilters} className={styles.clearFilters}>
+            <button type="button" onClick={clearFilters} className={styles.clearFilters}>
               Clear all filters
             </button>
           )}
         </div>
       )}
 
-      <div ref={listTopRef}>
-        {isBrowsing ? (
-          ROW_CATEGORIES.map((cat) => {
-            const items = DUMMY_MOULDS.filter((m) => m.category === cat);
-            if (items.length === 0) return null;
-            return (
-              <div key={cat} className={styles.rowSection}>
-                <div className={styles.rowHeader}>
-                  <h3 className={styles.rowTitle}>{cat} moulds</h3>
-                  <button
-                    className={styles.rowArrow}
-                    onClick={() => setActiveCategory(cat)}
-                    aria-label={`See all ${cat} moulds`}
-                  >
-                    →
-                  </button>
-                </div>
-                <div className={styles.row}>
-                  {items.map((m) => (
-                    <BigCard key={m.id} {...m} variant="row" />
-                  ))}
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className={styles.grid}>
-            {paginatedMoulds.map((m) => (
-              <BigCard key={m.id} {...m} variant="grid" />
-            ))}
-            {filteredMoulds.length === 0 && (
-              <p className={styles.emptyText}>No moulds match your search.</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {!isBrowsing && filteredMoulds.length > 0 && totalPages > 1 && (
-        <div className={styles.pagination}>
-          <button onClick={() => goToPage(page - 1)} disabled={page === 1} className={styles.pageBtn}>
-            ← Prev
-          </button>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => goToPage(p)}
-              className={`${styles.pageBtn} ${p === page ? styles.pageBtnActive : ""}`}
-            >
-              {p}
-            </button>
-          ))}
-
-          <button onClick={() => goToPage(page + 1)} disabled={page === totalPages} className={styles.pageBtn}>
-            Next →
+      {error && (
+        <div className={styles.errorBox} role="alert">
+          <p className={styles.emptyText}>{error}</p>
+          <button type="button" onClick={() => setReloadKey((k) => k + 1)} className={styles.clearFilters}>
+            Try again
           </button>
         </div>
+      )}
+
+      {isBrowsing ? (
+        <div>
+          {sections.map((section) => (
+            <div key={section.category._id} className={styles.rowSection}>
+              <div className={styles.rowHeader}>
+                <h3 className={styles.rowTitle}>{section.category.title}</h3>
+                <button
+                  type="button"
+                  className={styles.rowArrow}
+                  onClick={() => {
+                    setCategorySlug(section.category.slug);
+                    setIsFilterOpen(false);
+                  }}
+                  aria-label={`See all ${section.category.title} listings`}
+                >
+                  →
+                </button>
+              </div>
+              <div className={styles.row}>
+                {section.products.map((product) => (
+                  <ListingCard key={product._id} product={product} variant="row" />
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {!loading && sections.length === 0 && (
+            <p className={styles.emptyText}>
+              {sectionsFailed
+                ? "We couldn't load listings just now. Please check your connection and try again."
+                : "No listings are published yet. Approved listings appear here automatically."}
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className={styles.grid}>
+            {products.map((product) => (
+              <ListingCard key={product._id} product={product} variant="grid" />
+            ))}
+          </div>
+
+          {loading && products.length === 0 && (
+            <p className={styles.emptyText}>Searching…</p>
+          )}
+
+          {!loading && products.length === 0 && !error && (
+            <div>
+              <p className={styles.emptyText}>No listings match your search.</p>
+              <button type="button" onClick={clearAll} className={styles.clearFilters}>
+                Clear search &amp; filters
+              </button>
+            </div>
+          )}
+
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} aria-hidden />
+
+          {loadingMore && <p className={styles.emptyText}>Loading more…</p>}
+
+          {!hasNextPage && products.length > 0 && (
+            <p className={styles.emptyText}>
+              {matching === products.length
+                ? "That's everything."
+                : `Showing all ${products.length} results.`}
+            </p>
+          )}
+        </>
       )}
     </section>
   );

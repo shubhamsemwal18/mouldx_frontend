@@ -133,8 +133,7 @@
 }
 
 .loginText {
-  margin-top: auto;
-  padding-top: 40px;
+  margin: 16px 0 0;
   font-size: 13px;
   color: #6b7280;
   text-align: center;

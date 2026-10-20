@@ -40,7 +40,7 @@ export default function Footer() {
         <div className={styles.grid}>
           {/* Brand */}
           <div className={styles.brandCol}>
-            <Link href="/home" className={styles.logoLink}>
+            <Link href="/" className={styles.logoLink}>
               <Image
                 src="/images/logo.png"
                 alt="MouldX"

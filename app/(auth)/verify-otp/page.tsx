@@ -3,14 +3,22 @@
 import { useState, useRef, useEffect, KeyboardEvent, ClipboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./VerifyOtp.module.css";
+import { authApi } from "@/app/lib/auth-api";
+import { getApiErrorMessage } from "@/app/lib/api";
+import { clearPendingAuth, getPendingAuth } from "@/app/lib/pending-auth";
+import { useAuth } from "@/app/lib/auth-context";
+import { getPostAuthPath, getSafeNextPath } from "@/app/lib/auth-routing";
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 28;
 
 export default function VerifyOtpPage() {
   const router = useRouter();
+  const { setAuthPayload } = useAuth();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [timeLeft, setTimeLeft] = useState(RESEND_SECONDS);
+  const [serverError, setServerError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -52,18 +60,55 @@ export default function VerifyOtpPage() {
     inputRefs.current[Math.min(pasted.length, OTP_LENGTH - 1)]?.focus();
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (timeLeft > 0) return;
-    setTimeLeft(RESEND_SECONDS);
-    // TODO: call resend OTP API
+    const pending = getPendingAuth();
+    if (!pending) {
+      setServerError("OTP session expired. Please start again.");
+      return;
+    }
+
+    try {
+      setServerError("");
+      setTimeLeft(RESEND_SECONDS);
+      if (pending.flow === "signup") {
+        await authApi.resendSignupOtp(pending.identifier);
+      } else {
+        await authApi.requestLoginOtp(pending.identifier);
+      }
+    } catch (error) {
+      setServerError(getApiErrorMessage(error, "Could not resend OTP"));
+    }
   };
 
   const isComplete = otp.every((d) => d !== "");
 
-const handleVerify = () => {
+const handleVerify = async () => {
   if (!isComplete) return;
-  // TODO: call verify OTP API with otp.join("")
-  router.push("/onboarding/profile");
+  const pending = getPendingAuth();
+  if (!pending) {
+    setServerError("OTP session expired. Please start again.");
+    router.replace("/signup");
+    return;
+  }
+
+  try {
+    setSubmitting(true);
+    setServerError("");
+    const code = otp.join("");
+    const payload =
+      pending.flow === "signup"
+        ? await authApi.verifySignupOtp({ phone: pending.identifier, otp: code })
+        : await authApi.verifyLoginOtp({ identifier: pending.identifier, otp: code });
+
+      setAuthPayload(payload);
+      clearPendingAuth();
+      router.replace(getSafeNextPath() || getPostAuthPath(payload, pending.role));
+  } catch (error) {
+    setServerError(getApiErrorMessage(error, "OTP verification failed"));
+  } finally {
+    setSubmitting(false);
+  }
 };
 
   return (
@@ -110,12 +155,13 @@ const handleVerify = () => {
 
         <button
           type="button"
-          disabled={!isComplete}
+          disabled={!isComplete || submitting}
           onClick={handleVerify}
           className={`${styles.verifyBtn} btn-primary`}
         >
-          Verify & Continue
+          {submitting ? "Verifying..." : "Verify & Continue"}
         </button>
+        {serverError && <p className={styles.resendText}>{serverError}</p>}
 
         <p className={styles.resendText}>
           {timeLeft > 0 ? (

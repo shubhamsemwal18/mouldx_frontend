@@ -1,6 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/lib/auth-context";
 import styles from "./ProfileReview.module.css";
 
 interface TimelineStep {
@@ -10,17 +12,58 @@ interface TimelineStep {
   meta: string;
 }
 
-const REVIEW = {
-  submittedAt: "14 Sep · 10:22 AM",
+const REVIEW_META = {
+  submittedAt: "Submitted",
   etaHours: 24,
-  steps: [
-    { id: "submitted", title: "Profile submitted", status: "done", meta: "14 Sep · 10:22 AM" },
-    { id: "approval", title: "Admin approval", status: "pending", meta: "Pending · ETA 24h" },
-    { id: "moulds", title: "Mould details", status: "upcoming", meta: "Available after approval" },
-  ] as TimelineStep[],
 };
 
 export default function ProfileReviewPage() {
+  const router = useRouter();
+  const { user, ownerProfileVerification, loading, refreshCurrentUser } = useAuth();
+  const [checkedServerStatus, setCheckedServerStatus] = useState(false);
+  const status = ownerProfileVerification?.status || user?.profileVerificationStatus;
+  const submittedAt = ownerProfileVerification?.submittedAt
+    ? new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(ownerProfileVerification.submittedAt))
+    : REVIEW_META.submittedAt;
+  const steps: TimelineStep[] = [
+    { id: "submitted", title: "Profile submitted", status: "done", meta: submittedAt },
+    { id: "approval", title: "Admin approval", status: "pending", meta: `Pending · ETA ${REVIEW_META.etaHours}h` },
+    { id: "moulds", title: "Mould details", status: "upcoming", meta: "Available after approval" },
+  ];
+
+  useEffect(() => {
+    if (loading) return;
+
+    refreshCurrentUser()
+      .catch(() => undefined)
+      .finally(() => setCheckedServerStatus(true));
+  }, [loading, refreshCurrentUser]);
+
+  useEffect(() => {
+    if (loading || !checkedServerStatus) return;
+
+    if (status === "approved") {
+      router.replace("/owner/onboarding/approved");
+      return;
+    }
+    if (status === "rejected") {
+      router.replace("/owner/onboarding/rejected");
+      return;
+    }
+    if (status !== "in_review") {
+      router.replace("/owner/onboarding/profile");
+    }
+  }, [checkedServerStatus, loading, router, status]);
+
+  if (loading || !checkedServerStatus || status !== "in_review") {
+    return null;
+  }
+
   return (
     <div className={styles.page}>
      
@@ -40,7 +83,7 @@ export default function ProfileReviewPage() {
         <div className={styles.card}>
           <h2 className={styles.cardTitle}>Progress Timeline</h2>
 
-          {REVIEW.steps.map((step, i) => (
+          {steps.map((step, i) => (
             <div key={step.id} className={styles.timelineRow}>
               <div className={styles.timelineDotCol}>
                 <span
@@ -52,7 +95,7 @@ export default function ProfileReviewPage() {
                       : styles.dotUpcoming
                   }`}
                 />
-                {i < REVIEW.steps.length - 1 && <span className={styles.connector} />}
+                {i < steps.length - 1 && <span className={styles.connector} />}
               </div>
               <div className={styles.timelineText}>
                 <p className={styles.stepTitle}>{step.title}</p>

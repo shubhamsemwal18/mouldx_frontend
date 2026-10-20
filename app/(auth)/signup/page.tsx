@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./Signup.module.css";
 import Image from "next/image";
+import { authApi } from "@/app/lib/auth-api";
+import { getApiErrorMessage } from "@/app/lib/api";
+import { setPendingAuth } from "@/app/lib/pending-auth";
+import { getSelectedSignupRole } from "@/app/lib/role-selection";
 
 const REGEX = {
   fullName: /^[a-zA-Z\s.'-]{2,60}$/,
@@ -18,6 +22,8 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [touched, setTouched] = useState({ fullName: false, email: false, phone: false });
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   const errors = {
     fullName: fullName.trim() === ""
@@ -51,10 +57,25 @@ export default function SignupPage() {
     setPhone(digitsOnly);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setTouched({ fullName: true, email: true, phone: true });
     if (!isValid) return;
-    router.push("/verify-otp");
+
+    try {
+      setSubmitting(true);
+      setServerError("");
+      await authApi.signup({
+        fullName: fullName.trim(),
+        phone: phone.trim(),
+        email: email.trim() || undefined,
+      });
+      setPendingAuth({ flow: "signup", identifier: phone.trim(), role: getSelectedSignupRole() });
+      router.push("/verify-otp");
+    } catch (error) {
+      setServerError(getApiErrorMessage(error, "Could not start signup"));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -114,21 +135,22 @@ export default function SignupPage() {
         {touched.phone && errors.phone && (
           <p className={styles.errorText}>{errors.phone}</p>
         )}
+        {serverError && <p className={styles.errorText}>{serverError}</p>}
 
         <button
           type="button"
-          disabled={!isValid}
+          disabled={!isValid || submitting}
           onClick={handleContinue}
           className={`${styles.otpBtn} btn-primary`}
         >
-          Continue with OTP <span aria-hidden>→</span>
+          {submitting ? "Sending OTP..." : "Continue with OTP"} <span aria-hidden>→</span>
         </button>
-      </div>
 
-      <p className={styles.loginText}>
-        Already have an account?{" "}
-        <Link href="/login" className={styles.loginLink}>Login</Link>
-      </p>
+        <p className={styles.loginText}>
+          Already have an account?{" "}
+          <Link href="/login" className={styles.loginLink}>Login</Link>
+        </p>
+      </div>
     </div>
   );
 }

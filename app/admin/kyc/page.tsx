@@ -1,243 +1,190 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { adminApi, type AdminKycPagination, type AdminKycStats } from "@/app/lib/admin-api";
+import { getApiErrorMessage } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
+import type { OwnerProfileVerification, ProfileVerificationStatus, User } from "@/app/lib/types";
 import styles from "./KycApprovals.module.css";
 
-type KycStatus = "PENDING" | "RESUBMITTED" | "APPROVED" | "REJECTED";
-type StatusFilter = KycStatus | "ALL";
-type Role = "Owner" | "Customer";
+type StatusFilter = "ALL" | Uppercase<ProfileVerificationStatus>;
 
-interface KycRequest {
-  id: string;
-  ownerName: string;
-  role: Role;
-  firmName: string;
-  submittedDate: string;
-  submittedDateISO: string;
-  submittedTime: string;
-  docs: string[];
-  status: KycStatus;
-  initial: string;
-  gradient: string;
-}
-
-const TABS = ["All", "Owners", "Customers"] as const;
-
-// TEMP dummy data - will come from the real admin API
-const KYC_REQUESTS: KycRequest[] = [
-  {
-    id: "1",
-    ownerName: "Rohit Sharma",
-    role: "Owner",
-    firmName: "Sharma Industries",
-    submittedDate: "14 Sep",
-    submittedDateISO: "2026-09-14",
-    submittedTime: "10:22 AM",
-    docs: ["PAN", "GST", "EB"],
-    status: "PENDING",
-    initial: "R",
-    gradient: "linear-gradient(135deg, #22d3ee, #2563eb)",
-  },
-  {
-    id: "2",
-    ownerName: "Neha Kapoor",
-    role: "Owner",
-    firmName: "Nova Plastics",
-    submittedDate: "13 Sep",
-    submittedDateISO: "2026-09-13",
-    submittedTime: "4:10 PM",
-    docs: ["PAN", "GST", "MSME"],
-    status: "PENDING",
-    initial: "N",
-    gradient: "linear-gradient(135deg, #818cf8, #7c3aed)",
-  },
-  {
-    id: "3",
-    ownerName: "Vikram Rao",
-    role: "Owner",
-    firmName: "Vector Molds",
-    submittedDate: "12 Sep",
-    submittedDateISO: "2026-09-12",
-    submittedTime: "9:05 AM",
-    docs: ["PAN", "GST"],
-    status: "RESUBMITTED",
-    initial: "V",
-    gradient: "linear-gradient(135deg, #34d399, #059669)",
-  },
-  {
-    id: "4",
-    ownerName: "Anjali Deshpande",
-    role: "Owner",
-    firmName: "Apex Poly",
-    submittedDate: "11 Sep",
-    submittedDateISO: "2026-09-11",
-    submittedTime: "1:40 PM",
-    docs: ["PAN", "GST", "EB"],
-    status: "PENDING",
-    initial: "A",
-    gradient: "linear-gradient(135deg, #22d3ee, #2563eb)",
-  },
-  {
-    id: "5",
-    ownerName: "Sanjay Verma",
-    role: "Customer",
-    firmName: "Individual",
-    submittedDate: "14 Sep",
-    submittedDateISO: "2026-09-14",
-    submittedTime: "11:15 AM",
-    docs: ["PAN", "Aadhaar"],
-    status: "PENDING",
-    initial: "S",
-    gradient: "linear-gradient(135deg, #fb923c, #ea580c)",
-  },
-  {
-    id: "6",
-    ownerName: "Pooja Singh",
-    role: "Customer",
-    firmName: "Individual",
-    submittedDate: "13 Sep",
-    submittedDateISO: "2026-09-13",
-    submittedTime: "2:30 PM",
-    docs: ["PAN", "Aadhaar"],
-    status: "APPROVED",
-    initial: "P",
-    gradient: "linear-gradient(135deg, #f472b6, #db2777)",
-  },
-  {
-    id: "7",
-    ownerName: "Amit Khanna",
-    role: "Customer",
-    firmName: "Khanna Traders",
-    submittedDate: "10 Sep",
-    submittedDateISO: "2026-09-10",
-    submittedTime: "5:45 PM",
-    docs: ["PAN", "GST"],
-    status: "REJECTED",
-    initial: "A",
-    gradient: "linear-gradient(135deg, #34d399, #059669)",
-  },
-];
-
-const STATUS_CLASS: Record<KycStatus, string> = {
+const STATUS_CLASS: Record<Uppercase<ProfileVerificationStatus>, string> = {
   PENDING: "statusPending",
-  RESUBMITTED: "statusResubmitted",
+  IN_REVIEW: "statusPending",
   APPROVED: "statusApproved",
   REJECTED: "statusRejected",
 };
 
-const ROLE_CLASS: Record<Role, string> = {
-  Owner: "roleOwner",
-  Customer: "roleCustomer",
-};
-
 const STATUS_FILTER_OPTIONS: { key: StatusFilter; label: string }[] = [
   { key: "ALL", label: "All Statuses" },
-  { key: "PENDING", label: "Pending" },
-  { key: "RESUBMITTED", label: "Resubmitted" },
+  { key: "IN_REVIEW", label: "Pending Review" },
   { key: "APPROVED", label: "Approved" },
   { key: "REJECTED", label: "Rejected" },
 ];
 
-function csvEscape(v: string | number) {
-  const str = String(v);
-  return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+function getUser(verification: OwnerProfileVerification) {
+  return typeof verification.user === "string" ? null : verification.user;
 }
 
-function downloadCsv(filename: string, rows: (string | number)[][]) {
-  // BOM so Excel reads UTF-8 correctly
-  const csv = "\uFEFF" + rows.map((r) => r.map(csvEscape).join(",")).join("\r\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+function formatDate(value?: string) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
+
+function statusLabel(status: ProfileVerificationStatus) {
+  return status === "in_review" ? "PENDING" : status.toUpperCase();
+}
+
+const DEFAULT_PAGINATION: AdminKycPagination = {
+  page: 1,
+  limit: 10,
+  total: 0,
+  pages: 1,
+  hasNextPage: false,
+  hasPrevPage: false,
+};
+
+const DEFAULT_STATS: AdminKycStats = {
+  total: 0,
+  pending: 0,
+  approved: 0,
+  rejected: 0,
+};
+
+const SEARCH_DEBOUNCE_MS = 400;
+
+const statusFilterToApi = (status: StatusFilter): ProfileVerificationStatus | undefined =>
+  status === "ALL" ? undefined : (status.toLowerCase() as ProfileVerificationStatus);
 
 export default function KycApprovalsPage() {
+  const { user, loading: authLoading } = useAuth();
+  const [requests, setRequests] = useState<OwnerProfileVerification[]>([]);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("All");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  const [pagination, setPagination] = useState<AdminKycPagination>(DEFAULT_PAGINATION);
+  const [stats, setStats] = useState<AdminKycStats>(DEFAULT_STATS);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const isAdmin = Boolean(user?.approvedRoles.includes("admin"));
 
-  const filtered = useMemo(() => {
-    return KYC_REQUESTS.filter((r) => {
-      const matchesTab =
-        activeTab === "All" ||
-        (activeTab === "Owners" && r.role === "Owner") ||
-        (activeTab === "Customers" && r.role === "Customer");
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const nextSearch = search.trim();
+      setDebouncedSearch((current) => {
+        if (current === nextSearch) return current;
+        setPage(1);
+        return nextSearch;
+      });
+    }, SEARCH_DEBOUNCE_MS);
 
-      const q = search.trim().toLowerCase();
-      const matchesSearch =
-        q === "" ||
-        r.ownerName.toLowerCase().includes(q) ||
-        r.firmName.toLowerCase().includes(q) ||
-        r.role.toLowerCase().includes(q) ||
-        r.docs.some((d) => d.toLowerCase().includes(q));
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
-      const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAdmin) return;
 
-      const matchesDate =
-        (!dateRange.start || r.submittedDateISO >= dateRange.start) &&
-        (!dateRange.end || r.submittedDateISO <= dateRange.end);
+    let cancelled = false;
+    const loadTimer = window.setTimeout(() => {
+      setLoading(true);
+      setError("");
 
-      return matchesTab && matchesSearch && matchesStatus && matchesDate;
-    });
-  }, [search, activeTab, statusFilter, dateRange]);
+      adminApi
+        .listProfileVerifications({
+          page,
+          limit: pagination.limit,
+          search: debouncedSearch || undefined,
+          status: statusFilterToApi(statusFilter),
+        })
+        .then((data) => {
+          if (!cancelled) {
+            setRequests(data.profileVerifications);
+            setPagination(data.pagination);
+            setStats(data.stats);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setError(getApiErrorMessage(err, "Could not load KYC approvals"));
+          }
+        })
+        .finally(() => {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        });
+    }, 0);
 
-  const pendingCount = KYC_REQUESTS.filter(
-    (r) => r.status === "PENDING" || r.status === "RESUBMITTED"
-  ).length;
-
-  const isFilterActive = statusFilter !== "ALL";
-
-  const handleStatusSelect = (key: StatusFilter) => {
-    setStatusFilter(key);
-    setIsFilterOpen(false);
-  };
-
-  const handleDateChange = (field: "start" | "end", value: string) => {
-    setDateRange((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleDownloadCsv = () => {
-    if (filtered.length === 0) return;
-
-    const rows: (string | number)[][] = [
-      ["Name", "Role", "Firm Name", "Submitted Date", "Submitted Time", "Documents", "Status"],
-      ...filtered.map((r) => [
-        r.ownerName,
-        r.role,
-        r.firmName,
-        r.submittedDateISO,
-        r.submittedTime,
-        r.docs.join(" | "),
-        r.status,
-      ]),
-    ];
-
-    const parts = ["kyc-requests"];
-    if (activeTab !== "All") parts.push(activeTab.toLowerCase());
-    if (statusFilter !== "ALL") parts.push(statusFilter.toLowerCase());
-    if (dateRange.start || dateRange.end) {
-      parts.push(`${dateRange.start || "start"}_to_${dateRange.end || "today"}`);
-    } else {
-      parts.push(new Date().toISOString().slice(0, 10));
-    }
-
-    downloadCsv(`${parts.join("_")}.csv`, rows);
-  };
+    return () => {
+      cancelled = true;
+      window.clearTimeout(loadTimer);
+    };
+  }, [authLoading, debouncedSearch, isAdmin, page, pagination.limit, statusFilter]);
 
   return (
     <div className={styles.page}>
       <div className={styles.headerRow}>
         <h1 className={styles.title}>KYC Approvals</h1>
-        <span className={styles.pendingPill}>{pendingCount} PENDING</span>
+        <span className={styles.pendingPill}>
+          {stats.pending} PENDING / {stats.total} TOTAL
+        </span>
+      </div>
+
+      <div className={styles.statsGrid}>
+        <button
+          type="button"
+          className={`${styles.statCard} ${statusFilter === "ALL" ? styles.statCardActive : ""}`}
+          onClick={() => {
+            setStatusFilter("ALL");
+            setPage(1);
+          }}
+        >
+          <span className={styles.statLabel}>Total</span>
+          <span className={styles.statValue}>{stats.total}</span>
+        </button>
+        <button
+          type="button"
+          className={`${styles.statCard} ${statusFilter === "IN_REVIEW" ? styles.statCardActive : ""}`}
+          onClick={() => {
+            setStatusFilter("IN_REVIEW");
+            setPage(1);
+          }}
+        >
+          <span className={styles.statLabel}>Pending</span>
+          <span className={styles.statValue}>{stats.pending}</span>
+        </button>
+        <button
+          type="button"
+          className={`${styles.statCard} ${statusFilter === "APPROVED" ? styles.statCardActive : ""}`}
+          onClick={() => {
+            setStatusFilter("APPROVED");
+            setPage(1);
+          }}
+        >
+          <span className={styles.statLabel}>Approved</span>
+          <span className={styles.statValue}>{stats.approved}</span>
+        </button>
+        <button
+          type="button"
+          className={`${styles.statCard} ${statusFilter === "REJECTED" ? styles.statCardActive : ""}`}
+          onClick={() => {
+            setStatusFilter("REJECTED");
+            setPage(1);
+          }}
+        >
+          <span className={styles.statLabel}>Rejected</span>
+          <span className={styles.statValue}>{stats.rejected}</span>
+        </button>
       </div>
 
       <div className={styles.toolbar}>
@@ -247,50 +194,21 @@ export default function KycApprovalsPage() {
           </span>
           <input
             type="text"
-            placeholder="Search by name, role, PAN, GST..."
+            placeholder="Search by name, phone, PAN, GST..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={styles.searchInput}
           />
         </div>
 
-        <div className={styles.tabs}>
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ""}`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        <div className={styles.dateRangeGroup}>
-          <input
-            type="date"
-            className={styles.dateInput}
-            value={dateRange.start}
-            onChange={(e) => handleDateChange("start", e.target.value)}
-          />
-          <span className={styles.dateSep}>→</span>
-          <input
-            type="date"
-            className={styles.dateInput}
-            value={dateRange.end}
-            onChange={(e) => handleDateChange("end", e.target.value)}
-          />
-        </div>
-
         <div className={styles.filterWrap}>
           <button
             type="button"
-            className={`${styles.filterBtn} ${isFilterActive ? styles.filterBtnActive : ""}`}
+            className={`${styles.filterBtn} ${statusFilter !== "ALL" ? styles.filterBtnActive : ""}`}
             onClick={() => setIsFilterOpen((v) => !v)}
           >
-            <span aria-hidden>▽</span>
-            {isFilterActive && <span className={styles.filterDot} aria-hidden />}
+            <span aria-hidden>⚙</span>
+            {statusFilter !== "ALL" && <span className={styles.filterDot} aria-hidden />}
           </button>
 
           {isFilterOpen && (
@@ -302,7 +220,11 @@ export default function KycApprovalsPage() {
                   className={`${styles.filterOption} ${
                     statusFilter === opt.key ? styles.filterOptionActive : ""
                   }`}
-                  onClick={() => handleStatusSelect(opt.key)}
+                  onClick={() => {
+                    setStatusFilter(opt.key);
+                    setPage(1);
+                    setIsFilterOpen(false);
+                  }}
                 >
                   {opt.label}
                 </button>
@@ -310,18 +232,13 @@ export default function KycApprovalsPage() {
             </div>
           )}
         </div>
-
-        <button
-          type="button"
-          className={styles.downloadBtn}
-          onClick={handleDownloadCsv}
-          disabled={filtered.length === 0}
-          title="Download filtered records as CSV"
-        >
-          <span aria-hidden>⬇</span> Download CSV
-          <span className={styles.downloadCount}>{filtered.length}</span>
-        </button>
       </div>
+
+      {!authLoading && !isAdmin && (
+        <p className={styles.emptyText}>Admin login is required to view KYC approvals.</p>
+      )}
+      {error && <p className={styles.emptyText}>{error}</p>}
+      {loading && isAdmin && <p className={styles.emptyText}>Loading KYC approvals...</p>}
 
       <div className={styles.card}>
         <div className={styles.tableWrap}>
@@ -329,7 +246,6 @@ export default function KycApprovalsPage() {
             <thead>
               <tr>
                 <th>User</th>
-                <th>Role</th>
                 <th>Firm</th>
                 <th>Submitted</th>
                 <th>Docs</th>
@@ -338,78 +254,112 @@ export default function KycApprovalsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <div className={styles.ownerCell}>
-                      <span className={styles.avatar} style={{ background: row.gradient }}>
-                        {row.initial}
+              {requests.map((row) => {
+                const user = getUser(row) as User | null;
+                const status = row.status.toUpperCase() as Uppercase<ProfileVerificationStatus>;
+                const initials = (user?.fullName || "?")
+                  .split(" ")
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2);
+
+                return (
+                  <tr key={row._id}>
+                    <td>
+                      <div className={styles.ownerCell}>
+                        <span
+                          className={styles.avatar}
+                          style={{ background: "linear-gradient(135deg, #22d3ee, #2563eb)" }}
+                        >
+                          {initials}
+                        </span>
+                        <span className={styles.ownerName}>{user?.fullName || "-"}</span>
+                      </div>
+                    </td>
+                    <td className={styles.mutedCell}>{row.firmDetails?.name || "-"}</td>
+                    <td className={styles.mutedCell}>{formatDate(row.submittedAt)}</td>
+                    <td className={styles.mutedCell}>PAN, GST, MSME, EB</td>
+                    <td>
+                      <span className={`${styles.statusPill} ${styles[STATUS_CLASS[status]]}`}>
+                        {statusLabel(row.status)}
                       </span>
-                      <span className={styles.ownerName}>{row.ownerName}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className={`${styles.rolePill} ${styles[ROLE_CLASS[row.role]]}`}>
-                      {row.role}
-                    </span>
-                  </td>
-                  <td className={styles.mutedCell}>{row.firmName}</td>
-                  <td className={styles.mutedCell}>
-                    {row.submittedDate} · {row.submittedTime}
-                  </td>
-                  <td className={styles.mutedCell}>{row.docs.join(", ")}</td>
-                  <td>
-                    <span className={`${styles.statusPill} ${styles[STATUS_CLASS[row.status]]}`}>
-                      {row.status}
-                    </span>
-                  </td>
-                  <td className={styles.actionCell}>
-                    <Link href={`/admin/kyc/${row.id}`} className={styles.reviewBtn}>
-                      Review →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className={styles.actionCell}>
+                      <Link href={`/admin/kyc/${row._id}`} className={styles.reviewBtn}>
+                        Review →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
-          {filtered.length === 0 && (
-            <p className={styles.emptyText}>No KYC requests match your search.</p>
+          {!loading && requests.length === 0 && (
+            <p className={styles.emptyText}>No completed KYC submissions found.</p>
           )}
         </div>
       </div>
 
       <div className={styles.mobileList}>
-        {filtered.map((row) => (
-          <Link key={row.id} href={`/admin/kyc/${row.id}`} className={styles.mobileCard}>
-            <div className={styles.mobileCardTop}>
-              <span className={styles.avatar} style={{ background: row.gradient }}>
-                {row.initial}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className={styles.ownerName}>{row.ownerName}</p>
-                <p className={styles.mobileMeta}>{row.firmName}</p>
-              </div>
-              <span className={`${styles.statusPill} ${styles[STATUS_CLASS[row.status]]}`}>
-                {row.status}
-              </span>
-            </div>
-            <div className={styles.mobileCardBottom}>
-              <span className={`${styles.rolePill} ${styles[ROLE_CLASS[row.role]]}`}>
-                {row.role}
-              </span>
-              <span className={styles.mobileMeta}>
-                {row.submittedDate} · {row.submittedTime}
-              </span>
-              <span className={styles.mobileMeta}>{row.docs.join(", ")}</span>
-            </div>
-          </Link>
-        ))}
+        {requests.map((row) => {
+          const user = getUser(row) as User | null;
+          const status = row.status.toUpperCase() as Uppercase<ProfileVerificationStatus>;
+          const initials = (user?.fullName || "?")
+            .split(" ")
+            .map((part) => part[0])
+            .join("")
+            .slice(0, 2);
 
-        {filtered.length === 0 && (
-          <p className={styles.emptyText}>No KYC requests match your search.</p>
+          return (
+            <Link key={row._id} href={`/admin/kyc/${row._id}`} className={styles.mobileCard}>
+              <div className={styles.mobileCardTop}>
+                <span className={styles.avatar}>{initials}</span>
+                <div className="min-w-0">
+                  <p className={styles.ownerName}>{user?.fullName || "-"}</p>
+                  <p className={styles.mobileMeta}>{row.firmDetails?.name || "-"}</p>
+                </div>
+              </div>
+              <div className={styles.mobileCardBottom}>
+                <span className={styles.mobileMeta}>{formatDate(row.submittedAt)}</span>
+                <span className={`${styles.statusPill} ${styles[STATUS_CLASS[status]]}`}>
+                  {statusLabel(row.status)}
+                </span>
+              </div>
+            </Link>
+          );
+        })}
+        {!loading && requests.length === 0 && (
+          <p className={styles.emptyText}>No completed KYC submissions found.</p>
         )}
       </div>
+
+      {isAdmin && !loading && pagination.total > 0 && (
+        <div className={styles.pagination}>
+          <span className={styles.paginationMeta}>
+            Page {pagination.page} of {pagination.pages} · {pagination.total} result
+            {pagination.total === 1 ? "" : "s"}
+          </span>
+          <div className={styles.paginationActions}>
+            <button
+              type="button"
+              className={styles.pageBtn}
+              disabled={!pagination.hasPrevPage}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className={styles.pageBtn}
+              disabled={!pagination.hasNextPage}
+              onClick={() => setPage((current) => current + 1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

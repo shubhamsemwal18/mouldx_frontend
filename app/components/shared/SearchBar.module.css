@@ -112,6 +112,7 @@
 }
 
 .micBtn {
+  position: relative;
   flex-shrink: 0;
   width: 32px;
   height: 32px;
@@ -124,6 +125,13 @@
   justify-content: center;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+/* Keeps the 32px circle but gives it a 44px touch target. */
+.micBtn::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
 }
 
 .micBtn:hover {

@@ -7,7 +7,7 @@ export default function ExplorePage() {
   return (
     <>
       <div className={styles.backBar}>
-        <Link href="/home" className={styles.backBtn} aria-label="Go back">
+        <Link href="/" className={styles.backBtn} aria-label="Go back">
           <ArrowLeft size={18} />
           <span>Back</span>
         </Link>

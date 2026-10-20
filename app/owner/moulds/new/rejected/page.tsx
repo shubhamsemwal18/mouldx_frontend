@@ -53,7 +53,7 @@ export default function ListingRejectedPage() {
 
       {/* ---------- Sticky action ---------- */}
       <div className={styles.ctaBar}>
-        <Link href="/owner/moulds/new" className={`${styles.editBtn} btn-primary`}>
+        <Link href="/owner/moulds" className={`${styles.editBtn} btn-primary`}>
           Edit Listing
         </Link>
       </div>

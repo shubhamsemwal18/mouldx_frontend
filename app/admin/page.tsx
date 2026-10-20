@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link";
 import { useMemo, useRef, useState, type MouseEvent } from "react";
 import styles from "./Overview.module.css";
 
@@ -529,9 +530,9 @@ export default function AdminOverviewPage() {
         <div className={styles.card}>
           <div className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>Top Performing Owners</h2>
-            <a href="/admin/users" className={styles.cardHeaderLink}>
+            <Link href="/admin/users" className={styles.cardHeaderLink}>
               View all →
-            </a>
+            </Link>
           </div>
 
           <div className={styles.ownersList}>

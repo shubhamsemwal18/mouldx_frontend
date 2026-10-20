@@ -80,7 +80,7 @@ export default function AboutUs() {
           <p className={styles.heroText}>
             We help manufacturers across North India find, book and run quality moulds without the cost of owning them.
           </p>
-          <Link href="/home" className="btn-primary">Explore moulds <span aria-hidden>→</span></Link>
+          <Link href="/" className="btn-primary">Explore moulds <span aria-hidden>→</span></Link>
         </div>
       </section>
 
@@ -239,7 +239,7 @@ export default function AboutUs() {
         <div className={styles.ctaContent}>
           <h2 className={styles.ctaTitle}>Ready to find your mould?</h2>
           <p className={styles.heroText}>Join hundreds of manufacturers already running on MouldX.</p>
-          <Link href="/home" className="btn-primary">Get started <span aria-hidden>→</span></Link>
+          <Link href="/" className="btn-primary">Get started <span aria-hidden>→</span></Link>
         </div>
       </section>
     </main>

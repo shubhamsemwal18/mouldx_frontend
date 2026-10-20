@@ -1,28 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const KEY = "splashShown";
 
 export default function SplashLoader({ children }: { children: React.ReactNode }) {
-  const [loading, setLoading] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (sessionStorage.getItem(KEY)) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const fallback = setTimeout(() => finishLoading(), 6000);
-    return () => clearTimeout(fallback);
-  }, []);
-
-  const finishLoading = () => {
+  const finishLoading = useCallback(() => {
     sessionStorage.setItem(KEY, "1");
     setLoading(false);
-  };
+  }, []);
 
-  if (loading === null) return null;
+  useEffect(() => {
+    if (sessionStorage.getItem(KEY)) return;
+
+    const startLoader = window.setTimeout(() => setLoading(true), 0);
+    return () => window.clearTimeout(startLoader);
+  }, []);
+
+  useEffect(() => {
+    if (!loading) return;
+    const fallback = setTimeout(() => finishLoading(), 6000);
+    return () => clearTimeout(fallback);
+  }, [finishLoading, loading]);
 
   if (!loading) return <>{children}</>;
 

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import AdminHeader from "@/app/components/layout/AdminHeader";
+import { useAuth } from "@/app/lib/auth-context";
 import styles from "./AdminLayout.module.css";
 
 const NAV_SECTIONS = [
@@ -19,9 +20,16 @@ const NAV_SECTIONS = [
     label: "Approvals",
     items: [
       { label: "KYC", href: "/admin/kyc", icon: "🪪", badge: 4 },
-      { label: "Listings", href: "/admin/listings", icon: "▦", badge: 7 },
       { label: "Bookings", href: "/admin/bookings", icon: "☰", badge: 3 },
       { label: "Damage Claims", href: "/admin/damage-claims", icon: "⚠" },
+    ],
+  },
+  {
+    label: "Product",
+    items: [
+      { label: "Categories", href: "/admin/categories", icon: "▣" },
+      { label: "Listings", href: "/admin/listings", icon: "▦", badge: 7 },
+      { label: "Active Listings", href: "/admin/active-listings", icon: "▤" },
     ],
   },
   {
@@ -29,7 +37,6 @@ const NAV_SECTIONS = [
     items: [
       // { label: "Owners", href: "/admin/owners", icon: "🏭" },
       { label: "Support", href: "/admin/support", icon: "💬", badge: 2 },
-       { label: "Active Listings", href: "/admin/active-listings", icon: "🏭" },
       { label: "Payments", href: "/admin/payments", icon: "₹" },
       { label: "Users", href: "/admin/users", icon: "◎" },
        { label: "Reviews", href: "/admin/reviews", icon: "▦" },
@@ -40,7 +47,23 @@ const NAV_SECTIONS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isAdmin = Boolean(user?.approvedRoles.includes("admin"));
+
+  useEffect(() => {
+    if (loading || isAdmin) return;
+    router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+  }, [isAdmin, loading, pathname, router]);
+
+  if (loading) {
+    return null;
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className={styles.shell}>

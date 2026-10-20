@@ -204,6 +204,7 @@
 }
 
 .rowArrow {
+  position: relative;
   width: 36px;
   height: 36px;
   border-radius: 9999px;
@@ -212,6 +213,13 @@
   color: #111827;
   font-size: 18px;
   cursor: pointer;
+}
+
+/* Keeps the 36px circle but gives it a 44px touch target. */
+.rowArrow::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
 }
 
 .row {
@@ -445,4 +453,13 @@
 /* Large desktops (1280px and up) */
 @media (min-width: 1280px) {
   .section { max-width: 860px; }
+}
+/* Shown when the catalogue cannot be reached. */
+.errorBox {
+  margin-top: 16px;
+  padding: 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  text-align: center;
 }

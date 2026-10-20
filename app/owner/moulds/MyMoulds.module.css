@@ -1078,3 +1078,15 @@
     max-width: 760px;
   }
 }
+/* Draft listings: neutral badge, distinct from the live/review/rejected set. */
+.badgeDraft {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.errorText {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ef4444;
+}

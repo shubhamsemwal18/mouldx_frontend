@@ -617,6 +617,18 @@
   .statsGrid {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .itemCard {
+    padding: 18px;
+  }
+
+  .itemImageWrap {
+    width: 156px;
+  }
+
+  .itemName {
+    font-size: 17px;
+  }
 }
 
 /* Small phones (320px to 359px) */
