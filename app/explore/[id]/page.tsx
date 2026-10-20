@@ -1,33 +1,98 @@
 "use client";
 
-import { useMemo, useState, useRef, use } from "react";
+import { useCallback, useEffect, useRef, useState, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getMouldDetail } from "@/app/data/moulds";
-import type { Dimensions, MouldInfo } from "@/app/data/moulds";
 import styles from "./MouldDetail.module.css";
+import { getApiErrorMessage } from "@/app/lib/api";
+import { publicApi } from "@/app/lib/public-api";
+import type { Dimensions, Media, Mould, PublicProductDetail } from "@/app/lib/types";
 
-const formatDimensions = (d: Dimensions) =>
-  `${d.length} × ${d.breadth} × ${d.height} mm`;
+const formatDimensions = (d?: Partial<Dimensions>) =>
+  d?.length && d?.breadth && d?.height ? `${d.length} × ${d.breadth} × ${d.height} mm` : "—";
+
+const dash = (value: string | number | undefined | null, suffix = "") =>
+  value === undefined || value === null || value === "" ? "—" : `${value}${suffix}`;
+
+const formatMoney = (value?: number) =>
+  value === undefined ? "—" : `₹${value.toLocaleString("en-IN")}`;
+
+interface GalleryItem {
+  type: "image" | "video";
+  src: string;
+}
+
+/** Images first, then videos, in the order the owner uploaded them. */
+const toGallery = (images?: Media[] | null, videos?: Media[] | null): GalleryItem[] => [
+  ...(images || []).filter((m) => m.url).map((m) => ({ type: "image" as const, src: m.url! })),
+  ...(videos || []).filter((m) => m.url).map((m) => ({ type: "video" as const, src: m.url! })),
+];
 
 export default function ProductDetailPage({
   params,
 }: {
+  // Carries the listing slug (the route segment is still named `id`).
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
-  const mould = useMemo(() => getMouldDetail(id), [id]);
+  const { id: slug } = use(params);
+
+  const [detail, setDetail] = useState<PublicProductDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   // 0 = Product, 1..N = Component 1..N
   const [activeTab, setActiveTab] = useState(0);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
-
   const touchStartX = useRef<number | null>(null);
 
-  if (!mould) {
+  useEffect(() => {
+    let cancelled = false;
+
+    const timer = window.setTimeout(() => {
+      setLoading(true);
+
+      publicApi
+        .getProduct(slug)
+        .then((data) => {
+          if (!cancelled) {
+            setDetail(data);
+            setError("");
+          }
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            setDetail(null);
+            setError(getApiErrorMessage(err, "Listing not found"));
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [slug]);
+
+  const selectTab = useCallback((index: number) => {
+    setActiveTab(index);
+    setActiveMediaIndex(0);
+  }, []);
+
+  if (loading) {
     return (
       <div className={styles.notFoundWrap}>
-        <p className={styles.notFoundText}>Mould not found.</p>
+        <p className={styles.notFoundText}>Loading listing…</p>
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <div className={styles.notFoundWrap}>
+        <p className={styles.notFoundText}>{error || "Mould not found."}</p>
         <Link href="/explore" className={styles.notFoundLink}>
           ← Back to Explore
         </Link>
@@ -35,36 +100,36 @@ export default function ProductDetailPage({
     );
   }
 
-  const { product, components } = mould;
+  const { product, moulds } = detail;
+  // Component tabs only exist when the listing has more than one component.
+  const components = moulds.filter((mould) => Boolean(mould.component?.name));
   const hasComponents = components.length > 0;
-  const activeComponent = activeTab > 0 ? components[activeTab - 1] : null;
+  const activeComponent: Mould | null = activeTab > 0 ? components[activeTab - 1] ?? null : null;
+  const singleMould = !hasComponents ? moulds[0] ?? null : null;
 
   const tabs = [
     { label: "Product" },
-    ...components.map((_, i) => ({ label: `Component ${i + 1}` })),
+    ...components.map((mould, i) => ({ label: mould.component?.name || `Component ${i + 1}` })),
   ];
 
-  const photos = activeComponent ? activeComponent.photos : product.photos;
-  const videos = activeComponent ? activeComponent.videos : product.videos;
-  const galleryLabel = activeComponent ? activeComponent.componentName : product.productName;
+  // A mould tab shows that mould's own gallery; the product tab shows the
+  // product gallery.
+  const media = activeComponent
+    ? toGallery(activeComponent.images, activeComponent.videos)
+    : toGallery(product.images, product.videos);
 
-  const media = [
-    ...photos.map((src) => ({ type: "image" as const, src })),
-    ...videos.map((src) => ({ type: "video" as const, src })),
-  ];
-
+  const galleryLabel = activeComponent?.component?.name || product.name;
   const safeMediaIndex = Math.min(activeMediaIndex, Math.max(media.length - 1, 0));
   const activeMedia = media[safeMediaIndex];
 
-  const badgeClass =
-    mould.availability === "2 LEFT" ? styles.badgeLow : styles.badgeBooked;
-  const showAvailabilityBadge = mould.availability !== "FREE";
-  const isCTADisabled = mould.availability === "BOOKED";
-
-  const selectTab = (index: number) => {
-    setActiveTab(index);
-    setActiveMediaIndex(0);
-  };
+  const specSource = activeComponent ?? singleMould ?? moulds[0] ?? null;
+  const quickSpecs = specSource
+    ? [
+        { label: "Tonnage", value: dash(specSource.recommendedMachineTonnage, "T") },
+        { label: "Cavities", value: dash(specSource.cavities) },
+        { label: "Cycle", value: dash(specSource.expectedCycleTime, "s") },
+      ]
+    : [];
 
   const goToMedia = (index: number) => {
     if (index < 0 || index >= media.length) return;
@@ -94,30 +159,30 @@ export default function ProductDetailPage({
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
-            {activeMedia &&
-              (activeMedia.type === "image" ? (
+            {activeMedia ? (
+              activeMedia.type === "image" ? (
                 <Image
                   key={`${activeTab}-${safeMediaIndex}`}
                   src={activeMedia.src}
                   alt={`${galleryLabel} photo ${safeMediaIndex + 1}`}
                   fill
+                  sizes="(max-width: 640px) 100vw, 640px"
                   className={styles.galleryImage}
                   priority
                 />
               ) : (
-                <div className={styles.galleryVideoWrap}>
-                  <Image
-                    key={`${activeTab}-${safeMediaIndex}`}
-                    src={activeMedia.src}
-                    alt={`${galleryLabel} video thumbnail`}
-                    fill
-                    className={styles.galleryImage}
-                  />
-                  <span className={styles.playIcon} aria-hidden>
-                    ▶
-                  </span>
-                </div>
-              ))}
+                <video
+                  key={`${activeTab}-${safeMediaIndex}`}
+                  src={activeMedia.src}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className={styles.galleryVideo}
+                />
+              )
+            ) : (
+              <div className={styles.galleryVideoWrap} aria-hidden />
+            )}
 
             {media.length > 1 && (
               <>
@@ -162,8 +227,11 @@ export default function ProductDetailPage({
                   }`}
                   aria-label={`View ${item.type} ${index + 1}`}
                 >
-                  <Image src={item.src} alt="" fill className={styles.thumbImage} />
-                  {item.type === "video" && <span className={styles.thumbPlay}>▶</span>}
+                  {item.type === "image" ? (
+                    <Image src={item.src} alt="" fill sizes="80px" className={styles.thumbImage} />
+                  ) : (
+                    <span className={styles.thumbPlay}>▶</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -172,41 +240,46 @@ export default function ProductDetailPage({
 
         {/* ---------- Title + quick specs + price ---------- */}
         <div className={styles.titleRow}>
-          <h1 className={styles.title}>{mould.name}</h1>
+          <h1 className={styles.title}>{product.name}</h1>
         </div>
 
-        <p className={styles.metaRow}>{mould.code}</p>
+        <p className={styles.metaRow}>
+          {[product.code, product.category?.title, product.subCategory?.title]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
 
-        <div className={styles.quickSpecs}>
-          {mould.quickSpecs.map((spec) => (
-            <div key={spec.label} className={styles.quickSpecCard}>
-              <p className={styles.quickSpecValue}>{spec.value}</p>
-              <p className={styles.quickSpecLabel}>{spec.label}</p>
-            </div>
-          ))}
-        </div>
+        {quickSpecs.length > 0 && (
+          <div className={styles.quickSpecs}>
+            {quickSpecs.map((spec) => (
+              <div key={spec.label} className={styles.quickSpecCard}>
+                <p className={styles.quickSpecValue}>{spec.value}</p>
+                <p className={styles.quickSpecLabel}>{spec.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className={styles.priceRow}>
           <p className={styles.priceValue}>
-            {mould.price.split("/")[0]}
+            {formatMoney(product.pricing?.perDayCharges)}
             <span className={styles.pricePeriod}> / day</span>
           </p>
-          {showAvailabilityBadge && (
-            <span className={`${styles.availabilityBadge} ${badgeClass}`}>
-              {mould.availability}
+        </div>
+        {product.pricing?.securityDeposit !== undefined && (
+          <div className={styles.depositRow}>
+            <span className={styles.depositBadge}>
+              {formatMoney(product.pricing.securityDeposit)} deposit
             </span>
-          )}
-        </div>
-        <div className={styles.depositRow}>
-          <span className={styles.depositBadge}>{mould.deposit}</span>
-        </div>
+          </div>
+        )}
 
         {/* ---------- Tabs: Product + one tab per component ---------- */}
         {hasComponents && (
           <div className={styles.tabsRow} role="tablist">
             {tabs.map((tab, index) => (
               <button
-                key={tab.label}
+                key={`${tab.label}-${index}`}
                 type="button"
                 role="tab"
                 aria-selected={activeTab === index}
@@ -223,21 +296,28 @@ export default function ProductDetailPage({
         {activeTab === 0 && (
           <>
             <Section key="product" title="Product Details">
-              <Row label="Product Name" value={product.productName} />
-              <Row label="Category" value={product.category} />
-              <Row label="Sub Category" value={product.subCategory} />
+              <Row label="Product Name" value={product.name} />
+              <Row label="Category" value={dash(product.category?.title)} />
+              <Row label="Sub Category" value={dash(product.subCategory?.title)} />
               <Row label="Dimensions (L × B × H)" value={formatDimensions(product.dimensions)} />
-              <Row label="Weight" value={product.weight} />
-              <Row label="Material" value={product.material} />
-              <Row label="Surface Finish" value={product.surfaceFinish} />
-              <Row label="Per Day Rental Charges" value={product.perDayRentalCharges} />
-              <Row label="Security Deposit Amount" value={product.securityDeposit} isLast />
+              <Row label="Weight" value={dash(product.weight, " g")} />
+              <Row label="Material" value={dash(product.material)} />
+              <Row label="Surface Finish" value={dash(product.surfaceFinish)} />
+              <Row
+                label="Per Day Rental Charges"
+                value={formatMoney(product.pricing?.perDayCharges)}
+              />
+              <Row
+                label="Security Deposit Amount"
+                value={formatMoney(product.pricing?.securityDeposit)}
+                isLast
+              />
             </Section>
 
             {/* Single mould: mould details follow the product details */}
-            {!hasComponents && mould.mould && (
+            {singleMould && (
               <Section key="single-mould" title="Mould Details">
-                <MouldRows info={mould.mould} />
+                <MouldRows mould={singleMould} />
               </Section>
             )}
           </>
@@ -246,33 +326,34 @@ export default function ProductDetailPage({
         {/* ---------- Component tabs ---------- */}
         {activeComponent && (
           <>
-            <Section key={`${activeComponent.id}-component`} title="Component Details">
-              <Row label="Component Name" value={activeComponent.componentName} />
-              <Row label="Dimensions (L × B × H)" value={formatDimensions(activeComponent.dimensions)} />
-              <Row label="Weight" value={activeComponent.weight} />
-              <Row label="Surface Finish" value={activeComponent.surfaceFinish} isLast />
+            <Section key={`${activeComponent._id}-component`} title="Component Details">
+              <Row label="Component Name" value={dash(activeComponent.component?.name)} />
+              <Row
+                label="Dimensions (L × B × H)"
+                value={formatDimensions(activeComponent.component?.dimensions)}
+              />
+              <Row label="Weight" value={dash(activeComponent.component?.weight, " g")} />
+              <Row
+                label="Surface Finish"
+                value={dash(activeComponent.component?.surfaceFinish)}
+                isLast
+              />
             </Section>
 
-            <Section key={`${activeComponent.id}-mould`} title="Mould Details">
-              <MouldRows info={activeComponent.mould} />
+            <Section key={`${activeComponent._id}-mould`} title="Mould Details">
+              <MouldRows mould={activeComponent} />
             </Section>
           </>
         )}
       </div>
 
       <div className={styles.ctaBar}>
-        {isCTADisabled ? (
-          <button type="button" disabled className={styles.ctaBtn}>
-            Currently Booked
-          </button>
-        ) : (
-          <Link
-            href={`/explore/${id}/dates`}
-            className={`${styles.ctaBtn} flex items-center justify-center no-underline btn-primary`}
-          >
-            Select Dates →
-          </Link>
-        )}
+        <Link
+          href={`/explore/${product.slug}/dates`}
+          className={`${styles.ctaBtn} flex items-center justify-center no-underline btn-primary`}
+        >
+          Select Dates →
+        </Link>
       </div>
     </div>
   );
@@ -313,19 +394,29 @@ function Section({
   );
 }
 
-function MouldRows({ info }: { info: MouldInfo }) {
+function MouldRows({ mould }: { mould: Mould }) {
   return (
     <>
-      <Row label="Mould Name / ID" value={info.mouldNameOrId} />
-      <Row label="Mould Type" value={info.mouldType} />
-      <Row label="Year of Manufacturing" value={info.yearOfManufacturing} />
-      <Row label="Dimensions (L × B × H)" value={formatDimensions(info.dimensions)} />
-      <Row label="Weight" value={info.weight} />
-      <Row label="No. of Cavities / Core" value={info.cavities} />
-      <Row label="Expected Cycle Time (virgin material)" value={info.expectedCycleTime} />
-      <Row label="Recommended Machine Tonnage" value={info.recommendedMachineTonnage} />
-      <Row label="Hot Runner / Cold Runner" value={info.runnerType} />
-      <Row label="Changeable Brand Logo" value={info.changeableBrandLogo} isLast />
+      <Row label="Mould Name / ID" value={dash(mould.mouldNameOrId)} />
+      <Row label="Mould Type" value={dash(mould.mouldType)} />
+      <Row label="Year of Manufacturing" value={dash(mould.yearOfManufacturing)} />
+      <Row label="Dimensions (L × B × H)" value={formatDimensions(mould.dimensions)} />
+      <Row label="Weight" value={dash(mould.weight, " kg")} />
+      <Row label="No. of Cavities / Core" value={dash(mould.cavities)} />
+      <Row
+        label="Expected Cycle Time (virgin material)"
+        value={dash(mould.expectedCycleTime, " s")}
+      />
+      <Row
+        label="Recommended Machine Tonnage"
+        value={dash(mould.recommendedMachineTonnage, " T")}
+      />
+      <Row label="Hot Runner / Cold Runner" value={dash(mould.runnerType)} />
+      <Row
+        label="Changeable Brand Logo"
+        value={mould.changeableBrandLogo ? "Yes" : "No"}
+        isLast
+      />
     </>
   );
 }

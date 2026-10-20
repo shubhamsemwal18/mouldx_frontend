@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Package, Factory, ArrowRight } from "lucide-react";
 import { setSelectedSignupRole, type SignupRole } from "@/app/lib/role-selection";
+import { setActiveRole } from "@/app/lib/active-role";
 
 interface GetStartedModalProps {
   open: boolean;
@@ -29,7 +30,11 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
   if (!open) return null;
 
   const chooseRole = (role: SignupRole) => {
+    // Two distinct things are remembered here:
+    //  - the signup intent, which decides where the user lands after OTP
+    //  - the active role, which is the profile they continue browsing as
     setSelectedSignupRole(role);
+    setActiveRole(role);
     onClose();
     router.push("/signup");
   };

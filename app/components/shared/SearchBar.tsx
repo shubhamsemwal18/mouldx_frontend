@@ -5,36 +5,37 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Search, Mic, X } from "lucide-react";
 import styles from "./SearchBar.module.css";
 
-const SUGGESTIONS = [
-  "chair mould",
-  "table mould",
-  "stool mould",
-  "crate mould",
-  "bucket mould",
-];
+const FALLBACK_SUGGESTIONS = ["chair mould", "table mould", "stool mould"];
 
 interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
-  onOpen: () => void; // tap par search page kholne ke liye
+  /** Opens the full-screen search sheet; `voice` starts dictation with it. */
+  onOpen: (options?: { voice?: boolean }) => void;
+  /** Real category names, so the rotating placeholder reflects the catalogue. */
+  suggestions?: string[];
 }
 
-export default function SearchBar({ value, onChange, onOpen }: SearchBarProps) {
+export default function SearchBar({ value, onChange, onOpen, suggestions }: SearchBarProps) {
   const [index, setIndex] = useState(0);
+  const rotating =
+    suggestions && suggestions.length > 0
+      ? suggestions.map((s) => `${s.toLowerCase()} mould`)
+      : FALLBACK_SUGGESTIONS;
 
   // rotating placeholder
   useEffect(() => {
     const id = setInterval(() => {
-      setIndex((i) => (i + 1) % SUGGESTIONS.length);
+      setIndex((i) => (i + 1) % rotating.length);
     }, 2500);
     return () => clearInterval(id);
-  }, []);
+  }, [rotating.length]);
 
   return (
     <div className={styles.wrap} role="search">
       <div
         className={styles.bar}
-        onClick={onOpen}
+        onClick={() => onOpen()}
         role="button"
         tabIndex={0}
         aria-label="Open search"
@@ -62,7 +63,7 @@ export default function SearchBar({ value, onChange, onOpen }: SearchBarProps) {
                   transition={{ duration: 0.25 }}
                   className={styles.placeholderWord}
                 >
-                  &ldquo;{SUGGESTIONS[index]}&rdquo;
+                  &ldquo;{rotating[index % rotating.length]}&rdquo;
                 </motion.span>
               </AnimatePresence>
             </span>
@@ -85,9 +86,18 @@ export default function SearchBar({ value, onChange, onOpen }: SearchBarProps) {
 
         <span className={styles.divider} aria-hidden />
 
-        <span className={styles.micBtn} aria-hidden>
+        {/* Opens the sheet straight into dictation. */}
+        <button
+          type="button"
+          className={styles.micBtn}
+          aria-label="Search by voice"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen({ voice: true });
+          }}
+        >
           <Mic size={16} />
-        </span>
+        </button>
       </div>
     </div>
   );

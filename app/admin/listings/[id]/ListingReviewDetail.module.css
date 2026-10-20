@@ -501,3 +501,49 @@
     height: 100vh;
   }
 }
+/* ---------- Added for the live review screen ---------- */
+
+.emptyNote {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.errorText {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ef4444;
+}
+
+.reviewMeta {
+  margin-top: 16px;
+  border-top: 1px solid #f1f1f3;
+  padding-top: 12px;
+}
+
+.cardDivider {
+  margin: 12px 0;
+  height: 1px;
+  background: #f1f1f3;
+}
+
+.videoTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  background: #111827;
+  font-size: 28px;
+}
+
+/* A <video> has no intrinsic size until metadata loads, so it would collapse
+   under the image rules. Give it the full width of the lightbox. */
+.lightboxVideo {
+  width: 100%;
+  max-height: 70vh;
+  border-radius: 8px;
+  background: #0b1120;
+  display: block;
+}

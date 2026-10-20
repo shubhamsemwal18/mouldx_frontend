@@ -1,7 +1,8 @@
 .page {
   min-height: 100vh;
   background: #ffffff;
-  padding-bottom: 150px;
+  /* Must clear the sticky CTA bar (~101px) plus the bottom nav (79px). */
+  padding-bottom: 180px;
 }
 
 .content {
@@ -145,6 +146,8 @@
 .mediaInput {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   opacity: 0;
   cursor: pointer;
 }
@@ -405,13 +408,23 @@
 /* ---------- Sticky CTA ---------- */
 .ctaBar {
   position: fixed;
-  bottom: 72px;
+  /* Height of OwnerBottomNav — the bar must clear it, not overlap it. */
+  bottom: 79px;
   left: 0;
   right: 0;
   background: #ffffff;
   border-top: 1px solid #f1f1f3;
   padding: 14px 20px;
   z-index: 20;
+}
+
+/* Side by side at every width. Stacking these cost ~70px of vertical space on
+   a phone, where the sticky bar and bottom nav already take a quarter of the
+   screen. "Save as Draft" is secondary, so it gets the smaller share. */
+.ctaActions {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
 }
 
 .ctaBtn {
@@ -421,6 +434,57 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.ctaDraftBtn {
+  width: 100%;
+  border: 1px solid #d8dbe0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #374151;
+  padding: 14px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ctaDraftBtn:disabled,
+.ctaBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ctaStatus {
+  margin-bottom: 10px;
+}
+
+.ctaProgress {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.ctaError {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ef4444;
+}
+
+.ctaErrorList {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  font-size: 11px;
+  color: #ef4444;
+  list-style: disc;
+}
+
+.ctaDraftBtn {
+  flex: 0 0 40%;
+}
+
+.ctaBtn,
+.ctaBtn:global(.btn-primary) {
+  flex: 1 1 auto;
 }
 
 .ctaBtn:global(.btn-primary) {
@@ -448,4 +512,187 @@
     max-width: 640px;
     margin: 0 auto;
   }
+}
+/* ---------- Edit / resubmit states ---------- */
+
+.loadingText {
+  margin-top: 24px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.rejectedCard {
+  margin-top: 18px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.rejectedPill {
+  display: inline-block;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.rejectedTitle {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #991b1b;
+}
+
+.rejectedText {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #7f1d1d;
+}
+
+.lockedCard {
+  margin-top: 24px;
+  background: #fafafa;
+  border: 1px solid #eef0f2;
+  border-radius: 18px;
+  padding: 20px;
+  text-align: center;
+}
+
+.lockedTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.lockedText {
+  margin: 6px 0 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+/* ---------- Multi-file media galleries ---------- */
+
+.galleryBlock {
+  margin-top: 12px;
+}
+
+.galleryCount {
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+/* Four tiles per row on a phone; more as the viewport grows. */
+.galleryGrid {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.galleryTile {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+}
+
+.galleryThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.galleryVideoTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 22px;
+  background: #111827;
+}
+
+.galleryRemove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 9999px;
+  background: rgba(17, 24, 39, 0.75);
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.galleryCover {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.9);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.galleryAdd {
+  /* `position: relative` is required: .mediaInput is absolutely positioned,
+     and without a positioned ancestor it escapes the tile and covers the
+     whole viewport, swallowing every tap on the form. */
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  aspect-ratio: 1;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+@media (min-width: 480px) {
+  .galleryGrid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .galleryGrid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+.galleryHint {
+  margin-top: 6px;
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+.rejectList {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  list-style: disc;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #ef4444;
 }

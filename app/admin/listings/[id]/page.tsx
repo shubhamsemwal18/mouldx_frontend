@@ -1,104 +1,79 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./ListingReviewDetail.module.css";
+import { getApiErrorMessage } from "@/app/lib/api";
+import { adminApi } from "@/app/lib/admin-api";
+import type { Media, Mould, Product, ProductStatus, User } from "@/app/lib/types";
+
+const STATUS_LABEL: Record<ProductStatus, string> = {
+  draft: "DRAFT",
+  in_review: "PENDING REVIEW",
+  approved: "APPROVED",
+  rejected: "REJECTED",
+};
 
 interface MediaItem {
-  type: "photo" | "video";
   label: string;
-  previewUrl: string;
-  coords?: { lat: number; lng: number };
-  duration?: string;
+  media: Media;
 }
 
-interface ListingDetail {
-  id: string;
-  mouldCode: string;
-  productName: string;
-  status: "PENDING REVIEW" | "RESUBMITTED" | "APPROVED" | "REJECTED";
-  owner: string;
-  media: MediaItem[];
-  technical: {
-    tonnage: string;
-    cavities: string;
-    steel: string;
-    dimensions: string;
-    weight: string;
-    cycleTime: string;
-    hourlyProduction: string;
-    runnerType: string;
-    coolingTemp: string;
-    changeableLogo: string;
-  };
-  general: {
-    mouldNameOrId: string;
-    mouldType: string;
-    condition: string;
-    year: string;
-    manufacturer: string;
-    actualValue: string;
-    setOfMoulds: string;
-    eligibility: string;
-    perDayCharges: string;
-  };
-  product: {
-    productName: string;
-    category: string;
-    dimensions: string;
-    weight: string;
-    material: string;
-    finish: string;
-  };
-}
+const dash = (value: string | number | undefined | null, suffix = "") =>
+  value === undefined || value === null || value === "" ? "—" : `${value}${suffix}`;
 
-// TEMP dummy data — real owner-listing API se aayega
-const LISTING_DETAILS: Record<string, ListingDetail> = {
-  "1": {
-    id: "1",
-    mouldCode: "MX-000123",
-    productName: "2-Cavity Injection Mould",
-    status: "PENDING REVIEW",
-    owner: "Sharma Industries",
-    media: [
-      { type: "photo", label: "Photo", previewUrl: "https://picsum.photos/seed/mx1a/900/600", coords: { lat: 19.07, lng: 72.87 } },
-      { type: "photo", label: "Photo", previewUrl: "https://picsum.photos/seed/mx1b/900/600", coords: { lat: 19.07, lng: 72.87 } },
-      { type: "video", label: "Video", previewUrl: "https://picsum.photos/seed/mx1c/900/600", duration: "0:42" },
-    ],
-    technical: {
-      tonnage: "120T",
-      cavities: "2",
-      steel: "P20",
-      dimensions: "420 × 310 × 280 mm",
-      weight: "185 kg",
-      cycleTime: "28 s",
-      hourlyProduction: "120",
-      runnerType: "Hot Runner",
-      coolingTemp: "18 °C",
-      changeableLogo: "No",
-    },
-    general: {
-      mouldNameOrId: "Bottle Cap Mould · MX-000123",
-      mouldType: "Injection",
-      condition: "Excellent",
-      year: "2022",
-      manufacturer: "Precision Ltd.",
-      actualValue: "₹4,50,000",
-      setOfMoulds: "Single mould",
-      eligibility: "Pan India",
-      perDayCharges: "₹1,800",
-    },
-    product: {
-      productName: "28mm PET Bottle Cap",
-      category: "Chair",
-      dimensions: "28 × 28 × 14 mm",
-      weight: "3.2 g",
-      material: "HDPE",
-      finish: "Matte",
-    },
-  },
+const formatDimensions = (dimensions?: { length?: number; breadth?: number; height?: number }) =>
+  dimensions?.length && dimensions?.breadth && dimensions?.height
+    ? `${dimensions.length} × ${dimensions.breadth} × ${dimensions.height} mm`
+    : "—";
+
+const formatPrice = (value?: number) =>
+  value === undefined ? "—" : `₹${value.toLocaleString("en-IN")}`;
+
+const ownerOf = (product: Product): User | null =>
+  typeof product.owner === "object" ? (product.owner as User) : null;
+
+/** Every geo-tagged file on the listing, product first then each mould. */
+const collectMedia = (product: Product, moulds: Mould[]): MediaItem[] => {
+  const items: MediaItem[] = [];
+
+  (product.images || []).forEach((media, i) =>
+    items.push({ label: `Product photo ${i + 1}`, media })
+  );
+  (product.videos || []).forEach((media, i) =>
+    items.push({ label: `Product video ${i + 1}`, media })
+  );
+
+  moulds.forEach((mould, index) => {
+    const name = mould.component?.name || mould.mouldNameOrId || `Mould ${index + 1}`;
+    (mould.images || []).forEach((media, i) =>
+      items.push({ label: `${name} photo ${i + 1}`, media })
+    );
+    (mould.videos || []).forEach((media, i) =>
+      items.push({ label: `${name} video ${i + 1}`, media })
+    );
+  });
+
+  return items;
 };
+
+function Row({
+  label,
+  value,
+  isLast = false,
+}: {
+  label: string;
+  value: string;
+  isLast?: boolean;
+}) {
+  return (
+    <div className={`${styles.detailRow} ${isLast ? styles.detailRowLast : ""}`}>
+      <span className={styles.detailLabel}>{label}</span>
+      <span className={styles.detailValue}>{value}</span>
+    </div>
+  );
+}
 
 export default function ListingReviewDetailPage({
   params,
@@ -107,16 +82,73 @@ export default function ListingReviewDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const listing = LISTING_DETAILS[id];
 
+  const [product, setProduct] = useState<Product | null>(null);
+  const [moulds, setMoulds] = useState<Mould[]>([]);
+  const [loading, setLoading] = useState(true);
   const [remarks, setRemarks] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState<null | "approve" | "reject">(null);
+  const [error, setError] = useState("");
   const [activeMedia, setActiveMedia] = useState<MediaItem | null>(null);
 
-  if (!listing) {
+  const load = useCallback(async () => {
+    setLoading(true);
+
+    try {
+      const data = await adminApi.getProduct(id);
+      setProduct(data.product);
+      setMoulds(data.moulds);
+      setRemarks(data.product.rejectionReason || "");
+      setError("");
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not load the listing"));
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  // Deferred to a macrotask so the fetch's setState calls do not run
+  // synchronously inside the effect.
+  useEffect(() => {
+    const timer = window.setTimeout(load, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+
+  const review = async (status: "approved" | "rejected") => {
+    if (submitting || !product) return;
+
+    if (status === "rejected" && !remarks.trim()) {
+      setError("Please add remarks explaining the rejection.");
+      return;
+    }
+
+    setSubmitting(status === "approved" ? "approve" : "reject");
+    setError("");
+
+    try {
+      await adminApi.reviewProduct(product._id, {
+        status,
+        ...(status === "rejected" ? { reason: remarks.trim() } : {}),
+      });
+      router.push("/admin/listings");
+    } catch (err) {
+      setError(getApiErrorMessage(err, `Could not ${status === "approved" ? "approve" : "reject"} the listing`));
+      setSubmitting(null);
+    }
+  };
+
+  if (loading) {
     return (
       <div className={styles.notFound}>
-        <p className={styles.notFoundText}>Listing not found.</p>
+        <p className={styles.notFoundText}>Loading listing...</p>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className={styles.notFound}>
+        <p className={styles.notFoundText}>{error || "Listing not found."}</p>
         <Link href="/admin/listings" className={styles.notFoundLink}>
           ← Back to Listing Approvals
         </Link>
@@ -124,32 +156,23 @@ export default function ListingReviewDetailPage({
     );
   }
 
-  const handleApprove = () => {
-    if (submitting) return;
-    setSubmitting(true);
-    // TODO: call approve-listing API with { listingId: id } — listing goes LIVE for customers
-    router.push("/admin/listings");
-  };
-
-  const handleReject = () => {
-    if (submitting) return;
-    if (!remarks.trim()) {
-      alert("Please add remarks explaining the rejection.");
-      return;
-    }
-    setSubmitting(true);
-    // TODO: call reject-listing API with { listingId: id, remarks }
-    router.push("/admin/listings");
-  };
+  const owner = ownerOf(product);
+  const media = collectMedia(product, moulds);
+  const isDecided = product.status === "approved" || product.status === "rejected";
+  const canReview = product.status === "in_review";
 
   return (
     <div className={styles.page}>
       {/* ---------- Header ---------- */}
       <div className={styles.headerRow}>
         <h1 className={styles.title}>
-          {listing.mouldCode} · {listing.productName}
+          {product.code} · {product.name}
         </h1>
-        <span className={styles.statusPill}>{listing.status}</span>
+        <span className={styles.statusPill}>
+          {(product.resubmissionCount ?? 0) > 0 && product.status === "in_review"
+            ? "RESUBMITTED"
+            : STATUS_LABEL[product.status]}
+        </span>
       </div>
 
       {/* ---------- Grid layout ---------- */}
@@ -157,24 +180,34 @@ export default function ListingReviewDetailPage({
         {/* Media */}
         <div className={`${styles.card} ${styles.mediaArea}`}>
           <h2 className={styles.cardTitle}>Media (geo-tagged)</h2>
-          <div className={styles.mediaGrid}>
-            {listing.media.map((item, i) => (
-              <button
-                key={i}
-                type="button"
-                className={styles.mediaThumb}
-                onClick={() => setActiveMedia(item)}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.previewUrl} alt={item.label} className={styles.mediaThumbImg} />
-                {item.type === "video" && <span className={styles.playIcon}>▶</span>}
-                <span className={styles.mediaCaption}>
-                  {item.label} ·{" "}
-                  {item.type === "video" ? item.duration : `${item.coords?.lat.toFixed(2)}°N`}
-                </span>
-              </button>
-            ))}
-          </div>
+          {media.length === 0 ? (
+            <p className={styles.emptyNote}>No media was attached to this listing.</p>
+          ) : (
+            <div className={styles.mediaGrid}>
+              {media.map((item, i) => (
+                <button
+                  key={`${item.media._id}-${i}`}
+                  type="button"
+                  className={styles.mediaThumb}
+                  onClick={() => setActiveMedia(item)}
+                >
+                  {item.media.kind === "video" ? (
+                    <span className={styles.videoTile} aria-hidden>
+                      🎥
+                    </span>
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={item.media.url} alt={item.label} className={styles.mediaThumbImg} />
+                  )}
+                  {item.media.kind === "video" && <span className={styles.playIcon}>▶</span>}
+                  <span className={styles.mediaCaption}>
+                    {item.label}
+                    {item.media.location ? ` · ${item.media.location.lat.toFixed(2)}°N` : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Decision panel */}
@@ -182,92 +215,138 @@ export default function ListingReviewDetailPage({
           <div className={styles.decisionCard}>
             <h2 className={styles.cardTitle}>Decision</h2>
 
-            <label className={styles.fieldLabel}>Remarks (sent to owner)</label>
-            <textarea
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Add remarks if rejecting..."
-              rows={4}
-              className={styles.textarea}
-            />
+            {canReview ? (
+              <>
+                <label className={styles.fieldLabel}>Remarks (sent to owner)</label>
+                <textarea
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder="Add remarks if rejecting..."
+                  rows={4}
+                  className={styles.textarea}
+                />
 
-            <button
-              type="button"
-              onClick={handleApprove}
-              disabled={submitting}
-              className={`${styles.approveBtn} btn-primary`}
-            >
-              ✓ Approve Listing
-            </button>
-            <button
-              type="button"
-              onClick={handleReject}
-              disabled={submitting}
-              className={styles.rejectBtn}
-            >
-              ✕ Reject with Remarks
-            </button>
+                {error && <p className={styles.errorText}>{error}</p>}
+
+                <button
+                  type="button"
+                  onClick={() => review("approved")}
+                  disabled={submitting !== null}
+                  className={`${styles.approveBtn} btn-primary`}
+                >
+                  {submitting === "approve" ? "Approving..." : "✓ Approve Listing"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => review("rejected")}
+                  disabled={submitting !== null}
+                  className={styles.rejectBtn}
+                >
+                  {submitting === "reject" ? "Rejecting..." : "✕ Reject with Remarks"}
+                </button>
+              </>
+            ) : (
+              <p className={styles.emptyNote}>
+                {isDecided
+                  ? `This listing was already ${product.status}. Only listings under review can be decided.`
+                  : "This listing is still a draft and has not been submitted."}
+              </p>
+            )}
+
+            <div className={styles.reviewMeta}>
+              <Row label="Submitted" value={dash(product.submittedAt?.slice(0, 10))} />
+              <Row label="Resubmissions" value={String(product.resubmissionCount ?? 0)} />
+              {product.rejectionReason && (
+                <Row label="Last rejection" value={product.rejectionReason} />
+              )}
+              {product.publishedAt && (
+                <Row label="Published" value={product.publishedAt.slice(0, 10)} isLast />
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Technical stats */}
+        {/* Product details */}
         <div className={`${styles.card} ${styles.techArea}`}>
-          <h2 className={styles.cardTitle}>Technical Details</h2>
+          <h2 className={styles.cardTitle}>Product Details</h2>
           <div className={styles.statsRow}>
             <div className={styles.statChip}>
-              <span className={styles.statValue}>{listing.technical.tonnage}</span>
-              <span className={styles.statLabel}>Tonnage</span>
+              <span className={styles.statValue}>{formatPrice(product.pricing?.perDayCharges)}</span>
+              <span className={styles.statLabel}>Per day</span>
             </div>
             <div className={styles.statChip}>
-              <span className={styles.statValue}>{listing.technical.cavities}</span>
-              <span className={styles.statLabel}>Cavity</span>
+              <span className={styles.statValue}>{product.componentCount ?? moulds.length}</span>
+              <span className={styles.statLabel}>Moulds</span>
             </div>
             <div className={styles.statChip}>
-              <span className={styles.statValue}>{listing.technical.steel}</span>
-              <span className={styles.statLabel}>Steel</span>
+              <span className={styles.statValue}>
+                {formatPrice(product.pricing?.securityDeposit)}
+              </span>
+              <span className={styles.statLabel}>Deposit</span>
             </div>
           </div>
 
-          <Row label="Dimensions" value={listing.technical.dimensions} />
-          <Row label="Weight" value={listing.technical.weight} />
-          <Row label="Cycle Time" value={listing.technical.cycleTime} />
-          <Row label="Hourly Production" value={listing.technical.hourlyProduction} />
-          <Row label="Runner Type" value={listing.technical.runnerType} />
-          <Row label="Cooling Temp" value={listing.technical.coolingTemp} />
-          <Row label="Changeable Logo" value={listing.technical.changeableLogo} isLast />
+          <Row label="Category" value={dash(product.category?.title)} />
+          <Row label="Sub Category" value={dash(product.subCategory?.title)} />
+          <Row label="Dimensions" value={formatDimensions(product.dimensions)} />
+          <Row label="Weight" value={dash(product.weight, " g")} />
+          <Row label="Material" value={dash(product.material)} />
+          <Row label="Surface Finish" value={dash(product.surfaceFinish)} />
+          <Row
+            label="Location"
+            value={
+              product.location
+                ? `${product.location.lat.toFixed(4)}°N, ${product.location.lng.toFixed(4)}°E`
+                : "—"
+            }
+            isLast
+          />
         </div>
 
-        {/* Full-width: General + Product details */}
+        {/* Owner + every mould */}
         <div className={styles.detailsArea}>
           <div className={styles.detailsGrid}>
             <div className={styles.card}>
-              <h2 className={styles.cardTitle}>General Details</h2>
-              <Row label="Mould Name / ID" value={listing.general.mouldNameOrId} />
-              <Row label="Type" value={listing.general.mouldType} />
-              <Row label="Condition" value={listing.general.condition} />
-              <Row label="Year" value={listing.general.year} />
-              <Row label="Manufacturer" value={listing.general.manufacturer} />
-              <Row label="Actual Value" value={listing.general.actualValue} />
-              <Row label="Set of Moulds" value={listing.general.setOfMoulds} />
-              <Row label="Eligibility" value={listing.general.eligibility} />
-              <Row label="Per Day Charges" value={listing.general.perDayCharges} isLast />
-            </div>
-
-            <div className={styles.card}>
-              <h2 className={styles.cardTitle}>Product Details</h2>
-              <Row label="Product Name" value={listing.product.productName} />
-              <Row label="Category" value={listing.product.category} />
-              <Row label="Dimensions" value={listing.product.dimensions} />
-              <Row label="Weight" value={listing.product.weight} />
-              <Row label="Material" value={listing.product.material} />
-              <Row label="Surface Finish" value={listing.product.finish} isLast />
-            </div>
-
-            <div className={styles.card}>
               <h2 className={styles.cardTitle}>Owner</h2>
-              <Row label="Firm Name" value={listing.owner} />
-              <Row label="Mould ID" value={listing.mouldCode} isLast />
+              <Row label="Name" value={dash(owner?.fullName)} />
+              <Row label="Phone" value={dash(owner?.phone)} />
+              <Row label="Email" value={dash(owner?.email)} />
+              <Row label="Listing code" value={product.code} isLast />
             </div>
+
+            {moulds.map((mould, index) => (
+              <div key={mould._id} className={styles.card}>
+                <h2 className={styles.cardTitle}>
+                  {mould.component?.name
+                    ? `Component ${index + 1} · ${mould.component.name}`
+                    : `Mould ${index + 1}`}
+                </h2>
+
+                {mould.component?.name && (
+                  <>
+                    <Row label="Component dimensions" value={formatDimensions(mould.component.dimensions)} />
+                    <Row label="Component weight" value={dash(mould.component.weight, " g")} />
+                    <Row label="Component finish" value={dash(mould.component.surfaceFinish)} />
+                    <div className={styles.cardDivider} />
+                  </>
+                )}
+
+                <Row label="Mould Name / ID" value={dash(mould.mouldNameOrId)} />
+                <Row label="Type" value={dash(mould.mouldType)} />
+                <Row label="Year" value={dash(mould.yearOfManufacturing)} />
+                <Row label="Dimensions" value={formatDimensions(mould.dimensions)} />
+                <Row label="Weight" value={dash(mould.weight, " kg")} />
+                <Row label="Cavities / Core" value={dash(mould.cavities)} />
+                <Row label="Cycle Time" value={dash(mould.expectedCycleTime, " s")} />
+                <Row label="Machine Tonnage" value={dash(mould.recommendedMachineTonnage, " T")} />
+                <Row label="Runner Type" value={dash(mould.runnerType)} />
+                <Row
+                  label="Changeable Logo"
+                  value={mould.changeableBrandLogo ? "Yes" : "No"}
+                  isLast
+                />
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -279,9 +358,10 @@ export default function ListingReviewDetailPage({
             <div className={styles.lightboxHeader}>
               <div>
                 <h3 className={styles.lightboxTitle}>{activeMedia.label}</h3>
-                {activeMedia.coords && (
+                {activeMedia.media.location && (
                   <p className={styles.lightboxGeo}>
-                    📍 {activeMedia.coords.lat.toFixed(4)}°N, {activeMedia.coords.lng.toFixed(4)}°E
+                    📍 {activeMedia.media.location.lat.toFixed(4)}°N,{" "}
+                    {activeMedia.media.location.lng.toFixed(4)}°E
                   </p>
                 )}
               </div>
@@ -295,21 +375,26 @@ export default function ListingReviewDetailPage({
               </button>
             </div>
             <div className={styles.lightboxBody}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={activeMedia.previewUrl} alt={activeMedia.label} className={styles.lightboxImage} />
+              {activeMedia.media.kind === "video" ? (
+                <video
+                  src={activeMedia.media.url}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className={styles.lightboxVideo}
+                />
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={activeMedia.media.url}
+                  alt={activeMedia.label}
+                  className={styles.lightboxImage}
+                />
+              )}
             </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function Row({ label, value, isLast = false }: { label: string; value: string; isLast?: boolean }) {
-  return (
-    <div className={`${styles.detailRow} ${isLast ? styles.detailRowLast : ""}`}>
-      <span className={styles.detailLabel}>{label}</span>
-      <span className={styles.detailValue}>{value}</span>
     </div>
   );
 }

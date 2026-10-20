@@ -12,6 +12,8 @@ import {
 import { usePathname } from "next/navigation";
 import { authApi } from "@/app/lib/auth-api";
 import { clearAuthSession, hasAuthSessionHint, setAuthSession } from "@/app/lib/auth-storage";
+import { clearActiveRole } from "@/app/lib/active-role";
+import { clearSelectedSignupRole } from "@/app/lib/role-selection";
 import type { AuthPayload, OwnerProfileVerification, User } from "@/app/lib/types";
 
 interface AuthContextValue {
@@ -127,6 +129,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       bootstrapComplete = true;
       bootstrapPayload = null;
       clearAuthSession();
+      // Otherwise the next user on this browser inherits the previous
+      // user's customer/owner mode and signup routing.
+      clearActiveRole();
+      clearSelectedSignupRole();
       setUser(null);
       setOwnerProfileVerification(null);
     }
