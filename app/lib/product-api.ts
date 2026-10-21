@@ -4,6 +4,7 @@ import type {
   LatLng,
   MouldType,
   Product,
+  ProductAvailability,
   ProductDetail,
   ProductStatus,
   ProductStatusStats,
@@ -71,6 +72,7 @@ export interface ProductWritePayload {
 
 export interface ProductListParams {
   status?: ProductStatus;
+  availability?: ProductAvailability;
   search?: string;
   page?: number;
   limit?: number;
@@ -111,6 +113,16 @@ export const productApi = {
     return apiClient
       .post<ApiResponse<ProductDetail>>(`/owner/products/${id}/submit`, {})
       .then((response) => response.data.data);
+  },
+
+  /**
+   * Takes an approved listing offline for maintenance, or brings it back.
+   * Approval is untouched; the server rejects listings that are not approved.
+   */
+  updateAvailability(id: string, availability: ProductAvailability) {
+    return apiClient
+      .patch<ApiResponse<ProductDetail>>(`/owner/products/${id}/availability`, { availability })
+      .then((response) => response.data);
   },
 
   remove(id: string) {
