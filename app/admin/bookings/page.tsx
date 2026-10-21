@@ -224,9 +224,7 @@ export default function BookingApprovalsPage() {
             className={`${styles.filterBtn} ${isFilterActive ? styles.filterBtnActive : ""}`}
             onClick={() => setIsFilterOpen((v) => !v)}
           >
-            <button className="filter-btn" aria-label="Filter">
-  <FilterIcon size={24} />
-</button>
+            <FilterIcon size={24} />
             {isFilterActive && <span className={styles.filterDot} aria-hidden />}
           </button>
 

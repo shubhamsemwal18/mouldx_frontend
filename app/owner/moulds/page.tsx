@@ -363,9 +363,7 @@ export default function MyMouldsPage() {
             aria-expanded={isFilterOpen}
             aria-label="Filter listings"
           >
-            <button className="filter-btn" aria-label="Filter">
-              <FilterIcon size={24} />
-            </button>
+            <FilterIcon size={24} />
             {activeFilterCount > 0 && (
               <span className={styles.filterCount}>{activeFilterCount}</span>
             )}
