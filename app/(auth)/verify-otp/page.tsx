@@ -113,18 +113,7 @@ const handleVerify = async () => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <button className={styles.iconBtn} onClick={() => router.back()} aria-label="Go back">
-          ‹
-        </button>
-        <span className={styles.brand}>
-          Mould<span className={styles.brandAccent}>X</span>
-        </span>
-        <button className={styles.iconBtn} aria-label="Help">
-          ?
-        </button>
-      </div>
-
+     
       <h1 className={styles.title}>Verify OTP</h1>
       <p className={styles.subtitle}>
         Enter the 6-digit code sent to your registered phone.

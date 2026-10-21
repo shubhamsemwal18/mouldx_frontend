@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./Signup.module.css";
-import Image from "next/image";
 import { authApi } from "@/app/lib/auth-api";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { setPendingAuth } from "@/app/lib/pending-auth";
@@ -26,21 +25,24 @@ export default function SignupPage() {
   const [serverError, setServerError] = useState("");
 
   const errors = {
-    fullName: fullName.trim() === ""
-      ? "Full name is required"
-      : !REGEX.fullName.test(fullName.trim())
-        ? "Enter a valid name (letters only, 2-60 chars)"
-        : "",
-    email: email.trim() === ""
-      ? ""
-      : !REGEX.email.test(email.trim())
-        ? "Enter a valid email address"
-        : "",
-    phone: phone.trim() === ""
-      ? "Phone number is required"
-      : !REGEX.phone.test(phone.trim())
-        ? "Enter a valid 10-digit phone number"
-        : "",
+    fullName:
+      fullName.trim() === ""
+        ? "Full name is required"
+        : !REGEX.fullName.test(fullName.trim())
+          ? "Enter a valid name (letters only, 2-60 chars)"
+          : "",
+    email:
+      email.trim() === ""
+        ? ""
+        : !REGEX.email.test(email.trim())
+          ? "Enter a valid email address"
+          : "",
+    phone:
+      phone.trim() === ""
+        ? "Phone number is required"
+        : !REGEX.phone.test(phone.trim())
+          ? "Enter a valid 10-digit phone number"
+          : "",
   };
 
   const isValid =
@@ -80,13 +82,8 @@ export default function SignupPage() {
 
   return (
     <div className={styles.page}>
-     
-
-
       <h1 className={styles.title}>Create Account</h1>
-      <p className={styles.subtitle}>
-        Sign up to explore and manage chair moulds with ease.
-      </p>
+      <p className={styles.subtitle}>Sign up to explore moulds</p>
 
       <div className={styles.card}>
         <label className={styles.label} htmlFor="fullName">
@@ -137,6 +134,7 @@ export default function SignupPage() {
         )}
         {serverError && <p className={styles.errorText}>{serverError}</p>}
 
+        {/* Continue with OTP block */}
         <button
           type="button"
           disabled={!isValid || submitting}
@@ -146,9 +144,12 @@ export default function SignupPage() {
           {submitting ? "Sending OTP..." : "Continue with OTP"} <span aria-hidden>→</span>
         </button>
 
+        {/* Directly below the OTP button */}
         <p className={styles.loginText}>
           Already have an account?{" "}
-          <Link href="/login" className={styles.loginLink}>Login</Link>
+          <Link href="/login" className={styles.loginLink}>
+            Login
+          </Link>
         </p>
       </div>
     </div>

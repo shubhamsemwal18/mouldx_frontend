@@ -25,11 +25,12 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
 
-  const error = phone.trim() === ""
-    ? "Phone number is required"
-    : !REGEX.phone.test(phone.trim())
-      ? "Enter a valid 10-digit phone number"
-      : "";
+  const error =
+    phone.trim() === ""
+      ? "Phone number is required"
+      : !REGEX.phone.test(phone.trim())
+        ? "Enter a valid 10-digit phone number"
+        : "";
 
   const isValid = REGEX.phone.test(phone.trim());
 
@@ -84,11 +85,11 @@ export default function LoginPage() {
 
   return (
     <div className={styles.page}>
-    
-
       <h1 className={styles.title}>Welcome Back</h1>
       <p className={styles.subtitle}>
-        {mode === "otp" ? "Login with your registered phone number" : "Admin login with email and password"}
+        {mode === "otp"
+          ? "Login with your registered phone number"
+          : "Admin login with email and password"}
       </p>
 
       <div className={styles.form}>
@@ -139,14 +140,28 @@ export default function LoginPage() {
         )}
         {serverError && <p className={styles.errorText}>{serverError}</p>}
 
-       <button
-  type="button"
-  disabled={submitting || (mode === "otp" ? !isValid : !isAdminValid)}
-  onClick={mode === "otp" ? handleContinue : handleAdminLogin}
-  className={`${styles.loginBtn} btn-primary`}
->
-  {submitting ? "Please wait..." : mode === "otp" ? "Continue with OTP" : "Login as Admin"} <span aria-hidden>→</span>
-</button>
+        <button
+          type="button"
+          disabled={submitting || (mode === "otp" ? !isValid : !isAdminValid)}
+          onClick={mode === "otp" ? handleContinue : handleAdminLogin}
+          className={`${styles.loginBtn} btn-primary`}
+        >
+          {submitting
+            ? "Please wait..."
+            : mode === "otp"
+              ? "Continue with OTP"
+              : "Login as Admin"}{" "}
+          <span aria-hidden>→</span>
+        </button>
+
+        {/* Directly below the main button */}
+        <p className={styles.signupText}>
+          Don&apos;t have any account yet ?{" "}
+          <Link href="/signup" className={styles.signupLink}>
+            Create one
+          </Link>
+        </p>
+
         <button
           type="button"
           onClick={() => {
@@ -159,11 +174,6 @@ export default function LoginPage() {
           {mode === "otp" ? "Login as admin" : "Login with OTP instead"}
         </button>
       </div>
-
-      <p className={styles.signupText}>
-        don&apos;t have any account yet ?{" "}
-        <Link href="/signup" className={styles.signupLink}>Create one</Link>
-      </p>
     </div>
   );
 }

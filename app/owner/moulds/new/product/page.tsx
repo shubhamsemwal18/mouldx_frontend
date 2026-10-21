@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./ProductDetails.module.css";
-import Stepper from "@/app/components/Stepper/Stepper";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
 import { categoryApi, type PublishedCategory } from "@/app/lib/category-api";
@@ -1164,9 +1163,6 @@ export default function ProductDetailsPage() {
       <div className={styles.content}>
         <h1 className="text-[26px] font-extrabold text-gray-900">Product Details</h1>
         <p className="mt-1 text-sm text-gray-400">Add the product, its components &amp; moulds.</p>
-
-        <Stepper current={2} />
-
         {/* ---------- Admin remarks, shown when fixing a rejected listing ---------- */}
         {listingStatus === "rejected" && (
           <div className={styles.rejectedCard}>

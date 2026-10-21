@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "../EditForm.module.css";
-import Stepper from "@/app/components/Stepper/Stepper";
 import EditTop from "../EditTop";
 import { useEditMould } from "../EditMouldProvider";
 import { hasErrors, TechnicalNumericKey, validateTechnical } from "../validation";
@@ -86,9 +85,6 @@ export default function EditTechnicalPage() {
 
         <h1 className={styles.title}>Mould Details</h1>
         <p className={styles.subtitle}>Technical specifications.</p>
-
-        <Stepper current={2} />
-
         <div className={styles.card}>
           <h2 className={styles.cardTitle}>Dimensions (mm)</h2>
           <div className={styles.grid3}>

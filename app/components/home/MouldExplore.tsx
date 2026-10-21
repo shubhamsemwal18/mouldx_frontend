@@ -135,6 +135,29 @@ export default function MouldExplore({ search: searchProp, onSearchChange }: Mou
   // nothing, since the category rows have their own order.
   const isBrowsing = !hasQuery && activeFilterCount === 0 && sort === "recent";
 
+
+  const FilterIcon = ({ size = 24 }) => (
+    <svg
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#374151"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+
+      <circle cx="15" cy="6" r="2.5" fill="white" />
+      <circle cx="8" cy="12" r="2.5" fill="white" />
+      <circle cx="13" cy="18" r="2.5" fill="white" />
+    </svg>
+  );
+  
   const queryParams = useMemo(
     () => ({
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
@@ -331,7 +354,9 @@ export default function MouldExplore({ search: searchProp, onSearchChange }: Mou
           aria-expanded={isFilterOpen}
           aria-label="Filter listings"
         >
-          <span aria-hidden>▽</span>
+           <button className="filter-btn" aria-label="Filter">
+  <FilterIcon size={24} />
+</button>
           {activeFilterCount > 0 && <span className={styles.filterCount}>{activeFilterCount}</span>}
         </button>
       </div>

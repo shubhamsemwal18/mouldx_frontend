@@ -8,7 +8,11 @@ import { getApiErrorMessage } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
 import { productApi } from "@/app/lib/product-api";
 import type { Pagination } from "@/app/lib/product-api";
-import type { Product, ProductStatus, ProductStatusStats } from "@/app/lib/types";
+import type {
+  Product,
+  ProductStatus,
+  ProductStatusStats,
+} from "@/app/lib/types";
 
 type StatusFilter = "ALL" | ProductStatus;
 
@@ -57,7 +61,14 @@ function ListingImage({ src, alt }: { src?: string | null; alt: string }) {
         />
       ) : (
         <div className={styles.placeholder} aria-hidden>
-          <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            viewBox="0 0 24 24"
+            width="40"
+            height="40"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
             <rect x="3" y="5" width="18" height="14" rx="2" />
             <circle cx="9" cy="10" r="1.5" />
             <path d="M21 16l-5-5-8 8" />
@@ -93,15 +104,19 @@ function ListingCard({
             {listing.category?.title ? ` · ${listing.category.title}` : ""}
           </p>
           <p className={styles.mouldLine}>
-            <strong>Rent:</strong> {formatPrice(listing.pricing?.perDayCharges)}/day
+            <strong>Rent:</strong> {formatPrice(listing.pricing?.perDayCharges)}
+            /day
           </p>
           <p className={styles.mouldMeta}>
-            {listing.mouldCount ?? 0} mould{(listing.mouldCount ?? 0) === 1 ? "" : "s"}
+            {listing.mouldCount ?? 0} mould
+            {(listing.mouldCount ?? 0) === 1 ? "" : "s"}
             {(listing.resubmissionCount ?? 0) > 0
               ? ` · resubmitted ${listing.resubmissionCount}×`
               : ""}
           </p>
-          <span className={`${styles.badge} ${styles[STATUS_CLASS[listing.status]]}`}>
+          <span
+            className={`${styles.badge} ${styles[STATUS_CLASS[listing.status]]}`}
+          >
             {STATUS_LABEL[listing.status]}
           </span>
         </div>
@@ -121,16 +136,23 @@ function ListingCard({
             href={`/owner/moulds/new/product?id=${listing._id}`}
             className={styles.actionBtn}
           >
-            <span aria-hidden>✎</span> {listing.status === "rejected" ? "Fix & resubmit" : "Edit"}
+            <span aria-hidden>✎</span>{" "}
+            {listing.status === "rejected" ? "Fix & resubmit" : "Edit"}
           </Link>
         ) : (
-          <Link href={`/owner/moulds/new/product?id=${listing._id}`} className={styles.actionBtn}>
+          <Link
+            href={`/owner/moulds/new/product?id=${listing._id}`}
+            className={styles.actionBtn}
+          >
             <span aria-hidden>👁</span> View
           </Link>
         )}
 
         {listing.status === "approved" && (
-          <Link href={`/owner/moulds/${listing._id}/calendar`} className={styles.actionBtn}>
+          <Link
+            href={`/owner/moulds/${listing._id}/calendar`}
+            className={styles.actionBtn}
+          >
             <span aria-hidden>📅</span> Calendar
           </Link>
         )}
@@ -171,7 +193,30 @@ export default function MyMouldsPage() {
   const [toast, setToast] = useState("");
 
   const isApprovedOwner =
-    Boolean(user?.approvedRoles.includes("owner")) && user?.profileVerificationStatus === "approved";
+    Boolean(user?.approvedRoles.includes("owner")) &&
+    user?.profileVerificationStatus === "approved";
+
+  const FilterIcon = ({ size = 24 }) => (
+    <svg
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#374151"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+
+      <circle cx="15" cy="6" r="2.5" fill="white" />
+      <circle cx="8" cy="12" r="2.5" fill="white" />
+      <circle cx="13" cy="18" r="2.5" fill="white" />
+    </svg>
+  );
 
   useEffect(() => {
     if (authLoading) return;
@@ -310,14 +355,20 @@ export default function MyMouldsPage() {
           <button
             type="button"
             className={`${styles.filterBtn} ${
-              isFilterOpen || activeFilterCount > 0 ? styles.filterBtnActive : ""
+              isFilterOpen || activeFilterCount > 0
+                ? styles.filterBtnActive
+                : ""
             }`}
             onClick={() => setIsFilterOpen((v) => !v)}
             aria-expanded={isFilterOpen}
             aria-label="Filter listings"
           >
-            <span aria-hidden>▽</span>
-            {activeFilterCount > 0 && <span className={styles.filterCount}>{activeFilterCount}</span>}
+            <button className="filter-btn" aria-label="Filter">
+              <FilterIcon size={24} />
+            </button>
+            {activeFilterCount > 0 && (
+              <span className={styles.filterCount}>{activeFilterCount}</span>
+            )}
           </button>
         </div>
 
@@ -350,7 +401,10 @@ export default function MyMouldsPage() {
           </div>
         )}
 
-        <Link href="/owner/moulds/new/product" className={`${styles.addBtn} btn-primary`}>
+        <Link
+          href="/owner/moulds/new/product"
+          className={`${styles.addBtn} btn-primary`}
+        >
           + Add New Listing
         </Link>
 
@@ -386,7 +440,11 @@ export default function MyMouldsPage() {
                   : "You have not created any listings yet."}
               </p>
               {isFiltering && (
-                <button type="button" className={styles.clearFilters} onClick={clearAll}>
+                <button
+                  type="button"
+                  className={styles.clearFilters}
+                  onClick={clearAll}
+                >
                   Clear search &amp; filter
                 </button>
               )}
@@ -397,7 +455,8 @@ export default function MyMouldsPage() {
         {totalPages > 1 && pagination && (
           <nav className={styles.pagination} aria-label="Listings pagination">
             <p className={styles.paginationInfo}>
-              Showing {startIndex + 1}–{startIndex + listings.length} of {pagination.total}
+              Showing {startIndex + 1}–{startIndex + listings.length} of{" "}
+              {pagination.total}
             </p>
 
             <div className={styles.paginationControls}>

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./ProfileCreation.module.css";
-import Stepper from "@/app/components/Stepper/Stepper";
 import { useAuth } from "@/app/lib/auth-context";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { uploadPrivateFile } from "@/app/lib/upload-api";
@@ -318,28 +317,9 @@ export default function ProfileCreationPage() {
 
   return (
     <div className={styles.page}>
-      {/* ---------- Header ---------- */}
-      <header className={styles.header}>
-        <Link
-          href="/owner/onboarding"
-          className={styles.iconBtn}
-          aria-label="Go back"
-        >
-          ‹
-        </Link>
-        <span className={styles.brand}>
-          Mould<span className={styles.brandAccent}>X</span>
-        </span>
-        <button type="button" className={styles.iconBtn} aria-label="Help">
-          ?
-        </button>
-      </header>
-
       <div className={styles.content}>
         <h1 className="text-[26px] font-extrabold text-gray-900">Profile Creation</h1>
         <p className="mt-1 text-sm text-gray-400">Step 1 of 4 — KYC details.</p>
-        <Stepper current={1} />
-
         {/* ---------- Progress bar ---------- */}
         <div className={styles.progressRow}>
           <span

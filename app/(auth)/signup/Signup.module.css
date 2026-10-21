@@ -109,17 +109,25 @@
 }
 
 .otpBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   margin-top: 20px;
+  margin-bottom: 0;
   width: 100%;
   font-size: 14px;
   font-weight: 700;
   padding: 13px;
   border: none;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .otpBtn:global(.btn-primary) {
+  display: flex;
   margin-top: 20px;
+  margin-bottom: 0;
   width: 100%;
   border-radius: 10px;
   padding: 13px;
@@ -133,6 +141,7 @@
 }
 
 .loginText {
+  display: block;
   margin: 16px 0 0;
   font-size: 13px;
   color: #6b7280;
@@ -143,6 +152,10 @@
   color: #2563eb;
   font-weight: 600;
   text-decoration: none;
+}
+
+.loginLink:hover {
+  text-decoration: underline;
 }
 
 .inputError {

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "../EditForm.module.css";
-import Stepper from "@/app/components/Stepper/Stepper";
 import EditTop from "../EditTop";
 import { useEditMould } from "../EditMouldProvider";
 import { PRODUCT_CATEGORIES } from "../constants";
@@ -98,12 +97,8 @@ export default function EditProductPage() {
     <div className={styles.page}>
       <div className={styles.content}>
         <EditTop backHref={`${base}/general`} backLabel="General details" />
-
         <h1 className={styles.title}>Product Details</h1>
         <p className={styles.subtitle}>Update the product this mould makes.</p>
-
-        <Stepper current={4} />
-
         <div className={styles.card}>
           <label className={styles.fieldLabel}>Product Name</label>
           <input
