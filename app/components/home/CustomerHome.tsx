@@ -10,6 +10,11 @@ import styles from "./CustomerHome.module.css";
 import mouldchair from "@/public/images/mould-and-chair.webp";
 import { useAuth } from "@/app/lib/auth-context";
 import { publicApi } from "@/app/lib/public-api";
+import {
+  DEFAULT_FILTERS,
+  countActiveFilters,
+  type CatalogueFilters,
+} from "@/app/lib/catalogue-filters";
 
 export default function CustomerHome() {
   const { user, loading } = useAuth();
@@ -20,6 +25,11 @@ export default function CustomerHome() {
   // so a search made anywhere filters the listings on this page.
   const [search, setSearch] = useState("");
   const [categoryNames, setCategoryNames] = useState<string[]>([]);
+  // The filter panel lives in the listings section; the sticky bar toggles it.
+  const [filterOpen, setFilterOpen] = useState(false);
+  // Shared like `search`, so filters picked in the sheet also apply below.
+  const [filters, setFilters] = useState<CatalogueFilters>(DEFAULT_FILTERS);
+  const activeFilterCount = countActiveFilters(filters);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,8 +56,38 @@ export default function CustomerHome() {
     setSearchOpen(true);
   };
 
+  const showFilters = () => {
+    setFilterOpen(true);
+    // The panel sits below the hero, so bring it into view when opening.
+    document.getElementById("mould-explore")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const toggleFilters = () => {
+    if (filterOpen) setFilterOpen(false);
+    else showFilters();
+  };
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setAutoVoice(false);
+  };
+
   return (
     <div className={styles.page}>
+      <div className={styles.searchBarSticky}>
+        <div className={styles.searchBarInner}>
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            onOpen={openSearch}
+            suggestions={categoryNames}
+            onFilterToggle={toggleFilters}
+            filterOpen={filterOpen}
+            activeFilterCount={activeFilterCount}
+          />
+        </div>
+      </div>
+
       <section className={styles.heroSection}>
         <Image
           src={mouldchair}
@@ -59,15 +99,6 @@ export default function CustomerHome() {
         <div className={styles.heroOverlay} />
 
         <div className={styles.content}>
-          <div className={styles.searchRow}>
-            <SearchBar
-              value={search}
-              onChange={setSearch}
-              onOpen={openSearch}
-              suggestions={categoryNames}
-            />
-          </div>
-
           <p className={styles.eyebrow}>
             {user ? `Hi ${user.fullName}, welcome to MouldX` : "Precision Engineered"}
           </p>
@@ -89,7 +120,14 @@ export default function CustomerHome() {
       </section>
 
       
-      <MouldExplore search={search} onSearchChange={setSearch} />
+      <MouldExplore
+        search={search}
+        onSearchChange={setSearch}
+        filterOpen={filterOpen}
+        onFilterOpenChange={setFilterOpen}
+        filters={filters}
+        onFiltersChange={setFilters}
+      />
 
       <GetStartedModal open={modalOpen} onClose={() => setModalOpen(false)} />
 
@@ -98,11 +136,10 @@ export default function CustomerHome() {
         open={searchOpen}
         query={search}
         onQueryChange={setSearch}
-        onClose={() => {
-          setSearchOpen(false);
-          setAutoVoice(false);
-        }}
+        onClose={closeSearch}
         autoVoice={autoVoice}
+        filters={filters}
+        onFiltersChange={setFilters}
       />
     </div>
   );

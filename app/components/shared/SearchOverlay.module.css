@@ -6,6 +6,8 @@
   display: flex;
   flex-direction: column;
   color: #111827;
+  /* Nothing inside the sheet may push it wider than the screen. */
+  overflow-x: hidden;
 }
 
 /* ---------- Top bar ---------- */
@@ -14,9 +16,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 12px 14px;
   border-bottom: 1px solid #e5e7eb;
   background: #ffffff;
+  box-sizing: border-box;
 }
 
 .backBtn {
@@ -45,7 +49,8 @@
   align-items: center;
   gap: 8px;
   height: 44px;
-  padding: 0 5px 0 14px;
+  padding: 0 4px 0 14px;
+  box-sizing: border-box;
   border-radius: 9999px;
   background: #f1f2f4;
   border: 1px solid transparent;
@@ -92,43 +97,72 @@
   cursor: pointer;
 }
 
-.micBtn {
+/* Same filter button as the page's search bar (white circle, light border). */
+.filterBtn {
+  position: relative;
   flex-shrink: 0;
   width: 34px;
   height: 34px;
-  border: none;
   border-radius: 9999px;
-  background-color: #2563eb;
-  color: #ffffff;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
-.micBtn:hover {
-  background-color: #1d4ed8;
+/* Keeps the 34px circle but gives it a 44px touch target. */
+.filterBtn::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
 }
 
-.micActive {
-  background-color: #dc2626;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5);
+/* Mouse only: on touch the "stuck" hover would leave it enlarged against the field edge. */
+@media (hover: hover) {
+  .filterBtn:hover {
+    transform: scale(1.05);
   }
-  50% {
-    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
-  }
+}
+
+.filterCount {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Ring drawn inside the circle so it never spills over the field edge. */
+.filterBtnActive {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+  box-shadow: inset 0 0 0 1px #2563eb;
+}
+
+/* Sits directly under the search field, above recent searches and results. */
+.filterPanel {
+  margin: 0 0 20px;
+  max-width: 100%;
 }
 
 /* ---------- Body ---------- */
 .body {
   flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 16px 16px 40px;
@@ -155,24 +189,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.chip {
-  padding: 8px 14px;
-  border-radius: 9999px;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  color: #374151;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.chip:hover {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
 }
 
 /* ---------- Results grid ---------- */
