@@ -11,6 +11,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .bar {
   display: flex;
   cursor: pointer;
@@ -20,12 +21,11 @@
   padding: 0 5px 0 16px;
   border-radius: 9999px;
 
-  /* glass effect */
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.22) 0%,
-    rgba(255, 255, 255, 0.08) 100%
-  );
+  /* glass effect — the faint dark base keeps the white text readable once the
+     bar is stuck over the light listings section */
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 100%),
+    rgba(11, 15, 26, 0.35);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -56,17 +56,6 @@
   height: 100%;
   display: flex;
   align-items: center;
-}
-
-.input {
-  width: 100%;
-  height: 100%;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 500;
 }
 
 .placeholder {
@@ -111,52 +100,63 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
-.micBtn {
+/* Takes the old mic button's slot; styled like the "Find a mould" filter toggle. */
+.filterBtn {
   position: relative;
   flex-shrink: 0;
   width: 32px;
   height: 32px;
   border-radius: 9999px;
-  border: none;
-  background-color: #2563eb;
-  color: #ffffff;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
 /* Keeps the 32px circle but gives it a 44px touch target. */
-.micBtn::after {
+.filterBtn::after {
   content: "";
   position: absolute;
   inset: -6px;
 }
 
-.micBtn:hover {
-  background-color: #1d4ed8;
+.filterBtn:hover {
   transform: scale(1.05);
 }
 
-.micActive {
-  background-color: #dc2626;
-  animation: pulse 1.2s ease-in-out infinite;
+.filterBtnActive {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px #2563eb;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
-  }
+.filterCount {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 @media (min-width: 640px) {
   .bar {
     height: 48px;
     padding-left: 20px;
+  }
+  .filterBtn {
+    width: 36px;
+    height: 36px;
   }
 }

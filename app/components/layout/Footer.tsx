@@ -22,8 +22,7 @@ const QUICK_LINKS = [
 const SOCIAL_LINKS = [
   { label: "Facebook", href: "#", icon: FaFacebookF },
   { label: "Instagram", href: "#", icon: FaInstagram },
-  { label: "Twitter", href: "#", icon: FaXTwitter },
-  { label: "LinkedIn", href: "#", icon: FaLinkedinIn },
+ 
 ];
 
 export default function Footer() {
@@ -49,7 +48,7 @@ export default function Footer() {
                 className={styles.logoImg}
               />
             </Link>
-            <p className={styles.tagline}>Smart. Reliable. Built for better connectivity.</p>
+            <p className={styles.tagline}>Turning moulds into opportunities</p>
 
             <div className={styles.socialRow}>
               {SOCIAL_LINKS.map(({ label, href, icon: Icon }) => (

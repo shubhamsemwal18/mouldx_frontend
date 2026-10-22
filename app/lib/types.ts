@@ -82,6 +82,8 @@ export interface AuthPayload {
  * ------------------------------------------------------------------ */
 
 export type ProductStatus = "draft" | "in_review" | "approved" | "rejected";
+/** Owner-controlled operational state, separate from the approval `status`. */
+export type ProductAvailability = "active" | "maintenance";
 export type MouldType = "Injection" | "Blow" | "Die-Cast" | "Compression";
 export type RunnerType = "Hot Runner" | "Cold Runner";
 export type MediaKind = "image" | "video" | "document";
@@ -168,6 +170,9 @@ export interface Product {
   };
   componentCount?: number;
   status: ProductStatus;
+  /** Missing on listings saved before the field existed; treat as active. */
+  availability?: ProductAvailability;
+  availabilityUpdatedAt?: string | null;
   rejectionReason?: string | null;
   resubmissionCount?: number;
   submittedAt?: string | null;
@@ -195,6 +200,9 @@ export interface ProductStatusStats {
   in_review: number;
   approved: number;
   rejected: number;
+  /** Approved listings split by availability; `approved` stays the total. */
+  active?: number;
+  maintenance?: number;
 }
 
 /* ------------------------------------------------------------------ *

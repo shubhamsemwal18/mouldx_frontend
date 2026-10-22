@@ -1,0 +1,554 @@
+.page {
+  min-height: 100vh;
+  width: 100%;
+  background: #ffffff;
+  overflow-x: hidden;
+}
+
+.page,
+.page * {
+  box-sizing: border-box;
+}
+
+.content {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 16px 32px;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+/* ---------- Gallery ---------- */
+.gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.galleryMain {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #e7edfb, #dbeafe);
+}
+
+.galleryImage {
+  object-fit: cover;
+}
+
+/* next/image positions itself; a plain <video> must be stretched explicitly. */
+.galleryVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #0b1120;
+  display: block;
+}
+
+.galleryEmpty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.galleryCounter {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  background: rgba(17, 24, 39, 0.55);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.galleryNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  color: #111827;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.galleryNav:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.galleryNavLeft {
+  left: 10px;
+}
+
+.galleryNavRight {
+  right: 10px;
+}
+
+.thumbStrip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.thumbStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  background: #f1f2f4;
+}
+
+.thumbActive {
+  border-color: #2563eb;
+}
+
+.thumbImage {
+  object-fit: cover;
+}
+
+.thumbPlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(17, 24, 39, 0.4);
+  color: #ffffff;
+  font-size: 12px;
+}
+
+/* ---------- Title, status, specs, price ---------- */
+.titleRow {
+  margin-top: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  min-width: 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  flex-shrink: 0;
+  margin-top: 2px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.badgeLive {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.badgePending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.badgeMaintenance {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.badgeRejected {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.badgeDraft {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.metaRow {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+  overflow-wrap: anywhere;
+}
+
+.rejectedCard {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+}
+
+.rejectedTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #9a3412;
+}
+
+.rejectedText {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #7c2d12;
+  overflow-wrap: anywhere;
+}
+
+.quickSpecs {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quickSpecCard {
+  background: #f6f7f9;
+  border-radius: 12px;
+  padding: 10px;
+  min-width: 0;
+}
+
+.quickSpecValue {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quickSpecLabel {
+  margin: 2px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.priceRow {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #f6f7f9;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.priceValue {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.pricePeriod {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.depositBadge {
+  padding: 5px 10px;
+  border-radius: 9999px;
+  background: #dbeafe;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---------- Tabs (wrap instead of scrolling) ---------- */
+.tabsRow {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tabBtn {
+  max-width: 100%;
+  padding: 9px 16px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.tabBtnActive {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+/* ---------- Collapsible sections ---------- */
+.section {
+  margin-top: 12px;
+  background: #f6f7f9;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.sectionChevron {
+  display: inline-block;
+  font-size: 16px;
+  color: #6b7280;
+  transition: transform 0.2s ease;
+}
+
+.sectionChevronOpen {
+  transform: rotate(180deg);
+}
+
+.sectionBody {
+  padding: 0 14px 4px;
+  border-top: 1px solid #e9eaec;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9eaec;
+}
+
+.detailRowLast {
+  border-bottom: none;
+}
+
+.detailLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.detailValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Owner actions (inline: the owner bottom nav is fixed) ---------- */
+.actions {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.actionPrimary,
+.actionPrimary:global(.btn-primary),
+.actionSecondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.actionSecondary {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+}
+
+.notFoundWrap {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.notFoundText {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.notFoundLink {
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+/* =====================================================
+   BREAKPOINTS
+   ===================================================== */
+
+@media (max-width: 359px) {
+  .content {
+    padding: 8px 12px 28px;
+  }
+
+  .title {
+    font-size: 17px;
+  }
+
+  .priceValue {
+    font-size: 18px;
+  }
+
+  .tabBtn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .quickSpecValue {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 431px) and (max-width: 639px) {
+  .title {
+    font-size: 20px;
+  }
+}
+
+@media (min-width: 640px) {
+  .page {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .content {
+    padding: 16px 32px 40px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .galleryMain {
+    aspect-ratio: 16 / 10;
+  }
+
+  .quickSpecCard {
+    padding: 14px;
+  }
+
+  .quickSpecValue {
+    font-size: 17px;
+  }
+
+  .priceValue {
+    font-size: 24px;
+  }
+
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .page {
+    max-width: 780px;
+  }
+
+  .content {
+    padding: 24px 40px 48px;
+  }
+
+  .thumb {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .page {
+    max-width: 860px;
+  }
+}

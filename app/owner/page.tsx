@@ -258,9 +258,12 @@ export default function OwnerHomePage() {
           </div>
         </Link>
 
-        <div className={styles.actionHeader}>
-          <h2 className={styles.actionTitle}>Ending Soon</h2>
-        </div>
+       <div className={styles.sectionHeader}>
+  <h2 className={styles.actionTitle}>Ending Soon</h2>
+  <Link href="/owner/bookings?tab=active" className={styles.sectionLink}>
+    View all →
+  </Link>
+</div>
 
         <div className={styles.itemList}>
           {OWNER.bookingRequests.map((req) => (
@@ -269,11 +272,11 @@ export default function OwnerHomePage() {
         </div>
 
         <div className={styles.sectionHeader}>
-          <h2 className={styles.actionTitle}>Upcoming</h2>
-          <Link href="/owner/bookings" className={styles.sectionLink}>
-            View all →
-          </Link>
-        </div>
+  <h2 className={styles.actionTitle}>Upcoming</h2>
+  <Link href="/owner/bookings?tab=upcoming" className={styles.sectionLink}>
+    View all →
+  </Link>
+</div>
 
         <div className={styles.itemList}>
           {OWNER.upcoming.map((item) => (

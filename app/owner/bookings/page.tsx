@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import styles from "./OwnerBookings.module.css";
 
 type TabKey = "all" | "upcoming" | "active" | "done";
@@ -122,8 +123,15 @@ function BookingCard({ booking }: { booking: Booking }) {
   );
 }
 
-export default function OwnerBookingsPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
+function OwnerBookingsContent() {
+  // Reads ?tab=active from the URL so "View all" on Home opens the Active tab
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const initialTab: TabKey = TABS.some((t) => t.key === tabParam)
+    ? (tabParam as TabKey)
+    : "all";
+
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
@@ -210,5 +218,14 @@ export default function OwnerBookingsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Suspense is required in Next.js when using useSearchParams
+export default function OwnerBookingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <OwnerBookingsContent />
+    </Suspense>
   );
 }

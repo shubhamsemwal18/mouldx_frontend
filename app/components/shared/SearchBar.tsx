@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Search, Mic, X } from "lucide-react";
+import { Search, X } from "lucide-react";
+import FilterIcon from "./FilterIcon";
 import styles from "./SearchBar.module.css";
 
 const FALLBACK_SUGGESTIONS = ["chair mould", "table mould", "stool mould"];
@@ -14,9 +15,21 @@ interface SearchBarProps {
   onOpen: (options?: { voice?: boolean }) => void;
   /** Real category names, so the rotating placeholder reflects the catalogue. */
   suggestions?: string[];
+  /** Toggles the listing filters. The filter button is hidden without it. */
+  onFilterToggle?: () => void;
+  filterOpen?: boolean;
+  activeFilterCount?: number;
 }
 
-export default function SearchBar({ value, onChange, onOpen, suggestions }: SearchBarProps) {
+export default function SearchBar({
+  value,
+  onChange,
+  onOpen,
+  suggestions,
+  onFilterToggle,
+  filterOpen = false,
+  activeFilterCount = 0,
+}: SearchBarProps) {
   const [index, setIndex] = useState(0);
   const rotating =
     suggestions && suggestions.length > 0
@@ -84,20 +97,27 @@ export default function SearchBar({ value, onChange, onOpen, suggestions }: Sear
           </button>
         )}
 
-        <span className={styles.divider} aria-hidden />
+        {onFilterToggle && (
+          <>
+            <span className={styles.divider} aria-hidden />
 
-        {/* Opens the sheet straight into dictation. */}
-        <button
-          type="button"
-          className={styles.micBtn}
-          aria-label="Search by voice"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpen({ voice: true });
-          }}
-        >
-          <Mic size={16} />
-        </button>
+            <button
+              type="button"
+              className={`${styles.filterBtn} ${filterOpen ? styles.filterBtnActive : ""}`}
+              aria-expanded={filterOpen}
+              aria-label="Filter listings"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFilterToggle();
+              }}
+            >
+              <FilterIcon size={18} />
+              {activeFilterCount > 0 && (
+                <span className={styles.filterCount}>{activeFilterCount}</span>
+              )}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

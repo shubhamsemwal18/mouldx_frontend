@@ -3,13 +3,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Search, Mic, X, Clock } from "lucide-react";
+import { ArrowLeft, Search, X, Clock } from "lucide-react";
+import FilterIcon from "./FilterIcon";
+import FilterPanel from "./FilterPanel";
 import styles from "./SearchOverlay.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { publicApi } from "@/app/lib/public-api";
+import {
+  DEFAULT_FILTERS,
+  countActiveFilters,
+  filtersToParams,
+  type CatalogueFilters,
+} from "@/app/lib/catalogue-filters";
 import { useRecentSearches } from "@/app/lib/recent-searches";
 import { useVoiceSearch } from "@/app/lib/use-voice-search";
-import type { PublicProductCard } from "@/app/lib/types";
+import type { MouldType, PublicProductCard } from "@/app/lib/types";
 
 const MAX_RESULTS = 24;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -66,6 +74,9 @@ interface Props {
   onClose: () => void;
   /** Start dictation as soon as the sheet opens (mic tapped in the hero bar). */
   autoVoice?: boolean;
+  /** The page's catalogue filters; passing a setter shows the filter button. */
+  filters?: CatalogueFilters;
+  onFiltersChange?: (filters: CatalogueFilters) => void;
 }
 
 export default function SearchOverlay({
@@ -74,11 +85,17 @@ export default function SearchOverlay({
   onQueryChange,
   onClose,
   autoVoice = false,
+  filters = DEFAULT_FILTERS,
+  onFiltersChange,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [debouncedQuery, setDebouncedQuery] = useState(query.trim());
   const [results, setResults] = useState<PublicProductCard[]>([]);
-  const [popular, setPopular] = useState<string[]>([]);
+  const [categories, setCategories] = useState<{ slug: string; title: string }[]>([]);
+  const [mouldTypes, setMouldTypes] = useState<MouldType[]>([]);
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
+  const activeFilterCount = countActiveFilters(filters);
+  const filterParams = useMemo(() => filtersToParams(filters), [filters]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -122,6 +139,8 @@ export default function SearchOverlay({
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
       voice.stop();
+      // Reopening the sheet starts with the filter panel folded away.
+      setFilterPanelOpen(false);
     };
     // `voice.stop` is stable; re-running on it would restart the effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -136,7 +155,7 @@ export default function SearchOverlay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, autoVoice, voice.supported]);
 
-  // Popular terms come from the real category list, not a hardcoded list.
+  // Categories for the filter panel come from the real category list.
   useEffect(() => {
     if (!open) return;
 
@@ -145,10 +164,13 @@ export default function SearchOverlay({
       publicApi
         .listSections(1)
         .then((sections) => {
-          if (!cancelled) setPopular(sections.map((section) => section.category.title).slice(0, 8));
+          if (cancelled) return;
+          setCategories(
+            sections.map((section) => ({ slug: section.category.slug, title: section.category.title }))
+          );
         })
         .catch(() => {
-          if (!cancelled) setPopular([]);
+          if (!cancelled) setCategories([]);
         });
     }, 0);
 
@@ -158,7 +180,26 @@ export default function SearchOverlay({
     };
   }, [open]);
 
-  // Live results for whatever is typed.
+  // Mould types for the filter panel, fetched the first time it is opened.
+  useEffect(() => {
+    if (!filterPanelOpen || mouldTypes.length > 0) return;
+
+    let cancelled = false;
+    publicApi
+      .listFilterOptions()
+      .then((options) => {
+        if (!cancelled) setMouldTypes(options.mouldTypes);
+      })
+      .catch(() => {
+        // The panel still works without the mould-type row.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filterPanelOpen, mouldTypes.length]);
+
+  // Live results for whatever is typed, narrowed by the chosen filters.
   useEffect(() => {
     if (!open) return;
 
@@ -170,6 +211,7 @@ export default function SearchOverlay({
       publicApi
         .listProducts({
           ...(debouncedQuery ? { search: debouncedQuery } : {}),
+          ...filterParams,
           limit: MAX_RESULTS,
           page: 1,
         })
@@ -190,7 +232,7 @@ export default function SearchOverlay({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [debouncedQuery, open]);
+  }, [debouncedQuery, filterParams, open]);
 
   const voiceHint = useMemo(() => {
     if (voice.listening) return "Listening… speak now";
@@ -253,21 +295,38 @@ export default function SearchOverlay({
                   <X size={14} />
                 </button>
               )}
-              {voice.supported && (
+              {onFiltersChange && (
                 <button
                   type="button"
-                  onClick={voice.toggle}
-                  className={`${styles.micBtn} ${voice.listening ? styles.micActive : ""}`}
-                  aria-label={voice.listening ? "Stop voice search" : "Search by voice"}
-                  aria-pressed={voice.listening}
+                  onClick={() => setFilterPanelOpen((v) => !v)}
+                  className={`${styles.filterBtn} ${filterPanelOpen ? styles.filterBtnActive : ""}`}
+                  aria-expanded={filterPanelOpen}
+                  aria-controls="search-filter-panel"
+                  aria-label="Filter listings"
                 >
-                  <Mic size={16} />
+                  <FilterIcon size={18} />
+                  {activeFilterCount > 0 && (
+                    <span className={styles.filterCount}>{activeFilterCount}</span>
+                  )}
                 </button>
               )}
             </form>
           </div>
 
           <div className={styles.body}>
+            {filterPanelOpen && onFiltersChange && (
+              <div id="search-filter-panel">
+                <FilterPanel
+                  value={filters}
+                  onChange={onFiltersChange}
+                  categories={categories}
+                  mouldTypes={mouldTypes}
+                  wrapChips
+                  className={styles.filterPanel}
+                />
+              </div>
+            )}
+
             {voiceHint && <p className={styles.sectionLabel}>{voiceHint}</p>}
 
             {!hasQuery && recent.length > 0 && (
@@ -307,33 +366,14 @@ export default function SearchOverlay({
               </div>
             )}
 
-            {!hasQuery && popular.length > 0 && (
-              <div className={styles.popular}>
-                <p className={styles.sectionLabel}>Browse categories</p>
-                <div className={styles.chips}>
-                  {popular.map((term) => (
-                    <button
-                      key={term}
-                      type="button"
-                      className={styles.chip}
-                      onClick={() => {
-                        onQueryChange(term);
-                        commitSearch(term);
-                      }}
-                    >
-                      {term}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <p className={styles.sectionLabel}>
               {loading
                 ? "Searching…"
                 : hasQuery
                   ? `${results.length} result${results.length === 1 ? "" : "s"} for “${debouncedQuery}”`
-                  : "All listings"}
+                  : activeFilterCount > 0
+                    ? `${results.length} filtered result${results.length === 1 ? "" : "s"}`
+                    : "All listings"}
             </p>
 
             {error && <p className={styles.emptyText}>{error}</p>}

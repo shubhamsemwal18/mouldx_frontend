@@ -27,6 +27,27 @@
   cursor: pointer;
 }
 
+/* ---------- Sticky search bar ---------- */
+/* Pinned to the viewport top for the whole page. It takes no height, so the
+   glass bar floats over the hero image instead of pushing it down; the hero
+   content's top padding reserves the bar's space. */
+.searchBarSticky {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 0;
+}
+
+.searchBarInner {
+  display: flex;
+  justify-content: center;
+  padding: 24px 24px 0;
+}
+
+@media (min-width: 1024px) {
+  .searchBarInner { padding: 32px 40px 0; }
+}
+
 /* ---------- Hero section with bg image ---------- */
 .heroSection {
   position: relative;
@@ -57,14 +78,13 @@
 .content {
   position: relative;
   z-index: 2;
-  padding: 24px 24px 0;
+  /* 24px offset + 44px bar + 40px gap */
+  padding: 108px 24px 0;
 }
 
-
-.searchRow {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 40px; 
+@media (min-width: 640px) {
+  /* bar grows to 48px */
+  .content { padding-top: 112px; }
 }
 
 .eyebrow {
@@ -127,6 +147,7 @@
 
 @media (min-width: 1024px) {
   .content {
-    padding: 32px 40px 0;
+    /* 32px offset + 48px bar + 40px gap */
+    padding: 120px 40px 0;
   }
 }

@@ -156,7 +156,6 @@
 
 /* ---------- Tip box ---------- */
 .tipBox {
-  margin-top: auto;
   display: flex;
   align-items: flex-start;
   gap: 10px;

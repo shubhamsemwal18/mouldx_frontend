@@ -68,7 +68,7 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
               How would you like to continue?
             </h2>
             <p className="mx-auto mt-2 max-w-xs text-sm text-gray-500">
-              Pick your path — rent precision moulds, or list your own and start earning.
+              Pick your path — rent moulds, or list your own and start earning.
             </p>
           </div>
 
@@ -83,10 +83,10 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-bold text-gray-900 transition-colors group-hover:text-white">
-                  Start as Customer
+                  start as user
                 </span>
                 <span className="mt-0.5 block text-xs text-gray-500 transition-colors group-hover:text-blue-100">
-                  Browse and rent moulds near you
+                  Browse and rent moulds
                 </span>
               </span>
               <ArrowRight

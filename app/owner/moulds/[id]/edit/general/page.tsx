@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "../EditForm.module.css";
-import Stepper from "@/app/components/Stepper/Stepper";
 import EditTop from "../EditTop";
 import { useEditMould } from "../EditMouldProvider";
 import { CONDITIONS, ELIGIBILITY_OPTIONS, MOULD_TYPES } from "../constants";
@@ -48,9 +47,6 @@ export default function EditGeneralPage() {
 
         <h1 className={styles.title}>Mould Details</h1>
         <p className={styles.subtitle}>General, commercial &amp; eligibility.</p>
-
-        <Stepper current={3} />
-
         <div className={styles.card}>
           <label className={styles.fieldLabel}>Mould Name / ID</label>
           <input

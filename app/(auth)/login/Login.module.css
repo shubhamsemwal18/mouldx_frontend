@@ -143,13 +143,11 @@
 }
 
 .signupText {
-  margin-top: auto;
-  padding-top: 32px;
+  margin: 16px 0 0;
   text-align: center;
   font-size: 13px;
   color: #6b7280;
 }
-
 .signupLink {
   color: #2563eb;
   font-weight: 600;

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Stepper from "@/app/components/Stepper/Stepper";
 import styles from "./ProfileCreation.module.css";
 
 const REGEX = {
@@ -174,9 +173,6 @@ export default function CustomerProfileCreationPage() {
       <div className={styles.content}>
         <h1 className={styles.title}>Profile Creation</h1>
         <p className={styles.subtitle}>Step 1 of 2 — KYC details.</p>
-
-        <Stepper current={1} steps={CUSTOMER_STEPS} />
-
         <div className={styles.card}>
           <h2 className={styles.cardTitle}>Personal Details</h2>
 
