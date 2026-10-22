@@ -63,16 +63,7 @@ export default function ProfileRejectedPage() {
           <p className={styles.remarksText}>{remarks}</p>
         </div>
 
-        {/* ---------- Documents to fix ---------- */}
-        <div className={styles.docsCard}>
-          <span className={styles.docsIcon} aria-hidden>
-            !
-          </span>
-          <div>
-            <p className={styles.docsTitle}>Documents to fix</p>
-            <p className={styles.docsList}>Update the requested details and upload fresh documents.</p>
-          </div>
-        </div>
+       
       </div>
 
       {/* ---------- Sticky actions ---------- */}
