@@ -199,9 +199,7 @@ export default function OwnerMouldDetailPage({
   return (
     <div className={styles.page}>
       <div className={styles.content}>
-        <Link href="/owner/moulds" className={styles.backLink}>
-          ← My Products
-        </Link>
+       
 
         {/* ---------- Gallery (changes with the selected tab) ---------- */}
         <div className={styles.gallery}>
