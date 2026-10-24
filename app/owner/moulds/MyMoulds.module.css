@@ -977,7 +977,7 @@
 /* Regular phones (360px to 479px) */
 @media (min-width: 360px) and (max-width: 479px) {
   .imageWrap {
-    width: clamp(104px, 31vw, 130px);
+    width: clamp(104px, 38vw, 150px);
   }
 }
 

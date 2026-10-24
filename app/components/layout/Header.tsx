@@ -109,7 +109,13 @@ export default function Header() {
     const items: MenuItem[] = [
       // Static for now — there is no notifications backend yet.
       { key: "notifications", label: "Notifications", icon: Bell, href: "#" },
-      { key: "profile", label: "Profile", icon: User, href: "/profile" },
+      // Same destinations as each mode's bottom nav. Admins keep `/profile`.
+      {
+        key: "profile",
+        label: "Profile",
+        icon: User,
+        href: !isAdmin && activeRole === "owner" ? "/owner/profile" : "/profile",
+      },
     ];
 
     if (isAdmin) {

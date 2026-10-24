@@ -620,7 +620,7 @@ export default function MyMouldsPage() {
   return (
     <div className={styles.page}>
       <div className={styles.content}>
-        <h1 className={styles.title}>My Products</h1>
+        <h1 className={styles.title}>My Moulds</h1>
 
         <div className={styles.searchRow}>
           <div className={styles.searchWrap}>
