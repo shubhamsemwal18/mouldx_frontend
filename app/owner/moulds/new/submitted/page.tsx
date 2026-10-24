@@ -119,7 +119,7 @@ export default function ListingSubmittedPage() {
 
       {/* ---------- Actions ---------- */}
       <div className={styles.ctaBar}>
-        <Link href="/owner" className={`${styles.dashboardBtn} btn-primary`}>
+        <Link href="/" className={`${styles.dashboardBtn} btn-primary`}>
           Go to Dashboard
         </Link>
         <Link href="/owner/moulds" className={styles.myMouldsLink}>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   X,
@@ -47,6 +47,7 @@ const ROLE_META: Record<
 export default function Header() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { user, loading } = useAuth();
   const { activeRole, switchRole } = useActiveRole();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -76,7 +77,8 @@ export default function Header() {
   const isAdmin = Boolean(user?.approvedRoles?.includes("admin"));
   const isSignedIn = Boolean(user);
 
-  const homeHref = isAdmin ? "/admin" : activeRole === "owner" ? "/owner" : "/";
+  // Both modes share `/`; the active role decides which home it renders.
+  const homeHref = isAdmin ? "/admin" : "/";
 
   const closeMenu = () => {
     setOpen(false);
@@ -130,7 +132,8 @@ export default function Header() {
       onSelect: () => {
         setPendingToastRole(nextRole);
         switchRole(nextRole);
-        router.push(nextRole === "owner" ? "/owner" : "/");
+        // On `/` the switch alone swaps the home; elsewhere, go to it.
+        if (pathname !== "/") router.push("/");
       },
     });
 

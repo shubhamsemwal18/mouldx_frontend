@@ -75,7 +75,7 @@ export default function EditStatusPage() {
         </div>
 
         <div className={styles.ctaBar}>
-          <Link href="/owner" className={styles.primaryBtn}>
+          <Link href="/" className={styles.primaryBtn}>
             Go to Dashboard
           </Link>
           <Link href="/owner/moulds" className={styles.secondaryLink}>
@@ -172,7 +172,7 @@ export default function EditStatusPage() {
       </div>
 
       <div className={styles.ctaBar}>
-        <Link href="/owner" className={styles.primaryBtn}>
+        <Link href="/" className={styles.primaryBtn}>
           Go to Host Home <span aria-hidden>→</span>
         </Link>
         <Link href="/owner/moulds" className={styles.secondaryLink}>

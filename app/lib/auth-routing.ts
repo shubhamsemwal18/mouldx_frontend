@@ -1,5 +1,13 @@
-import type { AuthPayload, User } from "@/app/lib/types";
+import type { AuthPayload, ProfileVerificationStatus, User } from "@/app/lib/types";
 import type { SignupRole } from "@/app/lib/role-selection";
+
+/** Where a user without the approved owner role is sent instead of the host area. */
+export function getOwnerOnboardingPath(status?: ProfileVerificationStatus) {
+  if (status === "in_review") return "/owner/onboarding/review";
+  if (status === "rejected") return "/owner/onboarding/rejected";
+  if (status === "approved") return "/owner/onboarding/approved";
+  return "/owner/onboarding";
+}
 
 export function getUserLandingPath(user: User, preferredRole?: SignupRole) {
   const roles = user.approvedRoles || [];

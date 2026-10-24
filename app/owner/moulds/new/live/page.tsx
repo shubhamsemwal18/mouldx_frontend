@@ -62,7 +62,7 @@ export default function ListingLivePage() {
 
       {/* ---------- CTA ---------- */}
       <div className={styles.ctaBar}>
-        <Link href="/owner" className={`${styles.ctaBtn} btn-primary`}>
+        <Link href="/" className={`${styles.ctaBtn} btn-primary`}>
           Go to Host Home <span aria-hidden>→</span>
         </Link>
       </div>

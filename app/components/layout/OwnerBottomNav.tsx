@@ -6,7 +6,7 @@ import { Home, ClipboardList, Grid3x3, Inbox, User } from "lucide-react";
 import styles from "./OwnerBottomNav.module.css";
 
 const NAV_ITEMS = [
-  { label: "Home", href: "/owner", icon: Home },
+  { label: "Home", href: "/", icon: Home },
   { label: "Bookings", href: "/owner/bookings", icon: ClipboardList },
   { label: "Moulds", href: "/owner/moulds", icon: Grid3x3 },
   { label: "Inbox", href: "/owner/inbox", icon: Inbox },
@@ -19,7 +19,7 @@ export default function OwnerBottomNav() {
   return (
     <nav className={styles.nav}>
       {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
-        const active = href === "/owner" ? pathname === "/owner" : pathname.startsWith(href);
+        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
         return (
           <Link
             key={href}

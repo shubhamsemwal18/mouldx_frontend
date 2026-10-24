@@ -120,7 +120,7 @@ export default function ProfileApprovedPage() {
         <Link href="/owner/moulds/new/product" className={`${styles.ctaBtn} btn-primary`}>
           + List a Mould
         </Link>
-        <Link href="/owner" className={styles.skipLink}>
+        <Link href="/" className={styles.skipLink}>
           Go to Dashboard
         </Link>
       </div>

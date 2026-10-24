@@ -42,6 +42,16 @@ export function setActiveRole(role: ActiveRole) {
   window.dispatchEvent(new CustomEvent(ACTIVE_ROLE_CHANGED_EVENT, { detail: role }));
 }
 
+/**
+ * Picks the starting mode for a signed-in user who has none stored (logout
+ * clears it): approved owners start on the host dashboard. An explicit choice
+ * already stored, e.g. from the Get Started modal, is kept.
+ */
+export function initActiveRoleFor(approvedRoles: readonly string[] = []) {
+  if (getActiveRole() !== null) return;
+  if (approvedRoles.includes("owner")) setActiveRole("owner");
+}
+
 export function clearActiveRole() {
   if (typeof window === "undefined") return;
 
@@ -81,9 +91,10 @@ export function useActiveRole() {
   const inOwnerArea = Boolean(pathname?.startsWith("/owner"));
   const activeRole: ActiveRole = inOwnerArea ? "owner" : stored ?? "customer";
 
-  // An explicit switch navigates, so there is a window where the role has
-  // already changed but the route has not caught up yet. This marks that
-  // window so the route-sync below cannot overwrite the user's choice.
+  // Switching to customer from an `/owner/*` page navigates to `/`, so there
+  // is a window where the stored role has changed but the route still implies
+  // owner. This marks that window so the route-sync below cannot overwrite the
+  // user's choice. Switches made on `/` settle immediately.
   const pendingRole = useRef<ActiveRole | null>(null);
 
   // Persist what the route implies, so a deep link or a post-login redirect
@@ -92,8 +103,7 @@ export function useActiveRole() {
   // inside the effect.
   useEffect(() => {
     if (pendingRole.current) {
-      const settled = pendingRole.current === "owner" ? inOwnerArea : !inOwnerArea;
-      if (settled) pendingRole.current = null;
+      if (activeRole === pendingRole.current) pendingRole.current = null;
       return;
     }
 
@@ -101,7 +111,7 @@ export function useActiveRole() {
 
     const timer = window.setTimeout(() => setActiveRole("owner"), 0);
     return () => window.clearTimeout(timer);
-  }, [inOwnerArea, stored]);
+  }, [activeRole, inOwnerArea, stored]);
 
   const switchRole = useCallback((role: ActiveRole) => {
     pendingRole.current = role;

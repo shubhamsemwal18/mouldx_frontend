@@ -12,7 +12,7 @@ import {
 import { usePathname } from "next/navigation";
 import { authApi } from "@/app/lib/auth-api";
 import { clearAuthSession, hasAuthSessionHint, setAuthSession } from "@/app/lib/auth-storage";
-import { clearActiveRole } from "@/app/lib/active-role";
+import { clearActiveRole, initActiveRoleFor } from "@/app/lib/active-role";
 import { clearSelectedSignupRole } from "@/app/lib/role-selection";
 import type { AuthPayload, OwnerProfileVerification, User } from "@/app/lib/types";
 
@@ -96,6 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     bootstrapComplete = true;
     bootstrapPayload = payload;
     setAuthSession({ accessToken: payload.tokens.accessToken });
+    // Before `setUser`, so `/` renders the right home on the first pass.
+    initActiveRoleFor(payload.user.approvedRoles);
     setUser(payload.user);
     setOwnerProfileVerification(payload.profileVerification || payload.ownerProfileVerification || null);
   }, []);
