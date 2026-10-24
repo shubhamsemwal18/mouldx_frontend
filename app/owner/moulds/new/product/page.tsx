@@ -939,6 +939,26 @@ export default function ProductDetailsPage() {
       (k) => (k.startsWith(`c.${i}.`) || k.startsWith(`m.${i}.`)) && errors[k] && touched[k]
     );
 
+  /* ---------- Steps: product + component count → component & mould details ---------- */
+  const [step, setStep] = useState<1 | 2>(1);
+
+  const isStepOneKey = (k: string) => k === "count" || k.startsWith("p.");
+
+  const goToStep = (next: 1 | 2) => {
+    setStep(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  /** Next only advances once the product details and component count are valid. */
+  const goNext = () => {
+    const stepKeys = Object.keys(errors).filter(isStepOneKey);
+    if (stepKeys.length > 0) {
+      setTouched((prev) => ({ ...prev, ...Object.fromEntries(stepKeys.map((k) => [k, true])) }));
+      return;
+    }
+    goToStep(2);
+  };
+
   /* ---------- Submission ---------- */
 
   /**
@@ -1083,6 +1103,8 @@ export default function ProductDetailsPage() {
         if (count > 0) {
           setOpen(Object.fromEntries(Array.from({ length: count }, (_, i) => [i, true])));
         }
+        // product / count errors live on step 1, so show them there
+        if (Object.keys(errors).some(isStepOneKey)) goToStep(1);
         return;
       }
     } else if (!product.productName.trim()) {
@@ -1172,185 +1194,215 @@ export default function ProductDetailsPage() {
           </div>
         )}
 
-        {/* ================= PRODUCT DETAILS ================= */}
-        <div className={styles.card}>
-          <h2 className={styles.cardTitle}>Product Details</h2>
+        {/* ================= STEP 1: PRODUCT DETAILS + COMPONENT COUNT ================= */}
+        {step === 1 && (
+          <>
+            {/* ================= PRODUCT DETAILS ================= */}
+            <div className={styles.card}>
+              <h2 className={styles.cardTitle}>Product Details</h2>
 
-          <Field ctx={ctx} id="p.productName" label="Product Name" value={product.productName} placeholder="28mm PET Bottle Cap" onChange={(v) => setP({ productName: v })} />
+              <Field ctx={ctx} id="p.productName" label="Product Name" value={product.productName} placeholder="28mm PET Bottle Cap" onChange={(v) => setP({ productName: v })} />
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <SelectField
-              label="Category"
-              value={product.category}
-              options={toCategoryOptions(rootCategories)}
-              onChange={handleCategoryChange}
-              placeholder={rootCategories.length === 0 ? "Loading..." : "Select category"}
-              disabled={rootCategories.length === 0}
-              error={touched["p.category"] ? errors["p.category"] : ""}
-            />
-            <SelectField
-              label="Sub Category"
-              value={product.subCategory}
-              options={toCategoryOptions(subCategories)}
-              onChange={(v) => setP({ subCategory: v })}
-              placeholder={subCategories.length === 0 ? "—" : "Select sub category"}
-              disabled={subCategories.length === 0}
-              error={touched["p.subCategory"] ? errors["p.subCategory"] : ""}
-            />
-          </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <SelectField
+                  label="Category"
+                  value={product.category}
+                  options={toCategoryOptions(rootCategories)}
+                  onChange={handleCategoryChange}
+                  placeholder={rootCategories.length === 0 ? "Loading..." : "Select category"}
+                  disabled={rootCategories.length === 0}
+                  error={touched["p.category"] ? errors["p.category"] : ""}
+                />
+                <SelectField
+                  label="Sub Category"
+                  value={product.subCategory}
+                  options={toCategoryOptions(subCategories)}
+                  onChange={(v) => setP({ subCategory: v })}
+                  placeholder={subCategories.length === 0 ? "—" : "Select sub category"}
+                  disabled={subCategories.length === 0}
+                  error={touched["p.subCategory"] ? errors["p.subCategory"] : ""}
+                />
+              </div>
 
-          {categoryError && <p className={styles.errorText}>{categoryError}</p>}
+              {categoryError && <p className={styles.errorText}>{categoryError}</p>}
 
-          <MediaSection
-            ctx={ctx}
-            base="p"
-            images={product.images}
-            videos={product.videos}
-            onAddImages={(files) => addProductMedia("images", files)}
-            onRemoveImage={(i) => removeProductMedia("images", i)}
-            onAddVideos={(files) => addProductMedia("videos", files)}
-            onRemoveVideo={(i) => removeProductMedia("videos", i)}
-          />
+              <MediaSection
+                ctx={ctx}
+                base="p"
+                images={product.images}
+                videos={product.videos}
+                onAddImages={(files) => addProductMedia("images", files)}
+                onRemoveImage={(i) => removeProductMedia("images", i)}
+                onAddVideos={(files) => addProductMedia("videos", files)}
+                onRemoveVideo={(i) => removeProductMedia("videos", i)}
+              />
 
-          <DimensionsRow
-            ctx={ctx}
-            base="p"
-            values={product}
-            onChange={(k, v) => setP({ [k]: v } as Partial<ProductState>)}
-          />
+              <DimensionsRow
+                ctx={ctx}
+                base="p"
+                values={product}
+                onChange={(k, v) => setP({ [k]: v } as Partial<ProductState>)}
+              />
 
-          <div className="mt-3">
-            <Field ctx={ctx} id="p.weight" label="Weight (g)" value={product.weight} mode="dec" placeholder="3.2" onChange={(v) => setP({ weight: v })} />
-          </div>
+              <div className="mt-3">
+                <Field ctx={ctx} id="p.weight" label="Weight (g)" value={product.weight} mode="dec" placeholder="3.2" onChange={(v) => setP({ weight: v })} />
+              </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <Field ctx={ctx} id="p.material" label="Material" value={product.material} placeholder="HDPE" onChange={(v) => setP({ material: v })} />
-            <Field ctx={ctx} id="p.surfaceFinish" label="Surface Finish" value={product.surfaceFinish} placeholder="Matte" onChange={(v) => setP({ surfaceFinish: v })} />
-          </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Field ctx={ctx} id="p.material" label="Material" value={product.material} placeholder="HDPE" onChange={(v) => setP({ material: v })} />
+                <Field ctx={ctx} id="p.surfaceFinish" label="Surface Finish" value={product.surfaceFinish} placeholder="Matte" onChange={(v) => setP({ surfaceFinish: v })} />
+              </div>
 
-          <div className="mt-3">
-            <Field ctx={ctx} id="p.securityDeposit" label="Security Deposit Amount (₹)" value={product.securityDeposit} mode="dec" placeholder="50000" onChange={(v) => setP({ securityDeposit: v })} />
-          </div>
-        </div>
+              <div className="mt-3">
+                <Field ctx={ctx} id="p.securityDeposit" label="Security Deposit Amount (₹)" value={product.securityDeposit} mode="dec" placeholder="50000" onChange={(v) => setP({ securityDeposit: v })} />
+              </div>
+            </div>
 
-        {/* ---------- Rental price hero card ---------- */}
-        <div className={styles.rentalCard}>
-          <span className={styles.rentalPill}>RENTAL</span>
-          <div className={styles.rentalPriceRow}>
-            <span className={styles.rentalPrice}>₹{product.perDayCharges || "0"}</span>
-            <span className={styles.rentalPeriod}>/ day</span>
-          </div>
-          <p className={styles.rentalSubtext}>Per day rental charges</p>
+            {/* ---------- Rental price hero card ---------- */}
+            <div className={styles.rentalCard}>
+              <span className={styles.rentalPill}>RENTAL</span>
+              <div className={styles.rentalPriceRow}>
+                <span className={styles.rentalPrice}>₹{product.perDayCharges || "0"}</span>
+                <span className={styles.rentalPeriod}>/ day</span>
+              </div>
+              <p className={styles.rentalSubtext}>Per day rental charges</p>
 
-          <input
-            type="text"
-            inputMode="decimal"
-            value={product.perDayCharges}
-            onChange={(e) => setP({ perDayCharges: clean(e.target.value, "dec") })}
-            onBlur={() => ctx.touch("p.perDayCharges")}
-            placeholder="Enter amount"
-            className={styles.rentalInput}
-          />
-          {touched["p.perDayCharges"] && errors["p.perDayCharges"] && (
-            <p className={styles.rentalError}>{errors["p.perDayCharges"]}</p>
-          )}
-        </div>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={product.perDayCharges}
+                onChange={(e) => setP({ perDayCharges: clean(e.target.value, "dec") })}
+                onBlur={() => ctx.touch("p.perDayCharges")}
+                placeholder="Enter amount"
+                className={styles.rentalInput}
+              />
+              {touched["p.perDayCharges"] && errors["p.perDayCharges"] && (
+                <p className={styles.rentalError}>{errors["p.perDayCharges"]}</p>
+              )}
+            </div>
 
-        {/* ================= SET OF COMPONENTS / MOULDS ================= */}
-        <div className={styles.card}>
-          <h2 className={styles.cardTitle}>Set of Components / Moulds Involved</h2>
-          <label className={styles.fieldLabel}>Number of components / moulds</label>
-          <select
-            value={product.componentCount}
-            onChange={(e) => handleCountChange(e.target.value)}
-            className={`${styles.select} ${countError ? styles.inputError : ""}`}
-          >
-            {Array.from({ length: MAX_COMPONENTS + 1 }, (_, i) => String(i)).map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-          {countError && <p className={styles.errorText}>{countError}</p>}
-          <p className={styles.helperText}>
-            {!hasSelection
-              ? "Select how many components / moulds are involved. The forms will appear below."
-              : multiple
-              ? `Fill details for all ${count} components below (example: Pen → Cap, Body, Bottom, Top).`
-              : "Single mould. Fill the mould details below."}
-          </p>
-        </div>
-
-        {/* ================= SINGLE MOULD ================= */}
-        {count === 1 && (
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}>Mould Details</h2>
-            <MouldFields
-              ctx={ctx}
-              base="m.0"
-              m={moulds[0]}
-              set={(patch) => setMould(0, patch)}
-              onAddImages={(files) => addMouldMedia(0, "images", files)}
-              onRemoveImage={(i) => removeMouldMedia(0, "images", i)}
-              onAddVideos={(files) => addMouldMedia(0, "videos", files)}
-              onRemoveVideo={(i) => removeMouldMedia(0, "videos", i)}
-            />
-          </div>
+            {/* ================= SET OF COMPONENTS / MOULDS ================= */}
+            <div className={styles.card}>
+              <h2 className={styles.cardTitle}>Set of Components / Moulds Involved</h2>
+              <label className={styles.fieldLabel}>Number of components / moulds</label>
+              <select
+                value={product.componentCount}
+                onChange={(e) => handleCountChange(e.target.value)}
+                className={`${styles.select} ${countError ? styles.inputError : ""}`}
+              >
+                {Array.from({ length: MAX_COMPONENTS + 1 }, (_, i) => String(i)).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              {countError && <p className={styles.errorText}>{countError}</p>}
+              <p className={styles.helperText}>
+                {!hasSelection
+                  ? "Select how many components / moulds are involved. The forms will appear below."
+                  : multiple
+                  ? `Fill details for all ${count} components below (example: Pen → Cap, Body, Bottom, Top).`
+                  : "Single mould. Fill the mould details below."}
+              </p>
+            </div>
+          </>
         )}
 
-        {/* ================= MULTIPLE COMPONENTS (collapsible) ================= */}
-        {multiple &&
-          Array.from({ length: count }, (_, i) => {
-            const c = components[i];
-            const m = moulds[i];
-            if (!c || !m) return null;
-            const cBase = `c.${i}`;
-            return (
-              <Accordion
-                key={i}
-                title={`Component ${i + 1}`}
-                subtitle={c.name || "Tap to fill component and mould details"}
-                open={isOpen(i)}
-                onToggle={() => toggle(i)}
-                hasError={sectionHasError(i)}
-              >
-                {/* ----- Component Details ----- */}
-                <p className={styles.subTitle}>Component Details</p>
+        {/* ================= STEP 2: COMPONENT & MOULD DETAILS ================= */}
+        {step === 2 && (
+          <>
+            <button
+              type="button"
+              onClick={() => goToStep(1)}
+              disabled={isBusy}
+              className="mt-4 text-sm font-semibold text-gray-500"
+            >
+              ← Back to Product Details
+            </button>
 
-                <div className="mt-3">
-                  <Field ctx={ctx} id={`${cBase}.name`} label="Component Name" value={c.name} placeholder="Cap" onChange={(v) => setComp(i, { name: v })} />
-                </div>
+            <div className={styles.card}>
+              <h2 className={styles.cardTitle}>
+                {count} {count === 1 ? "Component / Mould" : "Components / Moulds"} Involved
+              </h2>
+              <p className={styles.helperText}>
+                {multiple
+                  ? "Tap a component to open or close its component and mould details."
+                  : "Fill the mould details below."}
+              </p>
+            </div>
 
-                <DimensionsRow
+            {/* ================= SINGLE MOULD ================= */}
+            {count === 1 && (
+              <div className={styles.card}>
+                <h2 className={styles.cardTitle}>Mould Details</h2>
+                <MouldFields
                   ctx={ctx}
-                  base={cBase}
-                  values={c}
-                  onChange={(k, v) => setComp(i, { [k]: v } as Partial<ComponentState>)}
+                  base="m.0"
+                  m={moulds[0]}
+                  set={(patch) => setMould(0, patch)}
+                  onAddImages={(files) => addMouldMedia(0, "images", files)}
+                  onRemoveImage={(i) => removeMouldMedia(0, "images", i)}
+                  onAddVideos={(files) => addMouldMedia(0, "videos", files)}
+                  onRemoveVideo={(i) => removeMouldMedia(0, "videos", i)}
                 />
+              </div>
+            )}
 
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <Field ctx={ctx} id={`${cBase}.weight`} label="Weight (g)" value={c.weight} mode="dec" placeholder="3.2" onChange={(v) => setComp(i, { weight: v })} />
-                  <Field ctx={ctx} id={`${cBase}.surfaceFinish`} label="Surface Finish" value={c.surfaceFinish} placeholder="Matte" onChange={(v) => setComp(i, { surfaceFinish: v })} />
-                </div>
+            {/* ================= MULTIPLE COMPONENTS (collapsible) ================= */}
+            {multiple &&
+              Array.from({ length: count }, (_, i) => {
+                const c = components[i];
+                const m = moulds[i];
+                if (!c || !m) return null;
+                const cBase = `c.${i}`;
+                return (
+                  <Accordion
+                    key={i}
+                    title={`Component ${i + 1}`}
+                    subtitle={c.name || "Tap to fill component and mould details"}
+                    open={isOpen(i)}
+                    onToggle={() => toggle(i)}
+                    hasError={sectionHasError(i)}
+                  >
+                    {/* ----- Component Details ----- */}
+                    <p className={styles.subTitle}>Component Details</p>
 
-                {/* ----- Mould Details ----- */}
-                <div className={styles.divider} />
-                <p className={styles.subTitle}>Mould Details</p>
-                <div className="mt-3">
-                  <MouldFields
-                    ctx={ctx}
-                    base={`m.${i}`}
-                    m={m}
-                    set={(patch) => setMould(i, patch)}
-                    onAddImages={(files) => addMouldMedia(i, "images", files)}
-                    onRemoveImage={(idx) => removeMouldMedia(i, "images", idx)}
-                    onAddVideos={(files) => addMouldMedia(i, "videos", files)}
-                    onRemoveVideo={(idx) => removeMouldMedia(i, "videos", idx)}
-                  />
-                </div>
-              </Accordion>
-            );
-          })}
+                    <div className="mt-3">
+                      <Field ctx={ctx} id={`${cBase}.name`} label="Component Name" value={c.name} placeholder="Cap" onChange={(v) => setComp(i, { name: v })} />
+                    </div>
+
+                    <DimensionsRow
+                      ctx={ctx}
+                      base={cBase}
+                      values={c}
+                      onChange={(k, v) => setComp(i, { [k]: v } as Partial<ComponentState>)}
+                    />
+
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <Field ctx={ctx} id={`${cBase}.weight`} label="Weight (g)" value={c.weight} mode="dec" placeholder="3.2" onChange={(v) => setComp(i, { weight: v })} />
+                      <Field ctx={ctx} id={`${cBase}.surfaceFinish`} label="Surface Finish" value={c.surfaceFinish} placeholder="Matte" onChange={(v) => setComp(i, { surfaceFinish: v })} />
+                    </div>
+
+                    {/* ----- Mould Details ----- */}
+                    <div className={styles.divider} />
+                    <p className={styles.subTitle}>Mould Details</p>
+                    <div className="mt-3">
+                      <MouldFields
+                        ctx={ctx}
+                        base={`m.${i}`}
+                        m={m}
+                        set={(patch) => setMould(i, patch)}
+                        onAddImages={(files) => addMouldMedia(i, "images", files)}
+                        onRemoveImage={(idx) => removeMouldMedia(i, "images", idx)}
+                        onAddVideos={(files) => addMouldMedia(i, "videos", files)}
+                        onRemoveVideo={(idx) => removeMouldMedia(i, "videos", idx)}
+                      />
+                    </div>
+                  </Accordion>
+                );
+              })}
+          </>
+        )}
       </div>
 
       {/* ---------- Sticky Submit ---------- */}
@@ -1378,18 +1430,29 @@ export default function ProductDetailsPage() {
           >
             {saving === "draft" ? "Saving..." : editingId ? "Save Changes" : "Save as Draft"}
           </button>
-          <button
-            type="button"
-            onClick={() => save("submit")}
-            disabled={isBusy}
-            className={`${styles.ctaBtn} btn-primary`}
-          >
-            {saving === "submit"
-              ? "Submitting..."
-              : listingStatus === "rejected"
-                ? "Resubmit for Approval"
-                : "Submit for Approval"}
-          </button>
+          {step === 1 ? (
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={isBusy}
+              className={`${styles.ctaBtn} btn-primary`}
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => save("submit")}
+              disabled={isBusy}
+              className={`${styles.ctaBtn} btn-primary`}
+            >
+              {saving === "submit"
+                ? "Submitting..."
+                : listingStatus === "rejected"
+                  ? "Resubmit for Approval"
+                  : "Submit for Approval"}
+            </button>
+          )}
         </div>
       </div>
     </div>
