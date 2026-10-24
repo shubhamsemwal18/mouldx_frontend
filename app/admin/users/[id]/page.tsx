@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./UserDetail.module.css";
 
-type Role = "Owner" | "Customer";
+type Role = "Host" | "User";
 type KycStatus = "VERIFIED" | "PENDING" | "N/A";
 
 interface OwnerExtra {
@@ -46,7 +46,7 @@ const USER_DETAILS: Record<string, UserDetail> = {
   "1": {
     id: "1",
     name: "Rohit Sharma",
-    role: "Owner",
+    role: "Host",
     phone: "+91 98XXXXXX10",
     email: "rohit@sharmaind.com",
     joined: "2 Mar 2026",
@@ -65,7 +65,7 @@ const USER_DETAILS: Record<string, UserDetail> = {
       {
         id: "r1",
         rating: 5,
-        text: "Mould was exactly as described — clean, well-maintained and the owner helped with setup over a call. Cycle time matched what was listed.",
+        text: "Mould was exactly as described — clean, well-maintained and the host helped with setup over a call. Cycle time matched what was listed.",
       },
       {
         id: "r2",
@@ -89,7 +89,7 @@ const USER_DETAILS: Record<string, UserDetail> = {
   "2": {
     id: "2",
     name: "Neha Kapoor",
-    role: "Customer",
+    role: "User",
     phone: "+91 97XXXXXX45",
     email: "neha.kapoor@gmail.com",
     joined: "18 Apr 2026",
@@ -101,7 +101,7 @@ const USER_DETAILS: Record<string, UserDetail> = {
     activityLabel: "bookings",
     recentActivity: [
       { text: "Completed booking BK-24102", date: "3 days ago" },
-      { text: "Rated owner Apex Poly — 5 stars", date: "3 days ago" },
+      { text: "Rated host Apex Poly — 5 stars", date: "3 days ago" },
       { text: "New booking request for MX-000198", date: "1 week ago" },
     ],
     reviews: [
@@ -115,7 +115,7 @@ const USER_DETAILS: Record<string, UserDetail> = {
   "3": {
     id: "3",
     name: "Vikram Rao",
-    role: "Owner",
+    role: "Host",
     phone: "+91 96XXXXXX88",
     email: "vikram@vectormolds.com",
     joined: "30 Jan 2026",

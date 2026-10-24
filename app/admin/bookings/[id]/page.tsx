@@ -138,9 +138,9 @@ export default function BookingApprovalDetailPage({
           <div className={styles.card}>
             <h2 className={styles.cardTitle}>Parties</h2>
 
-            <Row label="Customer" value={`${booking.customer} · ${booking.customerCity}`} />
+            <Row label="User" value={`${booking.customer} · ${booking.customerCity}`} />
             <Row
-              label="Owner"
+              label="Host"
               value={`${booking.owner}${booking.ownerVerified ? " · KYC Verified" : ""}`}
               isLast
             />

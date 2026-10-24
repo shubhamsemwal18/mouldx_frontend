@@ -371,7 +371,7 @@ export default function OwnerMouldDetailPage({
                 }
               />
               <Row
-                label="Visible to customers"
+                label="Visible to users"
                 value={isLive ? "Yes" : "No"}
               />
               <Row label="Submitted" value={formatDateTime(product.submittedAt)} />

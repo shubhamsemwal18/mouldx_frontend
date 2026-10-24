@@ -33,7 +33,7 @@ const buildSteps = (listing: Product | null): TimelineStep[] => [
   { id: "review", title: "Admin review", status: "pending", meta: "Pending" },
   {
     id: "live",
-    title: "Live to customers",
+    title: "Live to users",
     status: "upcoming",
     meta: "Visible in Explore after approval",
   },
@@ -112,7 +112,7 @@ export default function ListingSubmittedPage() {
             i
           </span>
           <p className={styles.infoText}>
-            This mould will not appear in customer search or Explore until admin approval is complete.
+            This mould will not appear in user search or Explore until admin approval is complete.
           </p>
         </div>
       </div>

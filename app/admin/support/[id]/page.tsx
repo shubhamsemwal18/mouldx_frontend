@@ -56,7 +56,7 @@ export default function AdminSupportThreadPage({
           <p className={styles.name}>
             {thread.name}
             <span className={`${styles.roleTag} ${thread.role === "owner" ? styles.roleOwner : styles.roleCustomer}`}>
-              {thread.role === "owner" ? "Owner" : "Customer"}
+              {thread.role === "owner" ? "Host" : "User"}
             </span>
           </p>
           <p className={styles.meta}>

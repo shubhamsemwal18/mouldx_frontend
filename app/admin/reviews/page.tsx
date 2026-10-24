@@ -41,7 +41,7 @@ const INITIAL_REVIEWS: Review[] = [
     bookingId: "BK-24581",
     rating: 5,
     reviewText:
-      "Mould was exactly as described — clean, well-maintained and the owner helped with setup over a call. Cycle time matched what was listed. Would rent again for our next PET cap run.",
+      "Mould was exactly as described — clean, well-maintained and the host helped with setup over a call. Cycle time matched what was listed. Would rent again for our next PET cap run.",
     createdDateISO: "2026-09-16",
     initial: "R",
     gradient: "linear-gradient(135deg, #22d3ee, #2563eb)",
@@ -62,7 +62,7 @@ const INITIAL_REVIEWS: Review[] = [
     bookingId: "BK-24581",
     rating: 4,
     reviewText:
-      "Returned in good condition, minor cleaning needed on the cooling channels. Customer communicated delays in advance which we appreciated. Would rent to them again.",
+      "Returned in good condition, minor cleaning needed on the cooling channels. User communicated delays in advance which we appreciated. Would rent to them again.",
     createdDateISO: "2026-09-17",
     initial: "S",
     gradient: "linear-gradient(135deg, #2563eb, #1d4ed8)",
@@ -83,7 +83,7 @@ const INITIAL_REVIEWS: Review[] = [
     bookingId: "BK-24602",
     rating: 3,
     reviewText:
-      "Mould worked fine but dispatch was delayed by a day from what was confirmed in the booking. Owner was responsive once we followed up. Product quality was okay overall.",
+      "Mould worked fine but dispatch was delayed by a day from what was confirmed in the booking. Host was responsive once we followed up. Product quality was okay overall.",
     createdDateISO: "2026-09-14",
     initial: "N",
     gradient: "linear-gradient(135deg, #34d399, #059669)",
@@ -125,7 +125,7 @@ const INITIAL_REVIEWS: Review[] = [
     bookingId: "BK-24602",
     rating: 5,
     reviewText:
-      "Smooth rental, mould came back on time and in the same condition it was sent. Clear communication throughout. Happy to work with this customer again.",
+      "Smooth rental, mould came back on time and in the same condition it was sent. Clear communication throughout. Happy to work with this user again.",
     createdDateISO: "2026-09-15",
     initial: "N",
     gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
@@ -141,8 +141,8 @@ const INITIAL_REVIEWS: Review[] = [
 
 const TYPE_FILTERS: { key: TypeFilter; label: string }[] = [
   { key: "ALL", label: "All" },
-  { key: "CUSTOMER", label: "Customer" },
-  { key: "OWNER", label: "Owner" },
+  { key: "CUSTOMER", label: "User" },
+  { key: "OWNER", label: "Host" },
 ];
 
 function StarRating({ value, size = "sm" }: { value: number; size?: "sm" | "lg" }) {
@@ -200,7 +200,7 @@ export default function ReviewsPage() {
       <div className={styles.headerRow}>
         <div>
           <h1 className={styles.title}>Reviews</h1>
-          <p className={styles.subtitle}>Ratings &amp; feedback from customers and owners.</p>
+          <p className={styles.subtitle}>Ratings &amp; feedback from users and hosts.</p>
         </div>
         <span className={styles.countPill}>{reviews.length} TOTAL</span>
       </div>
@@ -268,7 +268,7 @@ export default function ReviewsPage() {
                         r.reviewerType === "OWNER" ? styles.typeOwner : styles.typeCustomer
                       }`}
                     >
-                      {r.reviewerType === "OWNER" ? "Owner" : "Customer"}
+                      {r.reviewerType === "OWNER" ? "Host" : "User"}
                     </span>
                   </td>
                   <td className={styles.mouldCell}>
@@ -326,7 +326,7 @@ export default function ReviewsPage() {
                   r.reviewerType === "OWNER" ? styles.typeOwner : styles.typeCustomer
                 }`}
               >
-                {r.reviewerType === "OWNER" ? "Owner" : "Customer"}
+                {r.reviewerType === "OWNER" ? "Host" : "User"}
               </span>
             </div>
 
@@ -405,7 +405,7 @@ export default function ReviewsPage() {
                         viewReview.reviewerType === "OWNER" ? styles.typeOwner : styles.typeCustomer
                       }`}
                     >
-                      {viewReview.reviewerType === "OWNER" ? "Owner" : "Customer"}
+                      {viewReview.reviewerType === "OWNER" ? "Host" : "User"}
                     </span>
                   </div>
                 </div>

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./UserManagement.module.css";
 
-type Role = "Owner" | "Customer";
+type Role = "Host" | "User";
 type KycStatus = "VERIFIED" | "PENDING" | "N/A";
 
 interface UserRow {
@@ -19,14 +19,14 @@ interface UserRow {
   gradient: string;
 }
 
-const TABS = ["All", "Owners", "Customers"] as const;
+const TABS = ["All", "Hosts", "Users"] as const;
 
 // TEMP dummy data — real users API se aayega
 const INITIAL_USERS: UserRow[] = [
   {
     id: "1",
     name: "Rohit Sharma",
-    role: "Owner",
+    role: "Host",
     joined: "2 Mar 2026",
     activityCount: 12,
     activityLabel: "listings",
@@ -37,7 +37,7 @@ const INITIAL_USERS: UserRow[] = [
   {
     id: "2",
     name: "Neha Kapoor",
-    role: "Customer",
+    role: "User",
     joined: "18 Apr 2026",
     activityCount: 9,
     activityLabel: "bookings",
@@ -48,7 +48,7 @@ const INITIAL_USERS: UserRow[] = [
   {
     id: "3",
     name: "Vikram Rao",
-    role: "Owner",
+    role: "Host",
     joined: "30 Jan 2026",
     activityCount: 6,
     activityLabel: "listings",
@@ -92,8 +92,8 @@ export default function UserManagementPage() {
 
   const filtered = useMemo(() => {
     let list = users;
-    if (activeTab === "Owners") list = list.filter((u) => u.role === "Owner");
-    if (activeTab === "Customers") list = list.filter((u) => u.role === "Customer");
+    if (activeTab === "Hosts") list = list.filter((u) => u.role === "Host");
+    if (activeTab === "Users") list = list.filter((u) => u.role === "User");
     if (search.trim() !== "") {
       const q = search.toLowerCase();
       list = list.filter((u) => u.name.toLowerCase().includes(q));

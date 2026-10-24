@@ -26,7 +26,7 @@ export default function ListingLivePage() {
             <span aria-hidden>✓</span> APPROVED
           </span>
           <h2 className={styles.heroHeading}>Mould is LIVE</h2>
-          <p className={styles.heroSubtext}>The listing is now visible to customers.</p>
+          <p className={styles.heroSubtext}>The listing is now visible to users.</p>
         </div>
 
         {/* ---------- Listing status card ---------- */}
@@ -63,7 +63,7 @@ export default function ListingLivePage() {
       {/* ---------- CTA ---------- */}
       <div className={styles.ctaBar}>
         <Link href="/owner" className={`${styles.ctaBtn} btn-primary`}>
-          Go to Owner Home <span aria-hidden>→</span>
+          Go to Host Home <span aria-hidden>→</span>
         </Link>
       </div>
     </div>

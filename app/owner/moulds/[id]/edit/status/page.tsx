@@ -22,7 +22,7 @@ export default function EditStatusPage() {
     const steps = [
       { id: "submitted", title: "Changes submitted", state: "done", meta: formatDateTime(approval.submittedAt) },
       { id: "review", title: "Admin review", state: "pending", meta: `Pending · ETA ${approval.etaHours ?? 12}h` },
-      { id: "live", title: "Live to customers", state: "upcoming", meta: "Updated listing goes live after approval" },
+      { id: "live", title: "Live to users", state: "upcoming", meta: "Updated listing goes live after approval" },
     ];
 
     return (
@@ -69,7 +69,7 @@ export default function EditStatusPage() {
               i
             </span>
             <p className={styles.infoText}>
-              This mould will not appear in customer search or Explore until admin approval is complete.
+              This mould will not appear in user search or Explore until admin approval is complete.
             </p>
           </div>
         </div>
@@ -139,7 +139,7 @@ export default function EditStatusPage() {
             <span aria-hidden>✓</span> APPROVED
           </span>
           <h2 className={styles.heroHeading}>Mould is LIVE</h2>
-          <p className={styles.heroSubtext}>The listing is now visible to customers.</p>
+          <p className={styles.heroSubtext}>The listing is now visible to users.</p>
         </div>
 
         <div className={styles.card}>
@@ -173,7 +173,7 @@ export default function EditStatusPage() {
 
       <div className={styles.ctaBar}>
         <Link href="/owner" className={styles.primaryBtn}>
-          Go to Owner Home <span aria-hidden>→</span>
+          Go to Host Home <span aria-hidden>→</span>
         </Link>
         <Link href="/owner/moulds" className={styles.secondaryLink}>
           View My Moulds

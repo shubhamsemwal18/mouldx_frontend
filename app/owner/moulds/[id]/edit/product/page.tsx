@@ -184,7 +184,7 @@ export default function EditProductPage() {
                 {locationStatus === "fetching" && "Capturing location…"}
                 {locationStatus === "done" &&
                   geo &&
-                  `Captured at ${geo.lat.toFixed(4)}°N, ${geo.lng.toFixed(4)}°E — visible to customer with the listing.`}
+                  `Captured at ${geo.lat.toFixed(4)}°N, ${geo.lng.toFixed(4)}°E — visible to users with the listing.`}
                 {locationStatus === "denied" &&
                   "Location permission was not granted — photo will upload without a geotag."}
               </p>

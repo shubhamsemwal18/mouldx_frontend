@@ -34,10 +34,18 @@ const getInitials = (name?: string) =>
     .slice(0, 2)
     .toUpperCase();
 
+// Display names for the API role values, which stay "customer" / "owner".
+const ROLE_LABELS: Record<Exclude<UserRole, "admin">, string> = {
+  customer: "User",
+  owner: "Host",
+};
+
 const formatRoles = (roles: UserRole[] = []) => {
-  const visibleRoles = roles.filter((role) => role !== "admin");
-  if (!visibleRoles.length) return "Customer";
-  return visibleRoles.map((role) => role[0].toUpperCase() + role.slice(1)).join(", ");
+  const visibleRoles = roles.filter(
+    (role): role is Exclude<UserRole, "admin"> => role !== "admin",
+  );
+  if (!visibleRoles.length) return ROLE_LABELS.customer;
+  return visibleRoles.map((role) => ROLE_LABELS[role]).join(", ");
 };
 
 const formatDate = (date?: string) => {
@@ -193,7 +201,7 @@ export default function CustomerProfilePage() {
       </button>
 
       <Link href="/switch-profile" className={styles.switchProfileBtn}>
-        Switch Profile — Customer ↔ Owner
+        Switch Profile — User ↔ Host
       </Link>
     </div>
   );

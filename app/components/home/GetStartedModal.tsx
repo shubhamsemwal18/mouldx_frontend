@@ -83,7 +83,7 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-bold text-gray-900 transition-colors group-hover:text-white">
-                  start as user
+                  Start as User
                 </span>
                 <span className="mt-0.5 block text-xs text-gray-500 transition-colors group-hover:text-blue-100">
                   Browse and rent moulds

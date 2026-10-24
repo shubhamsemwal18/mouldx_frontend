@@ -31,7 +31,7 @@ const BOOKINGS: Record<string, ReviewBooking> = {
     dateRange: "20 – 26 Jul",
     image: "https://picsum.photos/seed/mould-6/800/600",
     rating: 4,
-    review: "Mould was in good condition and the owner was cooperative.",
+    review: "Mould was in good condition and the host was cooperative.",
     tags: ["Good condition", "Easy pickup"],
   },
 };
@@ -41,7 +41,7 @@ const TAGS = [
   "As described",
   "Easy pickup",
   "Fair price",
-  "Responsive owner",
+  "Responsive host",
   "Needs maintenance",
 ];
 
@@ -223,7 +223,7 @@ export default function ReviewPage() {
               className={styles.textarea}
               rows={5}
               maxLength={MAX_CHARS}
-              placeholder="Share details about the mould condition, pickup and the owner..."
+              placeholder="Share details about the mould condition, pickup and the host..."
               value={review}
               onChange={(e) => setReview(e.target.value)}
             />

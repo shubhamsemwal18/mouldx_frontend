@@ -114,7 +114,7 @@ export default function DamageClaimReviewPage({
         <div className={styles.leftCol}>
           {/* Evidence */}
           <div className={styles.card}>
-            <h2 className={styles.cardTitle}>Evidence — Owner vs Customer</h2>
+            <h2 className={styles.cardTitle}>Evidence — Host vs User</h2>
             <div className={styles.evidenceGrid}>
               {claim.evidence.map((item) => (
                 <button
@@ -133,7 +133,7 @@ export default function DamageClaimReviewPage({
 
           {/* Owner's claim */}
           <div className={styles.card}>
-            <h2 className={styles.cardTitle}>Owner&apos;s Claim</h2>
+            <h2 className={styles.cardTitle}>Host&apos;s Claim</h2>
             <p className={styles.claimText}>{claim.ownerClaim}</p>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function DamageClaimReviewPage({
             <div className={styles.divider} />
 
             <div className={styles.settlementRow}>
-              <span className={styles.refundLabel}>Refund to customer</span>
+              <span className={styles.refundLabel}>Refund to user</span>
               <span className={styles.refundValue}>₹{refundToCustomer.toLocaleString("en-IN")}</span>
             </div>
 

@@ -49,7 +49,7 @@ export default function ConditionMatchesPage({
             <span aria-hidden>✓</span> RETURN ACCEPTED
           </span>
           <h2 className={styles.heroHeading}>Security Deposit</h2>
-          <p className={styles.heroSubtext}>Full security deposit released to customer.</p>
+          <p className={styles.heroSubtext}>Full security deposit released to user.</p>
         </div>
 
         {/* ---------- Booking status card ---------- */}
@@ -59,7 +59,7 @@ export default function ConditionMatchesPage({
             <span className={styles.completedPill}>COMPLETED</span>
           </div>
           <p className={styles.statusText}>
-            Customer receives the full security deposit through the admin-supervised payment flow.
+            User receives the full security deposit through the admin-supervised payment flow.
           </p>
         </div>
 
@@ -85,7 +85,7 @@ export default function ConditionMatchesPage({
           onClick={() => router.push(`/owner/bookings/${id}/rate`)}
           className={styles.ctaBtn}
         >
-          <span aria-hidden>★</span> Rate Customer
+          <span aria-hidden>★</span> Rate User
         </button>
       </div>
     </div>

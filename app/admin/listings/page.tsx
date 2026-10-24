@@ -157,7 +157,7 @@ export default function ListingApprovalsPage() {
     try {
       const data = await adminApi.listProducts(buildParams({ page: 1, limit: 100 }));
       const rows: (string | number)[][] = [
-        ["Code", "Product", "Category", "Owner", "Price Per Day (INR)", "Moulds", "Submitted", "Status"],
+        ["Code", "Product", "Category", "Host", "Price Per Day (INR)", "Moulds", "Submitted", "Status"],
         ...data.products.map((listing) => [
           listing.code,
           listing.name,
@@ -202,7 +202,7 @@ export default function ListingApprovalsPage() {
           </span>
           <input
             type="text"
-            placeholder="Search by code, product, owner..."
+            placeholder="Search by code, product, host..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={styles.searchInput}
@@ -275,7 +275,7 @@ export default function ListingApprovalsPage() {
               <tr>
                 <th>Code</th>
                 <th>Product</th>
-                <th>Owner</th>
+                <th>Host</th>
                 <th>Price/Day</th>
                 <th>Moulds</th>
                 <th>Status</th>

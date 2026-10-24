@@ -23,7 +23,7 @@ interface BookingDetailRaw {
   pricePerDay: number;
   securityDeposit: number;
   platformFee: number;
-  paymentMethod: "Platform" | "Direct to Owner";
+  paymentMethod: "Platform" | "Direct to Host";
   status: string;
   steps: TimelineStep[];
   returnDueAt?: string;
@@ -49,7 +49,7 @@ const DUMMY_BOOKINGS: Record<string, BookingDetailRaw> = {
     status: "Approval Pending",
     steps: [
       { id: "payment", title: "Payment received", status: "done", meta: "Just now" },
-      { id: "approval", title: "Owner approval", status: "pending", meta: "Pending · ETA 6h" },
+      { id: "approval", title: "Host approval", status: "pending", meta: "Pending · ETA 6h" },
       { id: "dispatch", title: "Dispatch", status: "upcoming", meta: "Scheduled after approval" },
     ],
   },
@@ -68,7 +68,7 @@ const DUMMY_BOOKINGS: Record<string, BookingDetailRaw> = {
     status: "Arrived",
     steps: [
       { id: "payment", title: "Payment received", status: "done", meta: "2 days ago" },
-      { id: "approval", title: "Owner approval", status: "done", meta: "Approved" },
+      { id: "approval", title: "Host approval", status: "done", meta: "Approved" },
       { id: "dispatch", title: "Dispatch", status: "done", meta: "Arrived at your location" },
     ],
   },
@@ -88,7 +88,7 @@ const DUMMY_BOOKINGS: Record<string, BookingDetailRaw> = {
     returnDueAt: "2026-09-20T18:00:00",
     steps: [
       { id: "payment", title: "Payment received", status: "done", meta: "8 days ago" },
-      { id: "approval", title: "Owner approval", status: "done", meta: "Approved" },
+      { id: "approval", title: "Host approval", status: "done", meta: "Approved" },
       { id: "dispatch", title: "Dispatch", status: "done", meta: "Delivered" },
     ],
   },
@@ -107,7 +107,7 @@ const DUMMY_BOOKINGS: Record<string, BookingDetailRaw> = {
     status: "Completed",
     steps: [
       { id: "payment", title: "Payment received", status: "done", meta: "1 month ago" },
-      { id: "approval", title: "Owner approval", status: "done", meta: "Approved" },
+      { id: "approval", title: "Host approval", status: "done", meta: "Approved" },
       { id: "dispatch", title: "Dispatch", status: "done", meta: "Returned" },
     ],
   },
@@ -126,7 +126,7 @@ const DUMMY_BOOKINGS: Record<string, BookingDetailRaw> = {
     status: "Cancelled",
     steps: [
       { id: "payment", title: "Payment received", status: "done", meta: "1 month ago" },
-      { id: "approval", title: "Owner approval", status: "pending", meta: "Cancelled by owner" },
+      { id: "approval", title: "Host approval", status: "pending", meta: "Cancelled by host" },
       { id: "dispatch", title: "Dispatch", status: "upcoming", meta: "—" },
     ],
   },
@@ -270,7 +270,7 @@ export default function BookingDetailPage({
           <h2 className={styles.cardTitle}>Need help?</h2>
           <div className={styles.supportRow}>
             <Link href="/inbox" className={`${styles.supportBtn} btn-primary`}>
-              Message Owner
+              Message Host
             </Link>
             <button type="button" className={styles.supportBtnOutline}>
               Raise an Issue

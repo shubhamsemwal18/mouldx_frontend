@@ -13,7 +13,7 @@ const IMG = {
 const STATS = [
   { value: "1,240+", label: "Verified moulds" },
   { value: "6", label: "States served" },
-  { value: "800+", label: "Happy customers" },
+  { value: "800+", label: "Happy users" },
   { value: "98%", label: "On-time delivery" },
 ];
 
@@ -50,7 +50,7 @@ const JOURNEY = [
   { year: "2022", text: "MouldX idea born in Jaspur, Uttarakhand." },
   { year: "2023", text: "First 100 moulds listed with local partners." },
   { year: "2024", text: "Expanded to Delhi NCR, Haryana and Punjab." },
-  { year: "2025", text: "Crossed 800 customers and 1,000 listings." },
+  { year: "2025", text: "Crossed 800 users and 1,000 listings." },
   { year: "2026", text: "Launched the new MouldX booking platform." },
 ];
 
@@ -218,7 +218,7 @@ export default function AboutUs() {
 
       {/* 11. Testimonials */}
       <section className={styles.section}>
-        <Heading tag="Testimonials" title="What customers say" />
+        <Heading tag="Testimonials" title="What users say" />
         <div className={styles.grid3}>
           {REVIEWS.map((r) => (
             <figure key={r.name} className={styles.card}>

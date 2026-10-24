@@ -47,7 +47,7 @@ export default function OwnerOnboardingPage() {
             Complete your listing
           </h1>
           <p className="mt-2 text-sm text-gray-500">
-            Four steps from owner registration to a customer-visible mould.
+            Four steps from host registration to a user-visible mould.
           </p>
         </div>
 

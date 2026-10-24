@@ -64,13 +64,13 @@ const AVAILABILITY_OPTIONS: {
   {
     value: "active",
     label: "Active / Live",
-    description: "Visible to customers in Explore and open for booking",
+    description: "Visible to users in Explore and open for booking",
     dot: "dotAvailable",
   },
   {
     value: "maintenance",
     label: "Maintenance",
-    description: "Hidden from customers until you mark it live again",
+    description: "Hidden from users until you mark it live again",
     dot: "dotMaintenance",
   },
 ];
@@ -146,8 +146,8 @@ function StatusSheet({ listing, onClose, onSave }: StatusSheetProps) {
   const confirmTitle = toMaintenance ? "Switch to maintenance?" : "Make this listing live?";
 
   const confirmText = toMaintenance
-    ? `${listing.name} will be hidden from customers in Explore and search until you make it live again.`
-    : `${listing.name} will be visible to customers and open for booking.`;
+    ? `${listing.name} will be hidden from users in Explore and search until you make it live again.`
+    : `${listing.name} will be visible to users and open for booking.`;
 
   const lockedNotice =
     listing.status === "in_review"
@@ -387,7 +387,7 @@ function ListingCard({
       {displayStatus === "maintenance" && (
         <div className={styles.maintenanceInfo}>
           <p className={styles.maintenanceNote}>
-            Hidden from customers while under maintenance.
+            Hidden from users while under maintenance.
           </p>
         </div>
       )}

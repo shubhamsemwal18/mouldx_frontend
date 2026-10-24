@@ -70,7 +70,7 @@ export default function ProfileReviewPage() {
 
       <div className={styles.content}>
         <h1 className={styles.title}>Profile / KYC Review</h1>
-        <p className={styles.subtitle}>MouldX admin reviews the submitted owner profile.</p>
+        <p className={styles.subtitle}>MouldX admin reviews the submitted host profile.</p>
 
         {/* ---------- Status card ---------- */}
         <div className={styles.statusCard}>

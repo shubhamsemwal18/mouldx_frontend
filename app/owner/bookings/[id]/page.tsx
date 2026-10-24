@@ -158,7 +158,7 @@ export default function OwnerBookingDetailPage({
 
           <div className={styles.detailsGrid}>
             <div className={styles.detailItem}>
-              <p className={styles.detailLabel}>Customer</p>
+              <p className={styles.detailLabel}>User</p>
               <p className={styles.detailValue}>{booking.customer}</p>
             </div>
             <div className={styles.detailItem}>

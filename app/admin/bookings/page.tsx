@@ -156,7 +156,7 @@ export default function BookingApprovalsPage() {
     if (filtered.length === 0) return;
 
     const rows: (string | number)[][] = [
-      ["Booking ID", "Customer", "Owner", "Amount (INR)", "Payment", "Booking Date", "Status"],
+      ["Booking ID", "User", "Host", "Amount (INR)", "Payment", "Booking Date", "Status"],
       ...filtered.map((b) => [
         b.bookingId,
         b.customer,
@@ -195,7 +195,7 @@ export default function BookingApprovalsPage() {
           </span>
           <input
             type="text"
-            placeholder="Search by booking ID, customer, owner..."
+            placeholder="Search by booking ID, user, host..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={styles.searchInput}
@@ -265,8 +265,8 @@ export default function BookingApprovalsPage() {
             <thead>
               <tr>
                 <th>Booking</th>
-                <th>Customer</th>
-                <th>Owner</th>
+                <th>User</th>
+                <th>Host</th>
                 <th>Amount</th>
                 <th>Payment</th>
                 <th>Status</th>

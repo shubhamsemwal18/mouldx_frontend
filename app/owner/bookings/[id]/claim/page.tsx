@@ -130,7 +130,7 @@ export default function DamageClaimPage({
           <h1 className={styles.title}>Raise Damage Claim</h1>
         </div>
         <p className={styles.subtitle}>
-          Deducted from customer security deposit after claim process.
+          Deducted from user security deposit after claim process.
         </p>
 
         {/* ---------- Evidence required warning ---------- */}

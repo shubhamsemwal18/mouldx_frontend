@@ -93,7 +93,7 @@ export default function DispatchMouldPage({
             <span className={styles.summaryPill}>PAYMENT · ADMIN</span>
           </div>
           <p className={styles.summaryText}>
-            Customer payment ₹{booking.total.toLocaleString("en-IN")} {booking.rentalLabel} under
+            User payment ₹{booking.total.toLocaleString("en-IN")} {booking.rentalLabel} under
             admin supervision.
           </p>
         </div>

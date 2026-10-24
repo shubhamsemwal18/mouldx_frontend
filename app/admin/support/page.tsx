@@ -36,7 +36,7 @@ export default function AdminSupportPage() {
     <div className={styles.page}>
       <div className={styles.head}>
         <h1 className={styles.title}>Support</h1>
-        <p className={styles.sub}>Customers and owners who wrote to MouldX Support</p>
+        <p className={styles.sub}>Users and hosts who wrote to MouldX Support</p>
       </div>
 
       <div className={styles.toolbar}>
@@ -75,7 +75,7 @@ export default function AdminSupportPage() {
                 <div className={styles.nameRow}>
                   <p className={styles.cardName}>{t.name}</p>
                   <span className={`${styles.roleTag} ${t.role === "owner" ? styles.roleOwner : styles.roleCustomer}`}>
-                    {t.role === "owner" ? "Owner" : "Customer"}
+                    {t.role === "owner" ? "Host" : "User"}
                   </span>
                 </div>
                 <p className={styles.cardMeta}>

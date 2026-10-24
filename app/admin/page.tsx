@@ -28,7 +28,7 @@ const RECENT_ACTIVITY = [
   { text: "Nova Plastics booking approved for MX-000123", time: "12 min ago", tone: "green" },
   { text: "Sharma Industries KYC submitted for review", time: "48 min ago", tone: "amber" },
   { text: "Damage claim raised on MX-000198 — ₹4,000", time: "2 hrs ago", tone: "red" },
-  { text: "New owner signup: Precision Ltd.", time: "5 hrs ago", tone: "cyan" },
+  { text: "New host signup: Precision Ltd.", time: "5 hrs ago", tone: "cyan" },
 ] as const;
 
 const QUICK_ACTIONS = [
@@ -529,7 +529,7 @@ export default function AdminOverviewPage() {
         {/* Top performing owners */}
         <div className={styles.card}>
           <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>Top Performing Owners</h2>
+            <h2 className={styles.cardTitle}>Top Performing Hosts</h2>
             <Link href="/admin/users" className={styles.cardHeaderLink}>
               View all →
             </Link>

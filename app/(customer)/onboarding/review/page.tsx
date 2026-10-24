@@ -25,7 +25,7 @@ export default function CustomerProfileReviewPage() {
     <div className={styles.page}>
       <div className={styles.content}>
         <h1 className={styles.title}>Profile / KYC Review</h1>
-        <p className={styles.subtitle}>MouldX admin reviews every submitted customer profile.</p>
+        <p className={styles.subtitle}>MouldX admin reviews every submitted user profile.</p>
 
         {/* ---------- Status card ---------- */}
         <div className={styles.statusCard}>

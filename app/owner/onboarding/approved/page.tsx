@@ -109,7 +109,7 @@ export default function ProfileApprovedPage() {
             <span className={styles.nextDot}>3</span>
             <div>
               <p className={styles.nextTitle}>Admin approves the listing</p>
-              <p className={styles.nextMeta}>Goes live for customers</p>
+              <p className={styles.nextMeta}>Goes live for users</p>
             </div>
           </div>
         </div>

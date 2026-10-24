@@ -329,7 +329,7 @@ export default function ActiveListingsPage() {
           </span>
           <input
             type="text"
-            placeholder="Search by mould ID, owner, category..."
+            placeholder="Search by mould ID, host, category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={styles.searchInput}
@@ -358,7 +358,7 @@ export default function ActiveListingsPage() {
               <tr>
                 <th>Mould ID</th>
                 <th>Type</th>
-                <th>Owner</th>
+                <th>Host</th>
                 <th>Price/Day</th>
                 <th>Bookings</th>
                 <th>Rating</th>
@@ -515,8 +515,8 @@ export default function ActiveListingsPage() {
                 <div className={styles.actionPanel}>
                   <h3 className={styles.innerCardTitle}>Manage Listing</h3>
                   <p className={styles.actionHint}>
-                    This listing is owner-approved and cannot be edited here. You can only archive it
-                    (hide from customers, reversible) or permanently delete it.
+                    This listing is host-approved and cannot be edited here. You can only archive it
+                    (hide from users, reversible) or permanently delete it.
                   </p>
 
                   <button
@@ -602,9 +602,9 @@ export default function ActiveListingsPage() {
                   </div>
 
                   <div className={styles.innerCard}>
-                    <h3 className={styles.innerCardTitle}>Owner</h3>
+                    <h3 className={styles.innerCardTitle}>Host</h3>
                     <Row label="Firm Name" value={viewListing.ownerFirm} />
-                    <Row label="Owner Name" value={viewListing.owner} />
+                    <Row label="Host Name" value={viewListing.owner} />
                     <Row label="Approved On" value={viewListing.approvedDateISO} isLast />
                   </div>
                 </div>

@@ -14,7 +14,7 @@ const BOOKING = {
   id: "BK-24581",
   steps: [
     { id: "payment", title: "Payment received", status: "done", meta: "Just now" },
-    { id: "approval", title: "Owner approval", status: "pending", meta: "Pending · ETA 6h" },
+    { id: "approval", title: "Host approval", status: "pending", meta: "Pending · ETA 6h" },
     { id: "dispatch", title: "Dispatch", status: "upcoming", meta: "Scheduled after approval" },
   ] as TimelineStep[],
 };
@@ -61,7 +61,7 @@ export default function BookingSuccessPage() {
           <p className={styles.bookingIdText}>
             Booking ID <span className={styles.bookingIdValue}>{BOOKING.id}</span>
           </p>
-          <p className={styles.subtitle}>Awaiting owner approval &amp; dispatch.</p>
+          <p className={styles.subtitle}>Awaiting host approval &amp; dispatch.</p>
         </div>
 
         {/* ---------- Timeline ---------- */}

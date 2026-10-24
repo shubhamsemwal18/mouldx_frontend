@@ -147,7 +147,7 @@ export default function OwnerProfilePage() {
       </button>
 
       <Link href="/switch-profile" className={styles.switchProfileBtn}>
-        Switch Profile — Owner ↔ Customer
+        Switch Profile — Host ↔ User
       </Link>
     </div>
   );

@@ -178,7 +178,7 @@ export default function PaymentsPage() {
           </span>
           <input
             type="text"
-            placeholder="Search by transaction ID, booking, customer..."
+            placeholder="Search by transaction ID, booking, user..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={styles.searchInput}

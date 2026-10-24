@@ -18,13 +18,13 @@ const BOOKING_SUMMARY = {
 const PAYMENT_OPTIONS: { value: PaymentMode; title: string; desc: string }[] = [
   {
     value: "online",
-    title: "Pay Online to Owner",
-    desc: "Transfer rent & deposit directly to the owner via UPI or bank transfer.",
+    title: "Pay Online to Host",
+    desc: "Transfer rent & deposit directly to the host via UPI or bank transfer.",
   },
   {
     value: "cash",
     title: "Pay in Cash",
-    desc: "Hand over rent & deposit to the owner in cash at the time of pickup.",
+    desc: "Hand over rent & deposit to the host in cash at the time of pickup.",
   },
 ];
 
@@ -118,13 +118,13 @@ export default function ConfirmPayPage() {
           {/* ---------- Direct-to-owner warning ---------- */}
           <div className={styles.warningBox}>
             <p className={styles.warningText}>
-              If you pay the owner directly
+              If you pay the host directly
               {mode === "cash" ? " in cash" : " online"}, MouldX will not be responsible
               for any issues with the payment, deposit, or mould condition.
               {mode === "cash"
-                ? " Please ask the owner for a written receipt when you hand over the cash."
+                ? " Please ask the host for a written receipt when you hand over the cash."
                 : " Please keep a screenshot or reference number of your transfer."}{" "}
-              Your booking will be sent for owner approval instead of payment.
+              Your booking will be sent for host approval instead of payment.
             </p>
             <label className={styles.ackRow}>
               <input
