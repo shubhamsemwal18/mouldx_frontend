@@ -49,7 +49,8 @@ export default function LoginPage() {
       setServerError("");
       await authApi.requestLoginOtp(phone.trim());
       setPendingAuth({ flow: "login", identifier: phone.trim() });
-      router.push("/verify-otp");
+      const next = getSafeNextPath();
+      router.push(next ? `/verify-otp?next=${encodeURIComponent(next)}` : "/verify-otp");
     } catch (error) {
       setServerError(getApiErrorMessage(error, "Could not send login OTP"));
     } finally {
@@ -75,7 +76,7 @@ export default function LoginPage() {
       }
 
       setAuthPayload(payload);
-      router.replace(getSafeNextPath() || getPostAuthPath(payload));
+      router.replace(getPostAuthPath(payload));
     } catch (error) {
       setServerError(getApiErrorMessage(error, "Admin login failed"));
     } finally {

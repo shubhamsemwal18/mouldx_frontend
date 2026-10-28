@@ -62,6 +62,6 @@ export const authApi = {
   },
 
   logout() {
-    return apiClient.post<ApiResponse<Record<string, never>>>("/auth/logout", {});
+    return apiClient.post<ApiResponse<Record<string, never>>>("/auth/logout", {}, { skipAuthRefresh: true });
   },
 };

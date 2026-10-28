@@ -152,6 +152,7 @@
   padding: 20px 16px;
   padding-top: 78px;
 }
+.main.chatMain { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ---------- Responsive ---------- */
 
@@ -176,6 +177,7 @@
     padding-top: 36px;
     background: #f6f7fb;
   }
+  .main.chatMain { padding: 24px; }
 
   .logoImg {
     height: 32px;

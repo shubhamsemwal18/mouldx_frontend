@@ -1,16 +1,22 @@
 export type SignupRole = "customer" | "owner";
 
 const SELECTED_ROLE_KEY = "mouldx_selected_signup_role";
+let sessionRole: SignupRole = "customer";
 
 export function getSelectedSignupRole(): SignupRole {
   if (typeof window === "undefined") return "customer";
-  const value = window.localStorage.getItem(SELECTED_ROLE_KEY);
-  return value === "owner" ? "owner" : "customer";
+  try {
+    const value = window.localStorage.getItem(SELECTED_ROLE_KEY);
+    return value === "owner" ? "owner" : "customer";
+  } catch {
+    return sessionRole;
+  }
 }
 
 export function setSelectedSignupRole(role: SignupRole) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(SELECTED_ROLE_KEY, role);
+  sessionRole = role;
+  try { window.localStorage.setItem(SELECTED_ROLE_KEY, role); } catch { /* Keep the in-session preference. */ }
 }
 
 /**
@@ -19,5 +25,6 @@ export function setSelectedSignupRole(role: SignupRole) {
  */
 export function clearSelectedSignupRole() {
   if (typeof window === "undefined") return;
-  window.localStorage.removeItem(SELECTED_ROLE_KEY);
+  sessionRole = "customer";
+  try { window.localStorage.removeItem(SELECTED_ROLE_KEY); } catch { /* Storage may be blocked. */ }
 }

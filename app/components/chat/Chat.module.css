@@ -1,0 +1,108 @@
+.inbox { width: 100%; max-width: 720px; margin: 0 auto; padding: 24px 20px 48px; color: #111827; background: #fff; min-height: 65vh; letter-spacing: 0; }
+.inbox *, .chat * { box-sizing: border-box; }
+.adminInbox { max-width: 1200px; background: transparent; padding: 0 0 32px; }
+.inboxHeading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 22px; }
+.inboxHeading h1 { margin: 0; font-size: 26px; font-weight: 800; line-height: 1.3; }
+.iconButton { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid #e5e7eb; background: #fff; color: #4b5563; border-radius: 8px; cursor: pointer; text-decoration: none; }
+.iconButton:hover { color: #2563eb; background: #eff6ff; }
+.iconButton:disabled { opacity: .5; cursor: not-allowed; }
+.inbox button:focus-visible, .inbox a:focus-visible, .chat button:focus-visible, .chat a:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.search { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 0 12px; margin-bottom: 16px; color: #9ca3af; }
+.search svg { flex-shrink: 0; }
+.search input { width: 100%; min-width: 0; height: 46px; border: 0; outline: 0; background: transparent; color: #111827; font-size: 16px; }
+.search:focus-within { border-color: #2563eb; }
+.tabs { display: flex; gap: 4px; padding: 4px; border-radius: 8px; background: #edf0f5; margin-bottom: 20px; }
+.tabs button { min-width: 0; flex: 1; border: 0; border-radius: 6px; padding: 9px 6px; background: transparent; color: #6b7280; font-size: 12px; font-weight: 650; cursor: pointer; }
+.tabs .activeTab { color: #2563eb; background: #fff; box-shadow: 0 1px 4px #0000000a; }
+.threadList { display: flex; flex-direction: column; gap: 12px; }
+.threadCard { display: flex; align-items: flex-start; gap: 12px; min-width: 0; padding: 14px; border: 1px solid #eef0f4; border-radius: 8px; color: inherit; text-decoration: none; background: #f8f9fb; transition: border-color .15s ease; }
+.threadCard:hover { border-color: #bfdbfe; }
+.adminInbox .threadCard { background: #fff; }
+.avatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 8px; color: #fff; background: #2563eb; }
+.supportAvatar { background: #059669; }
+.threadInfo { flex: 1; min-width: 0; }
+.threadName { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.threadName h2 { margin: 0; font-size: 14px; line-height: 1.5; font-weight: 750; overflow-wrap: anywhere; }
+.threadMeta { margin: 3px 0 0; font-size: 10px; color: #9ca3af; line-height: 1.5; }
+.threadProduct { margin: 3px 0 0; color: #4b5563; font-size: 11px; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.preview { margin: 5px 0 0; font-size: 12px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.threadAside { display: flex; flex-shrink: 0; flex-direction: column; align-items: flex-end; gap: 10px; }
+.threadAside time { font-size: 10px; color: #9ca3af; }
+.unread { min-width: 20px; height: 20px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; color: #fff; background: #2563eb; border-radius: 999px; font-size: 10px; font-weight: 750; }
+.supportTag, .resolvedTag, .roleTag { padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 700; }
+.supportTag, .resolvedTag { color: #047857; background: #d1fae5; }
+.roleTag { color: #2563eb; background: #eff6ff; }
+.state, .empty { min-height: 220px; padding: 48px 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #6b7280; background: #fff; text-align: center; font-size: 13px; overflow-wrap: anywhere; }
+.empty h2 { font-size: 15px; font-weight: 650; margin: 0; }
+.state a, .textButton { color: #2563eb; text-decoration: none; }
+.textButton { background: transparent; border: 0; font-size: 12px; font-weight: 650; cursor: pointer; padding: 6px; }
+.error { padding: 16px; margin: 16px 0; color: #b91c1c; border: 1px solid #fecaca; background: #fef2f2; border-radius: 8px; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.error button { display: block; margin-top: 8px; border: 0; background: transparent; font-weight: 700; cursor: pointer; }
+.loadMore { min-height: 64px; padding: 24px 0 12px; font-size: 12px; text-align: center; color: #9ca3af; }
+.chat { width: 100%; max-width: 760px; height: 100vh; height: 100dvh; min-height: 0; margin: 0 auto; display: flex; flex-direction: column; background: #fff; color: #111827; overflow: hidden; letter-spacing: 0; }
+.adminChat { max-width: 1200px; height: auto; flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; }
+.chatHeader { flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: calc(12px + env(safe-area-inset-top)) 16px 12px; border-bottom: 1px solid #eef0f4; }
+.chatHeader .avatar { width: 36px; height: 36px; }
+.chatIdentity { flex: 1; min-width: 0; }
+.chatIdentity h1 { margin: 0; font-size: 14px; line-height: 1.4; font-weight: 750; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.chatIdentity p { margin: 3px 0 0; color: #9ca3af; font-size: 10px; line-height: 1.5; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.bookingContext { display: flex; align-items: center; gap: 10px; padding: 12px 16px; flex-shrink: 0; border-bottom: 1px solid #eef0f4; text-decoration: none; color: inherit; }
+.contextImage { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 6px; background: #f1f5f9; color: #94a3b8; overflow: hidden; }
+.contextImage img { object-fit: cover; }
+.bookingContext > div { flex: 1; min-width: 0; }
+.bookingContext strong { display: block; font-size: 12px; line-height: 1.5; font-weight: 750; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bookingContext p { margin: 3px 0 0; color: #9ca3af; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+.bookingStatus { max-width: 75px; flex-shrink: 0; font-size: 9px; color: #2563eb; background: #eff6ff; border-radius: 6px; padding: 5px 7px; text-transform: capitalize; overflow-wrap: anywhere; }
+.resolveActive { color: #047857; border-color: #a7f3d0; background: #ecfdf5; }
+.messages { flex: 1; min-height: 0; overflow-y: auto; overflow-anchor: none; overscroll-behavior: contain; padding: 16px; background: #f8f9fb; display: flex; flex-direction: column; gap: 10px; }
+.older { min-height: 32px; flex-shrink: 0; display: flex; justify-content: center; align-items: center; gap: 10px; color: #9ca3af; font-size: 11px; }
+.daySeparator { align-self: center; padding: 5px 10px; border-radius: 999px; background: #edf0f5; color: #9ca3af; font-size: 10px; line-height: 1.5; margin: 6px 0; flex-shrink: 0; }
+.rowMe, .rowOther { display: flex; width: 100%; flex-shrink: 0; }
+.rowMe { justify-content: flex-end; }
+.rowOther { justify-content: flex-start; }
+.bubbleMe, .bubbleOther { max-width: 82%; padding: 10px 13px; border-radius: 16px; overflow-wrap: anywhere; min-width: 0; }
+.bubbleMe { color: #fff; background: #2563eb; border-bottom-right-radius: 4px; }
+.bubbleOther { color: #111827; background: #fff; border: 1px solid #e9edf2; border-bottom-left-radius: 4px; }
+.bubbleMe p, .bubbleOther p { margin: 0; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+.bubbleMe time, .bubbleOther time { display: block; font-size: 9px; line-height: 1.5; margin-top: 5px; }
+.bubbleMe time { color: #dbeafe; text-align: right; }
+.bubbleOther time { color: #9ca3af; }
+.senderLabel { display: block; font-size: 10px; color: #059669; margin-bottom: 4px; font-weight: 650; }
+.composer { display: flex; align-items: flex-end; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid #eef0f4; background: #fff; flex-shrink: 0; }
+.composer textarea { flex: 1; min-width: 0; max-height: 120px; min-height: 44px; resize: none; padding: 11px 14px; border: 1px solid transparent; border-radius: 8px; background: #f3f4f6; color: #111827; font-size: 16px; line-height: 1.4; outline: 0; }
+.composer textarea:focus { border-color: #2563eb; background: #fff; }
+.sendButton { width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: #2563eb; color: #fff; cursor: pointer; }
+.sendButton:disabled { opacity: .45; cursor: not-allowed; }
+.emptyConversation { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #9ca3af; font-size: 13px; min-height: 100px; }
+.chatError { padding: 8px 16px; color: #b91c1c; background: #fef2f2; border-bottom: 1px solid #fecaca; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; max-height: 110px; overflow-y: auto; flex-shrink: 0; }
+.chatError .textButton { color: #b91c1c; }
+.readWarning { padding: 8px 16px; margin: 0; color: #92400e; background: #fffbeb; font-size: 11px; flex-shrink: 0; }
+.spin { animation: chatSpin 1s linear infinite; }
+@keyframes chatSpin { to { transform: rotate(360deg); } }
+@media (min-width: 768px) {
+  .inbox { padding-inline: 32px; }
+  .adminInbox { padding-inline: 0; }
+  .chat { border-inline: 1px solid #e5e7eb; }
+  .messages { padding: 24px; }
+  .bubbleMe, .bubbleOther { max-width: 72%; }
+  .search input, .composer textarea { font-size: 14px; }
+}
+@media (max-width: 359px) {
+  .inbox { padding-inline: 12px; }
+  .adminInbox { padding-inline: 0; }
+  .threadCard { padding: 12px; gap: 8px; }
+  .threadCard .avatar { width: 34px; height: 34px; }
+  .threadAside time { display: none; }
+  .chatHeader { gap: 8px; padding-inline: 12px; }
+  .chatHeader .avatar { display: none; }
+  .bookingContext { padding-inline: 12px; gap: 8px; }
+  .messages { padding: 12px; }
+  .composer { padding-inline: 12px; gap: 8px; }
+  .bubbleMe, .bubbleOther { max-width: 90%; }
+}
+@media (max-height: 480px) {
+  .chatHeader { padding-block: 6px; }
+  .bookingContext { padding-block: 6px; }
+  .composer { padding-block: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

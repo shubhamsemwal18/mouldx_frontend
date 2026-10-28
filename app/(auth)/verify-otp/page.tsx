@@ -7,7 +7,7 @@ import { authApi } from "@/app/lib/auth-api";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { clearPendingAuth, getPendingAuth } from "@/app/lib/pending-auth";
 import { useAuth } from "@/app/lib/auth-context";
-import { getPostAuthPath, getSafeNextPath } from "@/app/lib/auth-routing";
+import { getPostAuthPath } from "@/app/lib/auth-routing";
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 28;
@@ -103,7 +103,8 @@ const handleVerify = async () => {
 
       setAuthPayload(payload);
       clearPendingAuth();
-      router.replace(getSafeNextPath() || getPostAuthPath(payload, pending.role));
+      const landing = getPostAuthPath(payload);
+      router.replace(landing);
   } catch (error) {
     setServerError(getApiErrorMessage(error, "OTP verification failed"));
   } finally {
@@ -132,6 +133,7 @@ const handleVerify = async () => {
                 inputRefs.current[i] = el;
               }}
               type="text"
+              aria-label={`OTP digit ${i + 1}`}
               inputMode="numeric"
               maxLength={1}
               value={digit}
@@ -163,13 +165,6 @@ const handleVerify = async () => {
         </p>
       </div>
 
-      <div className={styles.tipBox}>
-        <span className={styles.tipIcon} aria-hidden>i</span>
-        <div>
-          <p className={styles.tipTitle}>Tip</p>
-          <p className={styles.tipText}>OTP auto-fills from SMS when detected.</p>
-        </div>
-      </div>
     </div>
   );
 }

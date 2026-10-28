@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useLogout } from "@/app/lib/use-logout";
 import styles from "./AdminHeader.module.css";
 
 interface ActivityItem {
@@ -20,16 +20,11 @@ const RECENT_NOTIFICATIONS: ActivityItem[] = [
 ];
 
 export default function AdminHeader() {
-  const router = useRouter();
+  const { handleLogout, loggingOut, logoutError } = useLogout("/login");
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
   const pendingCount = RECENT_NOTIFICATIONS.filter((n) => n.tone === "amber").length;
-
-  const handleLogout = () => {
-    // TODO: call logout API / clear session
-    router.push("/login");
-  };
 
   return (
     <header className={styles.header}>
@@ -112,9 +107,10 @@ export default function AdminHeader() {
                 >
                   👤 Profile
                 </Link>
-                <button type="button" onClick={handleLogout} className={styles.userMenuItemDanger}>
-                  ⎋ Logout
+                <button type="button" onClick={handleLogout} disabled={loggingOut} className={styles.userMenuItemDanger}>
+                  {loggingOut ? "Logging out..." : "Logout"}
                 </button>
+                {logoutError && <p role="alert">{logoutError}</p>}
               </div>
             </>
           )}

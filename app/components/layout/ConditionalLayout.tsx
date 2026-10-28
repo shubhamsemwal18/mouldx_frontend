@@ -1,12 +1,15 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Header from "@/app/components/layout/Header";
 import BottomNav from "@/app/components/layout/BottomNav";
 import SplashLoader from "@/app/components/shared/SplashLoader";
 import { useAuth } from "@/app/lib/auth-context";
 import { useHomeView } from "@/app/lib/home-view";
 import Footer from "./Footer";
+import styles from "./ConditionalLayout.module.css";
+import { isAdminUser, isUserWorkflowPath } from "@/app/lib/auth-routing";
 
 interface ConditionalLayoutProps {
   children: React.ReactNode;
@@ -16,8 +19,14 @@ export default function ConditionalLayout({
   children,
 }: ConditionalLayoutProps) {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const homeView = useHomeView();
+  const userWorkflow = isUserWorkflowPath(pathname);
+  const blockedAdmin = isAdminUser(user) && userWorkflow;
+  useEffect(() => {
+    if (!loading && blockedAdmin) router.replace("/admin");
+  }, [loading, blockedAdmin, router, pathname]);
 
   // All admin pages should NOT show website Header/SplashLoader
   const isAdminRoute =
@@ -41,20 +50,26 @@ export default function ConditionalLayout({
     pathname === "/booking-success";
   const showCustomerNav =
     Boolean(user) &&
+    !/^\/explore\/[^/]+\/(dates|confirm)$/.test(pathname) &&
     !user?.approvedRoles?.includes("admin") &&
     !isAdminRoute &&
     !isOwnerRoute &&
     !isAuthRoute &&
     isCustomerRoute;
 
+  if ((loading && userWorkflow) || blockedAdmin) return null;
+
   if (isAdminRoute) {
     return <>{children}</>;
+  }
+  if (/^\/(?:owner\/)?inbox\/[^/]+$/.test(pathname)) {
+    return <SplashLoader><main>{children}</main></SplashLoader>;
   }
 
   return (
     <SplashLoader>
       <Header />
-      <main className={showCustomerNav ? "pb-20" : undefined}>{children}</main>
+      <main className={showCustomerNav ? styles.withCustomerNav : undefined}>{children}</main>
       <Footer />
       {showCustomerNav && <BottomNav />}
     </SplashLoader>

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,6 +15,7 @@ import { authApi } from "@/app/lib/auth-api";
 import { clearAuthSession, hasAuthSessionHint, setAuthSession } from "@/app/lib/auth-storage";
 import { clearActiveRole, initActiveRoleFor } from "@/app/lib/active-role";
 import { clearSelectedSignupRole } from "@/app/lib/role-selection";
+import { clearPendingAuth } from "@/app/lib/pending-auth";
 import type { AuthPayload, OwnerProfileVerification, User } from "@/app/lib/types";
 
 interface AuthContextValue {
@@ -28,6 +30,7 @@ interface AuthContextValue {
   ) => void;
   refreshCurrentUser: () => Promise<void>;
   logout: () => Promise<void>;
+  loggingOut: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,6 +49,8 @@ const needsAuthBootstrap = (pathname: string | null) => {
     path.startsWith("/admin/") ||
     path === "/owner" ||
     path.startsWith("/owner/") ||
+    path === "/onboarding" ||
+    path.startsWith("/onboarding/") ||
     path === "/profile" ||
     path === "/bookings" ||
     path === "/inbox" ||
@@ -91,13 +96,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ownerProfileVerification, setOwnerProfileVerification] =
     useState<OwnerProfileVerification | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialized = useRef(false);
+  const logoutPromise = useRef<Promise<void> | null>(null);
+  const sessionVersion = useRef(0);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const applyAuthPayload = useCallback((payload: AuthPayload) => {
+    sessionVersion.current += 1;
+    initialized.current = true;
     bootstrapComplete = true;
     bootstrapPayload = payload;
     setAuthSession({ accessToken: payload.tokens.accessToken });
     // Before `setUser`, so `/` renders the right home on the first pass.
-    initActiveRoleFor(payload.user.approvedRoles);
+    initActiveRoleFor(payload.user.approvedRoles, payload.user.profileVerificationStatus);
     setUser(payload.user);
     setOwnerProfileVerification(payload.profileVerification || payload.ownerProfileVerification || null);
   }, []);
@@ -119,15 +130,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshCurrentUser = useCallback(async () => {
+    const version = sessionVersion.current;
     const payload = await authApi.me();
+    if (version !== sessionVersion.current) return;
+    initActiveRoleFor(payload.user.approvedRoles, payload.user.profileVerificationStatus);
+    if (bootstrapPayload) bootstrapPayload = { ...bootstrapPayload, ...payload };
     setUser(payload.user);
     setOwnerProfileVerification(payload.profileVerification || payload.ownerProfileVerification || null);
   }, []);
 
-  const logout = useCallback(async () => {
-    try {
+  const logout = useCallback(() => {
+    if (logoutPromise.current) return logoutPromise.current;
+    setLoggingOut(true);
+    logoutPromise.current = (async () => {
+      // Keep the session available for retry if revocation/cookie clearing fails.
       await authApi.logout();
-    } finally {
+      sessionVersion.current += 1;
+      initialized.current = true;
       bootstrapComplete = true;
       bootstrapPayload = null;
       clearAuthSession();
@@ -135,17 +154,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // user's customer/owner mode and signup routing.
       clearActiveRole();
       clearSelectedSignupRole();
+      clearPendingAuth();
       setUser(null);
       setOwnerProfileVerification(null);
-    }
+    })().finally(() => {
+      logoutPromise.current = null;
+      setLoggingOut(false);
+    });
+    return logoutPromise.current;
   }, []);
 
   useEffect(() => {
+    // Reapplying the original login payload on navigation would restore stale
+    // verification data and overwrite a recently refreshed access token.
+    if (initialized.current) return;
     let cancelled = false;
 
     bootstrapAuth(pathname)
       .then((payload) => {
-        if (!cancelled && payload) {
+        if (!cancelled && payload && !initialized.current) {
           applyAuthPayload(payload);
         }
       })
@@ -170,11 +197,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setOwnerProfileVerificationState,
       refreshCurrentUser,
       logout,
+      loggingOut,
     }),
     [
       applyAuthPayload,
       loading,
       logout,
+      loggingOut,
       ownerProfileVerification,
       refreshCurrentUser,
       setOwnerProfileVerificationState,

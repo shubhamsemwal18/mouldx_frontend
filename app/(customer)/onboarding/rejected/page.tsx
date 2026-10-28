@@ -1,25 +1,57 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/lib/auth-context";
 import styles from "./ProfileRejected.module.css";
 
-// TEMP dummy data — will come from the real admin review API
-const REJECTION = {
-  remarks: "Please upload a clearer ID document photo.",
-  documentsToFix: ["ID Document"],
-};
-
-export default function CustomerProfileRejectedPage() {
+export default function ProfileRejectedPage() {
   const router = useRouter();
+  const { user, ownerProfileVerification, loading, refreshCurrentUser } = useAuth();
+  const [checkedServerStatus, setCheckedServerStatus] = useState(false);
+  const status = ownerProfileVerification?.status || user?.profileVerificationStatus;
+  const remarks =
+    ownerProfileVerification?.rejectionReason ||
+    "Please review the admin remarks and resubmit your profile.";
+
+  useEffect(() => {
+    if (loading) return;
+
+    refreshCurrentUser()
+      .catch(() => undefined)
+      .finally(() => setCheckedServerStatus(true));
+  }, [loading, refreshCurrentUser]);
+
+  useEffect(() => {
+    if (loading || !checkedServerStatus) return;
+
+    if (status === "approved") {
+      router.replace("/onboarding/approved");
+      return;
+    }
+
+    if (status === "in_review") {
+      router.replace("/onboarding/review");
+      return;
+    }
+
+    if (status !== "rejected") {
+      router.replace("/onboarding/profile");
+    }
+  }, [checkedServerStatus, loading, router, status]);
 
   const handleResubmit = () => {
-    // TODO: prefill the form with previous data if available
     router.push("/onboarding/profile");
   };
 
+  if (loading || !checkedServerStatus || status !== "rejected") {
+    return null;
+  }
+
   return (
     <div className={styles.page}>
+
       <div className={styles.content}>
         <h1 className={styles.title}>Profile rejected</h1>
         <p className={styles.subtitle}>Please review the admin remarks and resubmit.</p>
@@ -28,19 +60,10 @@ export default function CustomerProfileRejectedPage() {
         <div className={styles.remarksCard}>
           <span className={styles.reviewPill}>REVIEW REQUIRED</span>
           <h2 className={styles.remarksTitle}>Admin Remarks</h2>
-          <p className={styles.remarksText}>{REJECTION.remarks}</p>
+          <p className={styles.remarksText}>{remarks}</p>
         </div>
 
-        {/* ---------- Documents to fix ---------- */}
-        <div className={styles.docsCard}>
-          <span className={styles.docsIcon} aria-hidden>
-            !
-          </span>
-          <div>
-            <p className={styles.docsTitle}>Documents to fix</p>
-            <p className={styles.docsList}>{REJECTION.documentsToFix.join(" · ")}</p>
-          </div>
-        </div>
+
       </div>
 
       {/* ---------- Sticky actions ---------- */}

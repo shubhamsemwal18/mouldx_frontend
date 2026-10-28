@@ -8,13 +8,12 @@ import {
   countActiveFilters,
   type CatalogueFilters,
 } from "@/app/lib/catalogue-filters";
-import type { MouldType } from "@/app/lib/types";
+import { useCatalogueCategories } from "@/app/lib/use-catalogue-categories";
 
 interface FilterPanelProps {
   value: CatalogueFilters;
   onChange: (next: CatalogueFilters) => void;
-  categories: { slug: string; title: string }[];
-  mouldTypes: MouldType[];
+  showAll?: boolean;
   /** Wrap chips onto new lines instead of scrolling each row sideways. */
   wrapChips?: boolean;
   className?: string;
@@ -23,12 +22,13 @@ interface FilterPanelProps {
 export default function FilterPanel({
   value,
   onChange,
-  categories,
-  mouldTypes,
+  showAll = true,
   wrapChips = false,
   className,
 }: FilterPanelProps) {
-  const { categorySlug, mouldType, priceLabel, sort } = value;
+  const { categorySlug, subCategorySlug, priceLabel, sort } = value;
+  const roots = useCatalogueCategories(showAll);
+  const children = useCatalogueCategories(showAll, categorySlug, Boolean(categorySlug));
   const set = (patch: Partial<CatalogueFilters>) => onChange({ ...value, ...patch });
   const chipClass = (active: boolean) => `${styles.chip} ${active ? styles.chipActive : ""}`;
   const activeFilterCount = countActiveFilters(value);
@@ -37,53 +37,60 @@ export default function FilterPanel({
     <div
       className={`${styles.filterPanel} ${wrapChips ? styles.wrapChips : ""} ${className ?? ""}`}
     >
-      {categories.length > 0 && (
         <div className={styles.filterGroup}>
           <p className={styles.filterLabel}>Category</p>
           <div className={styles.chipsRow}>
             <button
               type="button"
-              onClick={() => set({ categorySlug: "" })}
+              onClick={() => set({ categorySlug: "", subCategorySlug: "" })}
               className={chipClass(categorySlug === "")}
+              aria-pressed={categorySlug === ""}
             >
               All
             </button>
-            {categories.map((category) => (
+            {roots.categories.map((category) => (
               <button
                 key={category.slug}
                 type="button"
-                onClick={() => set({ categorySlug: category.slug })}
+                onClick={() => set({ categorySlug: category.slug, subCategorySlug: "" })}
                 className={chipClass(categorySlug === category.slug)}
+                aria-pressed={categorySlug === category.slug}
               >
                 {category.title}
               </button>
             ))}
           </div>
+          {roots.loading && <p className={styles.optionStatus} role="status">Loading categories...</p>}
+          {roots.error && <button type="button" className={styles.clearFilters} onClick={roots.retry}>Retry loading categories</button>}
         </div>
-      )}
 
-      {mouldTypes.length > 0 && (
+      {categorySlug && (
         <div className={styles.filterGroup}>
-          <p className={styles.filterLabel}>Mould type</p>
+          <p className={styles.filterLabel}>Subcategory</p>
           <div className={styles.chipsRow}>
             <button
               type="button"
-              onClick={() => set({ mouldType: "" })}
-              className={chipClass(mouldType === "")}
+              onClick={() => set({ subCategorySlug: "" })}
+              className={chipClass(subCategorySlug === "")}
+              aria-pressed={subCategorySlug === ""}
             >
               All
             </button>
-            {mouldTypes.map((type) => (
+            {children.categories.map((category) => (
               <button
-                key={type}
+                key={category.slug}
                 type="button"
-                onClick={() => set({ mouldType: type })}
-                className={chipClass(mouldType === type)}
+                onClick={() => set({ subCategorySlug: category.slug })}
+                className={chipClass(subCategorySlug === category.slug)}
+                aria-pressed={subCategorySlug === category.slug}
               >
-                {type}
+                {category.title}
               </button>
             ))}
           </div>
+          {children.loading && <p className={styles.optionStatus} role="status">Loading subcategories...</p>}
+          {children.error && <button type="button" className={styles.clearFilters} onClick={children.retry}>Retry loading subcategories</button>}
+          {!children.loading && !children.error && children.categories.length === 0 && <p className={styles.optionStatus}>No subcategories available.</p>}
         </div>
       )}
 
@@ -96,6 +103,7 @@ export default function FilterPanel({
               type="button"
               onClick={() => set({ priceLabel: range.label })}
               className={chipClass(priceLabel === range.label)}
+              aria-pressed={priceLabel === range.label}
             >
               {range.label}
             </button>
@@ -112,6 +120,7 @@ export default function FilterPanel({
               type="button"
               onClick={() => set({ sort: option.value })}
               className={chipClass(sort === option.value)}
+              aria-pressed={sort === option.value}
             >
               {option.label}
             </button>

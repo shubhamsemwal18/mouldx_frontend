@@ -33,5 +33,5 @@ export function getPendingAuth(): PendingAuth | null {
 
 export function clearPendingAuth() {
   if (typeof window === "undefined") return;
-  window.sessionStorage.removeItem(PENDING_AUTH_KEY);
+  try { window.sessionStorage.removeItem(PENDING_AUTH_KEY); } catch { /* Storage may be blocked. */ }
 }

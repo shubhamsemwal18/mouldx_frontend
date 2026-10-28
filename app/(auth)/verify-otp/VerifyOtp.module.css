@@ -78,12 +78,14 @@
 
 /* ---------- OTP boxes ---------- */
 .otpRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
 }
 
 .otpBox {
-  width: 42px;
+  width: 100%;
+  min-width: 0;
   height: 48px;
   text-align: center;
   font-size: 20px;
@@ -154,44 +156,6 @@
   cursor: pointer;
 }
 
-/* ---------- Tip box ---------- */
-.tipBox {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #fef9ec;
-  border: 1px solid #f5e6bd;
-  border-radius: 14px;
-  padding: 14px;
-}
-
-.tipIcon {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #f6c453;
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tipTitle {
-  font-size: 13px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0;
-}
-
-.tipText {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: #6b7280;
-}
-
 /* ---------- Responsive ---------- */
 
 @media (min-width: 640px) {
@@ -202,7 +166,6 @@
   }
 
   .otpBox {
-    width: 48px;
     height: 54px;
     font-size: 22px;
   }

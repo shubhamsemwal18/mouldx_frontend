@@ -11,6 +11,9 @@ const assetHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [{ source: "/owner/onboarding/:path*", destination: "/onboarding/:path*", permanent: false }];
+  },
   images: {
     remotePatterns: [
       // Listing media served straight from the S3 bucket.

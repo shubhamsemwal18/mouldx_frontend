@@ -2,19 +2,24 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/app/lib/auth-context";
 
-export default function LegacyOnboardingRedirectLayout({
+export default function OnboardingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  void children;
+  const { user, loading } = useAuth();
+  const isAdmin = Boolean(user?.approvedRoles.includes("admin"));
 
   useEffect(() => {
-    router.replace(`/owner${pathname}`);
-  }, [pathname, router]);
+    if (loading) return;
+    if (!user) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    else if (isAdmin) router.replace("/admin");
+  }, [loading, user, isAdmin, pathname, router]);
 
-  return null;
+  if (loading || !user || isAdmin) return null;
+  return <>{children}</>;
 }

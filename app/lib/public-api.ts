@@ -8,11 +8,17 @@ import type {
   PublicProductDetail,
 } from "@/app/lib/types";
 
-export type CatalogueSort = "recent" | "price_asc" | "price_desc";
+export type CatalogueSort = "recent" | "price_asc" | "price_desc" | "popular";
+export interface CatalogueCategory { slug: string; title: string; description: string }
+export interface CategorySectionsResponse {
+  sections: CategorySection[];
+  stats: { totalPublished: number };
+}
 
 export interface CatalogueParams {
   search?: string;
   categorySlug?: string;
+  subCategorySlug?: string;
   mouldType?: MouldType;
   minPrice?: number;
   maxPrice?: number;
@@ -49,11 +55,30 @@ export const publicApi = {
 
   listSections(limit = 10) {
     return apiClient
-      .get<ApiResponse<{ sections: CategorySection[] }>>("/products/sections", {
+      .get<ApiResponse<CategorySectionsResponse>>("/products/sections", {
         params: { limit },
         skipAuthRefresh: true,
       })
-      .then((response) => response.data.data.sections);
+      .then((response) => response.data.data);
+  },
+
+  async listCategories(params: { parentSlug?: string; showAll: boolean }) {
+    const categories: CatalogueCategory[] = [];
+    let page = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      const response = await apiClient.get<ApiResponse<{ categories: CatalogueCategory[]; pagination: Pagination }>>("/categories/published", {
+        params: { ...params, page, limit: 100 }, skipAuthRefresh: true,
+      });
+      categories.push(...response.data.data.categories);
+      hasNextPage = response.data.data.pagination.hasNextPage;
+      page += 1;
+    }
+    return categories;
+  },
+
+  recordVisit(slug: string, visitId: string) {
+    return apiClient.post(`/products/${encodeURIComponent(slug)}/visit`, { visitId }, { skipAuthRefresh: true });
   },
 
   listFilterOptions() {

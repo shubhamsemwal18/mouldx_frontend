@@ -30,9 +30,7 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
   if (!open) return null;
 
   const chooseRole = (role: SignupRole) => {
-    // Two distinct things are remembered here:
-    //  - the signup intent, which decides where the user lands after OTP
-    //  - the active role, which is the profile they continue browsing as
+    // Remember intent only; mode controls and host access require server approval.
     setSelectedSignupRole(role);
     setActiveRole(role);
     onClose();

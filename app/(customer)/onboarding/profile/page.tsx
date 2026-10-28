@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./ProfileCreation.module.css";
+import { useAuth } from "@/app/lib/auth-context";
+import { getApiErrorMessage } from "@/app/lib/api";
+import { uploadPrivateFile } from "@/app/lib/upload-api";
+import { userApi } from "@/app/lib/user-api";
+import type { MediaRef } from "@/app/lib/types";
 
 const REGEX = {
   name: /^[a-zA-Z\s.'-]{2,60}$/,
+  phone: /^[6-9]\d{9}$/,
   email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
   pan: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
   gst: /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/,
@@ -14,8 +19,6 @@ const REGEX = {
   ifsc: /^[A-Z]{4}0[A-Z0-9]{6}$/,
   upi: /^[\w.-]{2,256}@[a-zA-Z]{2,64}$/,
 };
-
-const CUSTOMER_STEPS = ["Profile", "KYC"];
 
 interface FormState {
   name: string;
@@ -36,6 +39,10 @@ interface FormState {
   upiId: string;
 }
 
+type DocumentKey = "gstCertificate" | "msmeCertificate" | "electricityBill";
+
+type ExistingDocuments = Partial<Record<DocumentKey, MediaRef>>;
+
 const INITIAL_STATE: FormState = {
   name: "",
   phone: "",
@@ -55,6 +62,7 @@ const INITIAL_STATE: FormState = {
   upiId: "",
 };
 
+// Which text fields are required — used both for validation and the "*" marker
 const REQUIRED_FIELDS: (keyof FormState)[] = [
   "name",
   "pan",
@@ -68,10 +76,79 @@ const REQUIRED_FIELDS: (keyof FormState)[] = [
   "bankName",
 ];
 
-export default function CustomerProfileCreationPage() {
+export default function ProfileCreationPage() {
   const router = useRouter();
+  const {
+    user,
+    ownerProfileVerification,
+    loading: authLoading,
+    refreshCurrentUser,
+    setOwnerProfileVerificationState,
+  } = useAuth();
   const [form, setForm] = useState<FormState>(INITIAL_STATE);
+  const [existingDocuments, setExistingDocuments] = useState<ExistingDocuments>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
+  const prefilledVerificationId = useRef<string | null>(null);
+
+  const effectiveName = form.name || user?.fullName || "";
+  const effectivePhone = user?.phone || form.phone;
+  const effectiveEmailPoc = form.emailPoc || user?.email || "";
+  const status = ownerProfileVerification?.status || user?.profileVerificationStatus;
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent("/onboarding/profile")}`);
+      return;
+    }
+    if (status === "in_review") {
+      router.replace("/onboarding/review");
+    }
+    if (status === "approved") {
+      router.replace("/onboarding/approved");
+    }
+  }, [authLoading, status, router, user]);
+
+  useEffect(() => {
+    if (
+      !ownerProfileVerification ||
+      ownerProfileVerification.status !== "rejected" ||
+      prefilledVerificationId.current === ownerProfileVerification._id
+    ) {
+      return;
+    }
+
+    const personal = ownerProfileVerification.personalDetails;
+    const firm = ownerProfileVerification.firmDetails;
+    const payout = ownerProfileVerification.payoutDetails;
+
+    setForm({
+      name: user?.fullName || "",
+      phone: user?.phone || "",
+      emailPoc: user?.email || "",
+      pan: personal?.panNumber || "",
+      firmEmail: firm?.email || "",
+      firmName: firm?.name || "",
+      address: firm?.address || "",
+      gstNo: firm?.gstNumber || "",
+      gstCertificate: null,
+      msmeCertificate: null,
+      electricityBill: null,
+      bankAccount: payout?.bankAccountNumber || "",
+      ifsc: payout?.ifscCode || "",
+      accountHolder: payout?.accountHolderName || "",
+      bankName: payout?.bankName || "",
+      upiId: payout?.upiId || "",
+    });
+    setExistingDocuments({
+      gstCertificate: firm?.gstCertificate,
+      msmeCertificate: firm?.msmeCertificate,
+      electricityBill: firm?.electricityBill,
+    });
+    prefilledVerificationId.current = ownerProfileVerification._id;
+  }, [ownerProfileVerification, user]);
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -82,13 +159,13 @@ export default function CustomerProfileCreationPage() {
 
   const errors: Partial<Record<keyof FormState, string>> = {
     name:
-      form.name.trim() === ""
+      effectiveName.trim() === ""
         ? "Name is required"
-        : !REGEX.name.test(form.name.trim())
+        : !REGEX.name.test(effectiveName.trim())
           ? "Enter a valid name"
           : "",
     emailPoc:
-      form.emailPoc.trim() !== "" && !REGEX.email.test(form.emailPoc.trim())
+      effectiveEmailPoc.trim() !== "" && !REGEX.email.test(effectiveEmailPoc.trim())
         ? "Enter a valid email"
         : "",
     pan:
@@ -111,8 +188,9 @@ export default function CustomerProfileCreationPage() {
         : !REGEX.gst.test(form.gstNo.trim().toUpperCase())
           ? "Format: 22ABCDE1234F1Z5"
           : "",
-    gstCertificate: !form.gstCertificate ? "GST certificate is required" : "",
-    electricityBill: !form.electricityBill
+    gstCertificate: !form.gstCertificate && !existingDocuments.gstCertificate ? "GST certificate is required" : "",
+    msmeCertificate: !form.msmeCertificate && !existingDocuments.msmeCertificate ? "MSME certificate is required" : "",
+    electricityBill: !form.electricityBill && !existingDocuments.electricityBill
       ? "Last month's electricity bill is required"
       : "",
     bankAccount:
@@ -145,6 +223,7 @@ export default function CustomerProfileCreationPage() {
     !errors.address &&
     !errors.gstNo &&
     !errors.gstCertificate &&
+    !errors.msmeCertificate &&
     !errors.electricityBill &&
     !errors.bankAccount &&
     !errors.ifsc &&
@@ -152,34 +231,105 @@ export default function CustomerProfileCreationPage() {
     !errors.bankName &&
     !errors.upiId;
 
-  const handleFile = (
-    key: "gstCertificate" | "msmeCertificate" | "electricityBill",
-    file: File | null,
-  ) => {
+  const handleFile = (key: DocumentKey, file: File | null) => {
     update(key, file);
+    if (file) {
+      setExistingDocuments((prev) => ({ ...prev, [key]: undefined }));
+    }
     markTouched(key);
   };
 
-  const handleSubmit = () => {
-    const allFields = [...REQUIRED_FIELDS, "gstCertificate", "electricityBill"];
+  const resolveDocument = async (key: DocumentKey) => {
+    const file = form[key];
+    if (file) {
+      return uploadPrivateFile(file, "kyc");
+    }
+
+    const existing = existingDocuments[key];
+    if (existing) {
+      return existing;
+    }
+
+    throw new Error("Required document is missing");
+  };
+
+  const handleSubmit = async () => {
+    const allFields = [...REQUIRED_FIELDS, "gstCertificate", "msmeCertificate", "electricityBill"];
     setTouched(Object.fromEntries(allFields.map((f) => [f, true])));
     if (!isValid) return;
-    router.push("/onboarding/review");
+
+    if (
+      (!form.gstCertificate && !existingDocuments.gstCertificate) ||
+      (!form.msmeCertificate && !existingDocuments.msmeCertificate) ||
+      (!form.electricityBill && !existingDocuments.electricityBill)
+    ) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setServerError("");
+
+      const [gstCertificate, msmeCertificate, electricityBill] = await Promise.all([
+        resolveDocument("gstCertificate"),
+        resolveDocument("msmeCertificate"),
+        resolveDocument("electricityBill"),
+      ]);
+
+      const result = await userApi.submitProfileVerification({
+        userDetails: {
+          fullName: effectiveName.trim(),
+          email: effectiveEmailPoc.trim() || undefined,
+        },
+        personalDetails: {
+          panNumber: form.pan.trim().toUpperCase(),
+        },
+        firmDetails: {
+          name: form.firmName.trim(),
+          email: form.firmEmail.trim().toLowerCase(),
+          address: form.address.trim(),
+          gstNumber: form.gstNo.trim().toUpperCase(),
+          gstCertificate,
+          msmeCertificate,
+          electricityBill,
+        },
+        payoutDetails: {
+          bankAccountNumber: form.bankAccount.trim(),
+          ifscCode: form.ifsc.trim().toUpperCase(),
+          accountHolderName: form.accountHolder.trim(),
+          bankName: form.bankName.trim(),
+          upiId: form.upiId.trim() || undefined,
+        },
+      });
+
+      setOwnerProfileVerificationState(
+        result.profileVerification || result.ownerProfileVerification,
+        result.user
+      );
+      router.replace("/onboarding/review");
+      void refreshCurrentUser().catch(() => undefined);
+    } catch (error) {
+      setServerError(getApiErrorMessage(error, "Could not submit profile for approval"));
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (authLoading || !user || status === "in_review" || status === "approved") return null;
 
   return (
     <div className={styles.page}>
-      
       <div className={styles.content}>
-        <h1 className={styles.title}>Profile Creation</h1>
-        <p className={styles.subtitle}>Step 1 of 2 — KYC details.</p>
+        <h1 className="text-[26px] font-extrabold text-gray-900">Profile Creation</h1>
+        <p className="mt-1 text-sm text-gray-400">Your personal, firm and verification details.</p>
+        {/* ---------- Personal Details ---------- */}
         <div className={styles.card}>
           <h2 className={styles.cardTitle}>Personal Details</h2>
 
           <Field
             label="Name"
             required
-            value={form.name}
+            value={effectiveName}
             onChange={(v) => update("name", v)}
             onBlur={() => markTouched("name")}
             error={touched.name ? errors.name : ""}
@@ -188,7 +338,7 @@ export default function CustomerProfileCreationPage() {
 
           <Field
             label="Phone No."
-            value={form.phone}
+            value={effectivePhone}
             onChange={() => {}}
             placeholder="+91 98XXXXXX10"
             disabled
@@ -196,7 +346,7 @@ export default function CustomerProfileCreationPage() {
 
           <Field
             label="Email ID – POC"
-            value={form.emailPoc}
+            value={effectiveEmailPoc}
             onChange={(v) => update("emailPoc", v)}
             onBlur={() => markTouched("emailPoc")}
             error={touched.emailPoc ? errors.emailPoc : ""}
@@ -204,6 +354,7 @@ export default function CustomerProfileCreationPage() {
           />
         </div>
 
+        {/* ---------- Firm Details ---------- */}
         <div className={styles.card}>
           <h2 className={styles.cardTitle}>Firm Details</h2>
 
@@ -262,25 +413,31 @@ export default function CustomerProfileCreationPage() {
             label="GST Certificate"
             required
             file={form.gstCertificate}
+            existingFile={existingDocuments.gstCertificate}
             onChange={(f) => handleFile("gstCertificate", f)}
             error={touched.gstCertificate ? errors.gstCertificate : ""}
           />
 
           <FileField
             label="MSME Certificate"
+            required
             file={form.msmeCertificate}
+            existingFile={existingDocuments.msmeCertificate}
             onChange={(f) => handleFile("msmeCertificate", f)}
+            error={touched.msmeCertificate ? errors.msmeCertificate : ""}
           />
 
           <FileField
             label="Electricity Bill – last month"
             required
             file={form.electricityBill}
+            existingFile={existingDocuments.electricityBill}
             onChange={(f) => handleFile("electricityBill", f)}
             error={touched.electricityBill ? errors.electricityBill : ""}
           />
         </div>
 
+        {/* ---------- Payout Details ---------- */}
         <div className={styles.card}>
           <h2 className={styles.cardTitle}>Payout Details</h2>
 
@@ -337,18 +494,23 @@ export default function CustomerProfileCreationPage() {
         </div>
       </div>
 
+      {/* ---------- Sticky submit ---------- */}
       <div className={styles.ctaBar}>
+        {serverError && <p className={styles.errorText}>{serverError}</p>}
         <button
           type="button"
           onClick={handleSubmit}
+          disabled={submitting}
           className={`${styles.ctaBtn} btn-primary`}
         >
-          Submit for Approval
+          {submitting ? "Uploading & Submitting..." : "Submit for Approval"}
         </button>
       </div>
     </div>
   );
 }
+
+/* ---------- Reusable field components ---------- */
 
 function Field({
   label,
@@ -430,15 +592,19 @@ function FileField({
   label,
   required,
   file,
+  existingFile,
   onChange,
   error,
 }: {
   label: string;
   required?: boolean;
   file: File | null;
+  existingFile?: MediaRef;
   onChange: (f: File | null) => void;
   error?: string;
 }) {
+  const existingFileName = existingFile?.key.split("/").pop();
+
   return (
     <div className={styles.field}>
       <label className={styles.fieldLabel}>
@@ -449,6 +615,10 @@ function FileField({
       >
         {file ? (
           <span className={styles.uploadFileName}>📎 {file.name}</span>
+        ) : existingFile ? (
+          <span className={styles.uploadFileName}>
+            Existing file kept{existingFileName ? `: ${existingFileName}` : ""}
+          </span>
         ) : (
           <span className={styles.uploadPlaceholder}>
             + Upload {label} · PDF/Image

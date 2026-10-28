@@ -1,0 +1,11 @@
+.page { width: 100%; max-width: 600px; margin: 0 auto; padding: 32px 20px 40px; color: #111827; }
+.page h1 { margin: 0; font-size: 26px; font-weight: 800; line-height: 1.3; overflow-wrap: anywhere; }
+.subtitle { margin: 10px 0 24px; color: #64748b; font-size: 14px; line-height: 1.6; }
+.steps { list-style: none; margin: 0 0 28px; padding: 0; }
+.steps li { display: flex; align-items: flex-start; gap: 14px; padding: 22px 0; border-bottom: 1px solid #e5e7eb; }
+.steps h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.steps p { margin: 6px 0 0; color: #64748b; font-size: 13px; line-height: 1.6; }
+.icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: 8px; background: #eff6ff; color: #2563eb; }
+.start { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 48px; padding: 12px 16px; border-radius: 8px; background: #2563eb; color: #fff; font-size: 15px; font-weight: 600; text-decoration: none; }
+.start:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.start:hover { background: #1d4ed8; }

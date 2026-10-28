@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import Image from "next/image";
 import MouldExplore from "./MouldExplore";
 import GetStartedModal from "./GetStartedModal";
@@ -9,7 +9,7 @@ import SearchOverlay from "../shared/SearchOverlay";
 import styles from "./CustomerHome.module.css";
 import mouldchair from "@/public/images/mould-and-chair.webp";
 import { useAuth } from "@/app/lib/auth-context";
-import { publicApi } from "@/app/lib/public-api";
+import { useCatalogueCategories } from "@/app/lib/use-catalogue-categories";
 import {
   DEFAULT_FILTERS,
   countActiveFilters,
@@ -24,32 +24,13 @@ export default function CustomerHome() {
   // Shared by the hero bar, the search sheet and the results section below,
   // so a search made anywhere filters the listings on this page.
   const [search, setSearch] = useState("");
-  const [categoryNames, setCategoryNames] = useState<string[]>([]);
+  const { categories } = useCatalogueCategories(true);
+  const categoryNames = categories.map((category) => category.title);
   // The filter panel lives in the listings section; the sticky bar toggles it.
   const [filterOpen, setFilterOpen] = useState(false);
   // Shared like `search`, so filters picked in the sheet also apply below.
   const [filters, setFilters] = useState<CatalogueFilters>(DEFAULT_FILTERS);
   const activeFilterCount = countActiveFilters(filters);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const timer = window.setTimeout(() => {
-      publicApi
-        .listSections(1)
-        .then((sections) => {
-          if (!cancelled) setCategoryNames(sections.map((section) => section.category.title));
-        })
-        .catch(() => {
-          if (!cancelled) setCategoryNames([]);
-        });
-    }, 0);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, []);
 
   const openSearch = (options?: { voice?: boolean }) => {
     setAutoVoice(Boolean(options?.voice));
@@ -67,10 +48,10 @@ export default function CustomerHome() {
     else showFilters();
   };
 
-  const closeSearch = () => {
+  const closeSearch = useCallback(() => {
     setSearchOpen(false);
     setAutoVoice(false);
-  };
+  }, []);
 
   return (
     <div className={styles.page}>
@@ -121,6 +102,7 @@ export default function CustomerHome() {
 
       
       <MouldExplore
+        enabled={!searchOpen}
         search={search}
         onSearchChange={setSearch}
         filterOpen={filterOpen}

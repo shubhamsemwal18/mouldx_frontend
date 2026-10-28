@@ -323,6 +323,23 @@
 }
 
 /* ---------- Error banner ---------- */
+.pendingNotice { margin: 18px 0; padding: 18px 16px; border: 1px solid #cbdcfa; border-radius: 8px; background: #f3f7ff; color: #475569; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; scroll-margin: 20px; }
+.pendingHeading { display: flex; align-items: flex-start; gap: 12px; }
+.pendingHeading > div { min-width: 0; }
+.pendingHeading h2 { margin: 0; font-size: 15px; font-weight: 700; line-height: 1.5; color: #111827; }
+.pendingNotice p { margin: 12px 0 0; }
+.pendingHeading p { margin: 4px 0 0; color: #2563eb; font-weight: 600; }
+.pendingIcon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 8px; background: #e1ebff; color: #2563eb; }
+.pendingReference { font-size: 12px; font-weight: 600; }
+.pendingActions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.pendingActions a, .pendingActions button, .retryCheck { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; max-width: 100%; padding: 10px 12px; border: 1px solid #2563eb; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 600; text-decoration: none; cursor: pointer; white-space: normal; overflow-wrap: anywhere; }
+.pendingActions a { background: #2563eb; color: #fff; }
+.pendingActions button, .retryCheck { background: #fff; color: #2563eb; }
+.pendingActions a:focus-visible, .pendingActions button:focus-visible, .retryCheck:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.retryCheck { margin-top: 10px; }
+.retryCheck:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 430px) { .pendingActions a, .pendingActions button { width: 100%; } }
+
 .errorBanner {
   margin-top: 12px;
   padding: 10px 14px;
@@ -332,6 +349,8 @@
   font-size: 12.5px;
   font-weight: 600;
 }
+.errorBanner p { margin: 0; }
+.errorBanner a { display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; color: #1d4ed8; overflow-wrap: anywhere; }
 
 /* ---------- Legend ---------- */
 .legendCard {

@@ -7,7 +7,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   X,
-  Bell,
+  LogOut,
+  type LucideIcon,
   User,
   Repeat,
   LayoutDashboard,
@@ -17,18 +18,20 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/app/lib/auth-context";
 import { useActiveRole, type ActiveRole } from "@/app/lib/active-role";
+import { useLogout } from "@/app/lib/use-logout";
+import { isAdminUser } from "@/app/lib/auth-routing";
 import styles from "./Header.module.css";
 
 type MenuItem =
-  | { key: string; label: string; icon: typeof Bell; href: string }
-  | { key: string; label: string; icon: typeof Bell; onSelect: () => void };
+  | { key: string; label: string; icon: LucideIcon; href: string }
+  | { key: string; label: string; icon: LucideIcon; onSelect: () => void; disabled?: boolean; keepOpen?: boolean };
 
 /** Keep in sync with the `roleToastLife` animation duration in the CSS module. */
 const ROLE_TOAST_DURATION_MS = 3000;
 
 const ROLE_META: Record<
   ActiveRole,
-  { label: string; icon: typeof Bell; className: string; message: string }
+  { label: string; icon: LucideIcon; className: string; message: string }
 > = {
   owner: {
     label: "Host",
@@ -49,7 +52,9 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, loading } = useAuth();
-  const { activeRole, switchRole } = useActiveRole();
+  const isAdmin = isAdminUser(user);
+  const { handleLogout, loggingOut, logoutError } = useLogout();
+  const { activeRole, switchRole } = useActiveRole(!isAdmin && user?.profileVerificationStatus === "approved" && Boolean(user.approvedRoles?.includes("owner")));
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   // The role a switch was requested to, held until `activeRole` actually
@@ -74,8 +79,9 @@ export default function Header() {
     return () => window.clearTimeout(timer);
   }, [roleToast]);
 
-  const isAdmin = Boolean(user?.approvedRoles?.includes("admin"));
   const isSignedIn = Boolean(user);
+  const canShowMode = !isAdmin && user?.profileVerificationStatus === "approved" && Boolean(user.approvedRoles?.some((role) => role === "owner" || role === "customer"));
+  const isOwnerMode = canShowMode && activeRole === "owner" && Boolean(user?.approvedRoles?.includes("owner"));
 
   // Both modes share `/`; the active role decides which home it renders.
   const homeHref = isAdmin ? "/admin" : "/";
@@ -107,29 +113,30 @@ export default function Header() {
    */
   const buildMenuItems = (): MenuItem[] => {
     const items: MenuItem[] = [
-      // Static for now — there is no notifications backend yet.
-      { key: "notifications", label: "Notifications", icon: Bell, href: "#" },
-      // Same destinations as each mode's bottom nav. Admins keep `/profile`.
+      // Admins never link into the customer profile workflow.
       {
-        key: "profile",
-        label: "Profile",
-        icon: User,
-        href: !isAdmin && activeRole === "owner" ? "/owner/profile" : "/profile",
+        key: isAdmin ? "dashboard" : "profile",
+        label: isAdmin ? "Admin" : "Profile",
+        icon: isAdmin ? LayoutDashboard : User,
+        href: isAdmin ? "/admin" : !canShowMode ? "/onboarding" : isOwnerMode ? "/owner/profile" : "/profile",
+      },
+      {
+        key: "logout",
+        label: loggingOut ? "Logging out..." : "Logout",
+        icon: LogOut,
+        onSelect: () => { void handleLogout(); },
+        disabled: loggingOut,
+        keepOpen: true,
       },
     ];
 
     if (isAdmin) {
-      items.push({
-        key: "dashboard",
-        label: "Dashboard",
-        icon: LayoutDashboard,
-        href: "/admin",
-      });
-
       return items;
     }
 
-    const nextRole = activeRole === "owner" ? "customer" : "owner";
+    if (!canShowMode) return items;
+    const nextRole = isOwnerMode ? "customer" : "owner";
+    if (!user?.approvedRoles?.includes(nextRole)) return items;
 
     items.push({
       key: "switch-role",
@@ -147,7 +154,7 @@ export default function Header() {
   };
 
   const menuItems = buildMenuItems();
-  const roleMeta = ROLE_META[activeRole];
+  const roleMeta = ROLE_META[isOwnerMode ? "owner" : "customer"];
   const RoleIcon = roleMeta.icon;
   const toastMeta = roleToast ? ROLE_META[roleToast.role] : null;
 
@@ -170,8 +177,9 @@ export default function Header() {
         {!loading && isSignedIn && (
           <>
             <div className={styles.headerActions}>
+              {isAdmin && <Link href="/admin" className={styles.adminLink}><LayoutDashboard size={15} aria-hidden="true" /> Admin</Link>}
               {/* Admins have no profile switch, so there is no mode to show. */}
-              {!isAdmin && (
+              {canShowMode && (
                 <span
                   className={`${styles.roleBadge} ${roleMeta.className}`}
                   title="Your current mode"
@@ -223,9 +231,10 @@ export default function Header() {
                         key={item.key}
                         type="button"
                         role="menuitem"
+                        disabled={item.disabled}
                         className={styles.dropdownItem}
                         onClick={() => {
-                          setOpen(false);
+                          if (!item.keepOpen) setOpen(false);
                           item.onSelect();
                         }}
                       >
@@ -234,6 +243,7 @@ export default function Header() {
                       </button>
                     );
                   })}
+                  {logoutError && <p className={styles.logoutError} role="alert">{logoutError}</p>}
                 </div>
               </>
             )}
@@ -242,7 +252,7 @@ export default function Header() {
       </header>
 
       {/* Rendered outside <header> so its stacking context cannot clip it. */}
-      {roleToast && toastMeta && (
+      {canShowMode && roleToast && toastMeta && (
         <div
           key={roleToast.id}
           className={`${styles.roleToast} ${toastMeta.className}`}

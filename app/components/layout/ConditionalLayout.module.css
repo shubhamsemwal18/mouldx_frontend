@@ -1,0 +1,5 @@
+.withCustomerNav {
+  --bottom-nav-offset: var(--customer-bottom-nav-height);
+  --bottom-action-safe-area: 0px;
+  padding-bottom: var(--customer-bottom-nav-height);
+}

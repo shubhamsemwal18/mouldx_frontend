@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --customer-bottom-nav-height: calc(79px + env(safe-area-inset-bottom));
 }
 
 @theme inline {

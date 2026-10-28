@@ -20,7 +20,7 @@ const NAV_SECTIONS = [
     label: "Approvals",
     items: [
       { label: "KYC", href: "/admin/kyc", icon: "🪪", badge: 4 },
-      { label: "Bookings", href: "/admin/bookings", icon: "☰", badge: 3 },
+      { label: "Bookings", href: "/admin/bookings", icon: "☰" },
       { label: "Damage Claims", href: "/admin/damage-claims", icon: "⚠" },
     ],
   },
@@ -36,7 +36,7 @@ const NAV_SECTIONS = [
     label: "Operations",
     items: [
       // { label: "Owners", href: "/admin/owners", icon: "🏭" },
-      { label: "Support", href: "/admin/support", icon: "💬", badge: 2 },
+      { label: "Support", href: "/admin/support", icon: "💬" },
       { label: "Payments", href: "/admin/payments", icon: "₹" },
       { label: "Users", href: "/admin/users", icon: "◎" },
        { label: "Reviews", href: "/admin/reviews", icon: "▦" },
@@ -51,6 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, loading } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isAdmin = Boolean(user?.approvedRoles.includes("admin"));
+  const isSupportChat = /^\/admin\/support\/[^/]+$/.test(pathname);
 
   useEffect(() => {
     if (loading || isAdmin) return;
@@ -120,8 +121,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* ---------- Main content ---------- */}
-      <main className={styles.main}>
-        <AdminHeader />
+      <main className={`${styles.main} ${isSupportChat ? styles.chatMain : ""}`}>
+        {!isSupportChat && <AdminHeader />}
         {children}
       </main>
     </div>

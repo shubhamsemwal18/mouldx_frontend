@@ -681,7 +681,7 @@ export default function ProductDetailsPage() {
     }
 
     if (!isApprovedOwner) {
-      router.replace("/owner/onboarding");
+      router.replace("/onboarding");
     }
   }, [authLoading, isApprovedOwner, router, user]);
 

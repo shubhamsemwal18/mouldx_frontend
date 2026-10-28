@@ -483,7 +483,7 @@ export default function MyMouldsPage() {
       router.replace(`/login?next=${encodeURIComponent("/owner/moulds")}`);
       return;
     }
-    if (!isApprovedOwner) router.replace("/owner/onboarding");
+    if (!isApprovedOwner) router.replace("/onboarding");
   }, [authLoading, isApprovedOwner, router, user]);
 
   // Debounce the search box so typing does not fire a request per keystroke.
