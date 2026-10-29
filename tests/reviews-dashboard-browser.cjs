@@ -115,12 +115,18 @@ async function run() {
   await customerPage.screenshot({ path: `${out}/customer-booking-reviews-390.png`, fullPage: true });
   await hostPage.goto(`${url}/owner/profile`);
   await expect(hostPage).toHaveURL(`${url}/profile`);
+  await expect(hostPage.getByRole("region", { name: "Profile statistics" }).getByText("10", { exact: true })).toBeVisible();
+  await hostPage.getByRole("button", { name: "View customer reviews", exact: true }).click();
   await expect(hostPage.getByRole("heading", { name: "Your Rating as a Customer", exact: true })).toBeVisible();
   await expect(hostPage.getByRole("link", { name: "Moulds", exact: true })).toBeVisible();
   await expect(hostPage.getByText("No reviews yet", { exact: true })).toBeVisible();
-  await expect(hostPage.getByText("Dashboard Host Industries", { exact: true })).toBeVisible();
+  await expect(hostPage.locator("dd").filter({ hasText: /^Dashboard Host Industries$/ })).toBeVisible();
   await expect(hostPage.getByText("•••• 9012", { exact: true })).toBeVisible();
+  await hostPage.getByRole("button", { name: "View verification documents", exact: true }).click();
   await expect(hostPage.getByRole("button", { name: "GST Certificate ↗", exact: true })).toBeEnabled();
+  await hostPage.getByRole("button", { name: "View customer reviews", exact: true }).click();
+  await hostPage.getByRole("button", { name: "Hide verification documents", exact: true }).click();
+  await hostPage.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await hostPage.screenshot({ path: `${out}/host-profile-390.png`, fullPage: true });
   // A temporary refresh/server failure should show a retry without discarding
   // an established session. Normal permission errors must also stay local.
@@ -135,16 +141,18 @@ async function run() {
   expect(await hostPage.evaluate(() => localStorage.getItem("mouldx:auth-session-present"))).toBe("1");
   await owner.context.unroute(profilePath, expiredOnce); await owner.context.unroute(refreshPath, unavailableOnce);
   await hostPage.getByRole("button", { name: "Try again", exact: true }).click();
-  await expect(hostPage.getByText("Dashboard Host Industries", { exact: true })).toBeVisible();
+  await expect(hostPage.locator("dd").filter({ hasText: /^Dashboard Host Industries$/ })).toBeVisible();
   await customerPage.goto(`${url}/profile`);
-  await expect(customerPage.getByText("Based on 1 review", { exact: true })).toBeVisible();
+  await expect(customerPage.getByRole("button", { name: "View customer reviews", exact: true })).toContainText("5.0");
   await expect(customerPage.getByRole("link", { name: "Moulds", exact: true })).toHaveCount(0);
-  await expect(customerPage.getByText("A careful customer who returned the mould on time.", { exact: true })).toBeVisible();
   for (const width of [320, 390, 1440]) {
     await customerPage.setViewportSize({ width, height: 900 });
     expect(await customerPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
     await customerPage.screenshot({ path: `${out}/customer-profile-${width}.png`, fullPage: true });
   }
+  await customerPage.getByRole("button", { name: "View customer reviews", exact: true }).click();
+  await expect(customerPage.getByText("Based on 1 review", { exact: true })).toBeVisible();
+  await expect(customerPage.getByText("A careful customer who returned the mould on time.", { exact: true })).toBeVisible();
   await customerPage.setViewportSize({ width: 390, height: 844 });
   await customerPage.goto(`${url}/bookings/${active[0]._id}`);
   await expect(customerPage.getByRole("button", { name: "Write a review", exact: true })).toHaveCount(0);
