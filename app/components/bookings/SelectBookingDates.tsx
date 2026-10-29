@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CalendarDays, CalendarX2, ChevronLeft, ChevronRight, Clock3, RefreshCw } from "lucide-react";
@@ -11,6 +11,25 @@ import { useBookingQuery } from "./useBookingQuery";
 import { useRentalDayRefresh } from "./useRentalDayRefresh";
 import styles from "@/app/explore/[id]/dates/SelectDates.module.css";
 import shared from "./Bookings.module.css";
+
+/* Compact pill for the "Clear dates" action. */
+const clearDatesStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "fit-content",
+  borderRadius: "9999px",
+  padding: "0.5rem 1.125rem",
+  fontSize: "0.8125rem",
+  fontWeight: 600,
+  lineHeight: 1.2,
+  color: "#ffffff",
+  backgroundColor: "#2563eb",
+  textDecoration: "none",
+  border: "none",
+  cursor: "pointer",
+  transition: "opacity 0.2s ease",
+};
 
 export default function SelectBookingDates({ slug }: { slug: string }) {
   const fetchProduct = useCallback(async (signal: AbortSignal) => {
@@ -124,7 +143,16 @@ function Calendar({ productId, slug }: { productId: string; slug: string }) {
             return <button key={date} type="button" disabled={!data || muted || past || blocked || submitting} className={`${styles.dayCell} ${className}`} aria-label={`${formatBookingDate(date)}${blocked ? ", unavailable" : past ? ", past" : ""}`} aria-pressed={selected} onClick={() => selectDate(date)}><span className={styles.dayNumber}>{Number(date.slice(-2))}</span></button>;
           })}
         </div>
-        {start && <button className={styles.clearBtn} disabled={submitting} onClick={clearDates}>Clear dates</button>}
+        {start && <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #eef0f2" }}>
+          <button
+            type="button"
+            style={{ ...clearDatesStyle, opacity: submitting ? 0.55 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
+            disabled={submitting}
+            onClick={clearDates}
+          >
+            Clear dates
+          </button>
+        </div>}
       </div>
       {query.error && <div className={styles.errorBanner} role="alert">{query.error.message} <button onClick={query.reload}>Try again</button></div>}
       {!error?.bookingId && (error || selectionError) && <div ref={errorRef} className={styles.errorBanner} role="alert"><p>{error?.message || selectionError}</p>{error && !selectionError && <button type="button" className={styles.retryCheck} disabled={!canContinue} onClick={continueBooking}><RefreshCw size={16} aria-hidden="true" />Try again</button>}</div>}

@@ -183,193 +183,206 @@ export default function ProductDetailPage({
   return (
     <div className={styles.page}>
       <div className={styles.content}>
-        {/* ---------- Gallery (changes with the selected tab) ---------- */}
-        <div className={styles.gallery}>
-          <div
-            className={styles.galleryMain}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-          >
-            {activeMedia ? (
-              activeMedia.type === "image" ? (
-                <Image
-                  key={`${activeTab}-${safeMediaIndex}`}
-                  src={activeMedia.src}
-                  alt={`${galleryLabel} photo ${safeMediaIndex + 1}`}
-                  fill
-                  sizes="(max-width: 640px) 100vw, 640px"
-                  className={styles.galleryImage}
-                  priority
-                />
+        <div className={styles.layout}>
+          {/* ---------- Gallery (changes with the selected tab) ---------- */}
+          <div className={styles.gallery}>
+            <div
+              className={styles.galleryMain}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              {activeMedia ? (
+                activeMedia.type === "image" ? (
+                  <Image
+                    key={`${activeTab}-${safeMediaIndex}`}
+                    src={activeMedia.src}
+                    alt={`${galleryLabel} photo ${safeMediaIndex + 1}`}
+                    fill
+                    sizes="(max-width: 1023px) 100vw, 520px"
+                    className={styles.galleryImage}
+                    priority
+                  />
+                ) : (
+                  <video
+                    key={`${activeTab}-${safeMediaIndex}`}
+                    src={activeMedia.src}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className={styles.galleryVideo}
+                  />
+                )
               ) : (
-                <video
-                  key={`${activeTab}-${safeMediaIndex}`}
-                  src={activeMedia.src}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  className={styles.galleryVideo}
-                />
-              )
-            ) : (
-              <div className={styles.galleryVideoWrap} aria-hidden />
-            )}
+                <div className={styles.galleryVideoWrap} aria-hidden />
+              )}
+
+              {media.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => goToMedia(safeMediaIndex - 1)}
+                    disabled={safeMediaIndex === 0}
+                    className={`${styles.galleryNav} ${styles.galleryNavLeft}`}
+                    aria-label="Previous media"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goToMedia(safeMediaIndex + 1)}
+                    disabled={safeMediaIndex === media.length - 1}
+                    className={`${styles.galleryNav} ${styles.galleryNavRight}`}
+                    aria-label="Next media"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+
+              {activeMedia && (
+                <span className={styles.galleryCounter}>
+                  {activeMedia.type === "video" ? "Video" : "Photo"} · {safeMediaIndex + 1}/
+                  {media.length}
+                </span>
+              )}
+            </div>
 
             {media.length > 1 && (
+              <div className={styles.thumbStrip}>
+                {media.map((item, index) => (
+                  <button
+                    key={`${activeTab}-${item.type}-${index}`}
+                    type="button"
+                    onClick={() => goToMedia(index)}
+                    className={`${styles.thumb} ${
+                      index === safeMediaIndex ? styles.thumbActive : ""
+                    }`}
+                    aria-label={`View ${item.type} ${index + 1}`}
+                  >
+                    {item.type === "image" ? (
+                      <Image src={item.src} alt="" fill sizes="80px" className={styles.thumbImage} />
+                    ) : (
+                      <span className={styles.thumbPlay}>▶</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ---------- Details column ---------- */}
+          <div className={styles.info}>
+            {/* Title + quick specs + price */}
+            <div className={styles.titleRow}>
+              <h1 className={styles.title}>{product.name}</h1>
+            </div>
+
+            <p className={styles.metaRow}>
+              {[product.code, product.category?.title, product.subCategory?.title]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+
+            {quickSpecs.length > 0 && (
+              <div className={styles.quickSpecs}>
+                {quickSpecs.map((spec) => (
+                  <div key={spec.label} className={styles.quickSpecCard}>
+                    <p className={styles.quickSpecValue}>{spec.value}</p>
+                    <p className={styles.quickSpecLabel}>{spec.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className={styles.priceRow}>
+              <p className={styles.priceValue}>
+                {formatMoney(product.pricing?.perDayCharges)}
+                <span className={styles.pricePeriod}> / day</span>
+              </p>
+            </div>
+
+            {/* Tabs: Product + one tab per component */}
+            {hasComponents && (
+              <div className={styles.tabsRow} role="tablist">
+                {tabs.map((tab, index) => (
+                  <button
+                    key={`${tab.label}-${index}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === index}
+                    onClick={() => selectTab(index)}
+                    className={`${styles.tabBtn} ${activeTab === index ? styles.tabBtnActive : ""}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Product tab */}
+            {activeTab === 0 && (
               <>
-                <button
-                  type="button"
-                  onClick={() => goToMedia(safeMediaIndex - 1)}
-                  disabled={safeMediaIndex === 0}
-                  className={`${styles.galleryNav} ${styles.galleryNavLeft}`}
-                  aria-label="Previous media"
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  onClick={() => goToMedia(safeMediaIndex + 1)}
-                  disabled={safeMediaIndex === media.length - 1}
-                  className={`${styles.galleryNav} ${styles.galleryNavRight}`}
-                  aria-label="Next media"
-                >
-                  ›
-                </button>
+                <Section key="product" title="Product Details">
+                  <Row label="Product Name" value={product.name} />
+                  <Row label="Category" value={dash(product.category?.title)} />
+                  <Row label="Sub Category" value={dash(product.subCategory?.title)} />
+                  <Row label="Dimensions (L × B × H)" value={formatDimensions(product.dimensions)} />
+                  <Row label="Weight" value={dash(product.weight, " g")} />
+                  <Row label="Material" value={dash(product.material)} />
+                  <Row label="Surface Finish" value={dash(product.surfaceFinish)} />
+                  <Row
+                    label="Per Day Rental Charges"
+                    value={formatMoney(product.pricing?.perDayCharges)}
+                  />
+                  <Row
+                    label="Security Deposit (MouldX payments only)"
+                    value={formatMoney(product.pricing?.securityDeposit)}
+                    isLast
+                  />
+                </Section>
+
+                {/* Single mould: mould details follow the product details */}
+                {singleMould && (
+                  <Section key="single-mould" title="Mould Details">
+                    <MouldRows mould={singleMould} />
+                  </Section>
+                )}
               </>
             )}
 
-            {activeMedia && (
-              <span className={styles.galleryCounter}>
-                {activeMedia.type === "video" ? "Video" : "Photo"} · {safeMediaIndex + 1}/
-                {media.length}
-              </span>
+            {/* Component tabs */}
+            {activeComponent && (
+              <>
+                <Section key={`${activeComponent._id}-component`} title="Component Details">
+                  <Row label="Component Name" value={dash(activeComponent.component?.name)} />
+                  <Row
+                    label="Dimensions (L × B × H)"
+                    value={formatDimensions(activeComponent.component?.dimensions)}
+                  />
+                  <Row label="Weight" value={dash(activeComponent.component?.weight, " g")} />
+                  <Row
+                    label="Surface Finish"
+                    value={dash(activeComponent.component?.surfaceFinish)}
+                    isLast
+                  />
+                </Section>
+
+                <Section key={`${activeComponent._id}-mould`} title="Mould Details">
+                  <MouldRows mould={activeComponent} />
+                </Section>
+              </>
             )}
           </div>
-
-          {media.length > 1 && (
-            <div className={styles.thumbStrip}>
-              {media.map((item, index) => (
-                <button
-                  key={`${activeTab}-${item.type}-${index}`}
-                  type="button"
-                  onClick={() => goToMedia(index)}
-                  className={`${styles.thumb} ${
-                    index === safeMediaIndex ? styles.thumbActive : ""
-                  }`}
-                  aria-label={`View ${item.type} ${index + 1}`}
-                >
-                  {item.type === "image" ? (
-                    <Image src={item.src} alt="" fill sizes="80px" className={styles.thumbImage} />
-                  ) : (
-                    <span className={styles.thumbPlay}>▶</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
-        {/* ---------- Title + quick specs + price ---------- */}
-        <div className={styles.titleRow}>
-          <h1 className={styles.title}>{product.name}</h1>
-        </div>
-
-        <p className={styles.metaRow}>
-          {[product.code, product.category?.title, product.subCategory?.title]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-
-        {quickSpecs.length > 0 && (
-          <div className={styles.quickSpecs}>
-            {quickSpecs.map((spec) => (
-              <div key={spec.label} className={styles.quickSpecCard}>
-                <p className={styles.quickSpecValue}>{spec.value}</p>
-                <p className={styles.quickSpecLabel}>{spec.label}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className={styles.priceRow}>
-          <p className={styles.priceValue}>
-            {formatMoney(product.pricing?.perDayCharges)}
-            <span className={styles.pricePeriod}> / day</span>
-          </p>
-        </div>
-        {/* ---------- Tabs: Product + one tab per component ---------- */}
-        {hasComponents && (
-          <div className={styles.tabsRow} role="tablist">
-            {tabs.map((tab, index) => (
-              <button
-                key={`${tab.label}-${index}`}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === index}
-                onClick={() => selectTab(index)}
-                className={`${styles.tabBtn} ${activeTab === index ? styles.tabBtnActive : ""}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ---------- Product tab ---------- */}
-        {activeTab === 0 && (
-          <>
-            <Section key="product" title="Product Details">
-              <Row label="Product Name" value={product.name} />
-              <Row label="Category" value={dash(product.category?.title)} />
-              <Row label="Sub Category" value={dash(product.subCategory?.title)} />
-              <Row label="Dimensions (L × B × H)" value={formatDimensions(product.dimensions)} />
-              <Row label="Weight" value={dash(product.weight, " g")} />
-              <Row label="Material" value={dash(product.material)} />
-              <Row label="Surface Finish" value={dash(product.surfaceFinish)} />
-              <Row
-                label="Per Day Rental Charges"
-                value={formatMoney(product.pricing?.perDayCharges)}
-              />
-              <Row
-                label="Security Deposit (MouldX payments only)"
-                value={formatMoney(product.pricing?.securityDeposit)}
-                isLast
-              />
-            </Section>
-
-            {/* Single mould: mould details follow the product details */}
-            {singleMould && (
-              <Section key="single-mould" title="Mould Details">
-                <MouldRows mould={singleMould} />
-              </Section>
-            )}
-          </>
-        )}
-
-        <Section title="Ratings & Reviews"><ReviewList scope="product" slug={product.slug} /></Section>
-
-        {/* ---------- Component tabs ---------- */}
-        {activeComponent && (
-          <>
-            <Section key={`${activeComponent._id}-component`} title="Component Details">
-              <Row label="Component Name" value={dash(activeComponent.component?.name)} />
-              <Row
-                label="Dimensions (L × B × H)"
-                value={formatDimensions(activeComponent.component?.dimensions)}
-              />
-              <Row label="Weight" value={dash(activeComponent.component?.weight, " g")} />
-              <Row
-                label="Surface Finish"
-                value={dash(activeComponent.component?.surfaceFinish)}
-                isLast
-              />
-            </Section>
-
-            <Section key={`${activeComponent._id}-mould`} title="Mould Details">
-              <MouldRows mould={activeComponent} />
-            </Section>
-          </>
-        )}
+        {/* ---------- Ratings & Reviews: always last, below every detail section ---------- */}
+        <Section
+          title="Ratings & Reviews"
+          className={styles.reviewsSection}
+          bodyClassName={styles.reviewsBody}
+        >
+          <ReviewList scope="product" slug={product.slug} />
+        </Section>
       </div>
 
       {!authLoading && !isAdminUser(user) && <div className={styles.ctaBar}>
@@ -391,15 +404,19 @@ function Section({
   title,
   children,
   defaultOpen = true,
+  className = "",
+  bodyClassName = "",
 }: {
   title: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  className?: string;
+  bodyClassName?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className={styles.section}>
+    <div className={`${styles.section} ${className}`}>
       <button
         type="button"
         className={styles.sectionHeader}
@@ -414,7 +431,7 @@ function Section({
           ▾
         </span>
       </button>
-      {open && <div className={styles.sectionBody}>{children}</div>}
+      {open && <div className={`${styles.sectionBody} ${bodyClassName}`}>{children}</div>}
     </div>
   );
 }
