@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Header from "@/app/components/layout/Header";
 import BottomNav from "@/app/components/layout/BottomNav";
+import OwnerBottomNav from "@/app/components/layout/OwnerBottomNav";
 import SplashLoader from "@/app/components/shared/SplashLoader";
 import { useAuth } from "@/app/lib/auth-context";
 import { useHomeView } from "@/app/lib/home-view";
@@ -70,8 +71,8 @@ export default function ConditionalLayout({
     <SplashLoader>
       <Header />
       <main className={showCustomerNav ? styles.withCustomerNav : undefined}>{children}</main>
-      <Footer />
-      {showCustomerNav && <BottomNav />}
+      {!isOwnerRoute && <Footer />}
+      {showCustomerNav && (pathname === "/profile" && homeView === "owner" ? <OwnerBottomNav /> : <BottomNav />)}
     </SplashLoader>
   );
 }

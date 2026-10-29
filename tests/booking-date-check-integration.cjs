@@ -81,11 +81,11 @@ async function run() {
 
   // A genuinely different range still passes both the preflight and checkout gate.
   await page.getByRole("button", { name: "Choose different dates", exact: true }).click();
+  if (end.slice(0, 7) !== start.slice(0, 7)) await page.getByRole("button", { name: "Previous month", exact: true }).click();
   await page.getByRole("button", { name: label(start), exact: true }).click();
   const newEnd = addDays(end, 1);
   if (newEnd.slice(0, 7) !== start.slice(0, 7)) {
-    // The calendar is currently showing the original end month.
-    if (newEnd.slice(0, 7) !== end.slice(0, 7)) await page.getByRole("button", { name: "Next month", exact: true }).click();
+    await page.getByRole("button", { name: "Next month", exact: true }).click();
   }
   await page.getByRole("button", { name: label(newEnd), exact: true }).click();
   await page.getByRole("button", { name: "Continue", exact: true }).click();

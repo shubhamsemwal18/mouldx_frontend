@@ -6,43 +6,6 @@
   padding-bottom: 90px; /* space for the sticky CTA */
 }
 
-/* ---------- Header ---------- */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  position: sticky;
-  top: 0;
-  background: #ffffff;
-  z-index: 10;
-  border-bottom: 1px solid #f1f1f3;
-}
-
-.iconBtn {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  color: #111827;
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.brand {
-  font-size: 15px;
-  font-weight: 800;
-  color: #111827;
-}
-
-.brandAccent {
-  color: #22d3ee;
-}
-
 /* ---------- Content ---------- */
 .content {
   padding: 20px;
@@ -59,14 +22,6 @@
   margin-top: 4px;
   font-size: 13px;
   color: #9ca3af;
-}
-
-.card {
-  margin-top: 20px;
-  background: #fafafa;
-  border: 1px solid #eef0f2;
-  border-radius: 16px;
-  padding: 18px;
 }
 
 .cardTitle {
@@ -113,7 +68,7 @@
   color: #2563eb;
 }
 
-/* ---------- Payment method options (online / cash) ---------- */
+/* ---------- Payment method options ---------- */
 .methodOption {
   display: flex;
   align-items: flex-start;
@@ -153,28 +108,7 @@
   margin: 0;
 }
 
-.methodDesc {
-  margin-top: 3px;
-  font-size: 12px;
-  color: #6b7280;
-  line-height: 1.4;
-}
-
 /* ---------- Direct-to-owner warning ---------- */
-.warningBox {
-  margin-top: 14px;
-  background: #fff7ed;
-  border: 1px solid #fde3c1;
-  border-radius: 12px;
-  padding: 14px;
-}
-
-.warningText {
-  font-size: 12px;
-  color: #92400e;
-  line-height: 1.5;
-  margin: 0;
-}
 
 .ackRow {
   margin-top: 12px;

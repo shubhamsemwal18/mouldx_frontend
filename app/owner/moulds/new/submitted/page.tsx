@@ -2,130 +2,75 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import styles from "./ListingSubmitted.module.css";
+import { useSearchParams } from "next/navigation";
+import { getApiErrorMessage } from "@/app/lib/api";
 import { productApi } from "@/app/lib/product-api";
-import type { Product } from "@/app/lib/types";
+import type { ProductDetail } from "@/app/lib/types";
+import styles from "./ListingSubmitted.module.css";
 
-interface TimelineStep {
-  id: string;
-  title: string;
-  status: "done" | "pending" | "upcoming";
-  meta: string;
-}
-
-const formatSubmittedAt = (iso?: string | null) =>
-  iso
-    ? new Date(iso).toLocaleString("en-IN", {
-        day: "numeric",
-        month: "short",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : "Just now";
-
-const buildSteps = (listing: Product | null): TimelineStep[] => [
-  {
-    id: "submitted",
-    title: "Listing submitted",
-    status: "done",
-    meta: formatSubmittedAt(listing?.submittedAt),
-  },
-  { id: "review", title: "Admin review", status: "pending", meta: "Pending" },
-  {
-    id: "live",
-    title: "Live to users",
-    status: "upcoming",
-    meta: "Visible in Explore after approval",
-  },
-];
+const formatDate = (value?: string | null) => value ? new Date(value).toLocaleString("en-IN", {
+  timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+}) : "Submitted";
 
 export default function ListingSubmittedPage() {
-  const [listing, setListing] = useState<Product | null>(null);
-
-  // Shows the listing that was just submitted (the newest one under review).
+  const id = useSearchParams().get("id");
+  const [result, setResult] = useState<{ id: string | null; detail?: ProductDetail; error?: string }>();
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let cancelled = false;
-
-    productApi
-      .list({ status: "in_review", limit: 1 })
-      .then((data) => {
-        if (!cancelled) setListing(data.products[0] ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setListing(null);
-      });
-
-    return () => {
-      cancelled = true;
+    const load = async () => {
+      try {
+        let detail: ProductDetail;
+        if (id) detail = await productApi.get(id);
+        else {
+          const data = await productApi.list({ status: "in_review", limit: 1 });
+          if (!data.products[0]) throw new Error("No listing is currently awaiting approval.");
+          detail = { product: data.products[0], moulds: [] };
+        }
+        if (!cancelled) setResult({ id, detail });
+      } catch (error) {
+        if (!cancelled) setResult({ id, error: getApiErrorMessage(error, "Could not load this listing.") });
+      }
     };
-  }, []);
+    void load();
+    return () => { cancelled = true; };
+  }, [id, attempt]);
+  const detail = result?.id === id ? result.detail : undefined;
+  if (!detail) return <div className={styles.page}><div className={styles.content}>
+    <p role={result?.error ? "alert" : "status"}>{result?.error || "Loading listing status..."}</p>
+    {result?.error && <button className={styles.dashboardBtn} type="button" onClick={() => { setResult(undefined); setAttempt((value) => value + 1); }}>Try again</button>}
+    <Link href="/owner/moulds" className={styles.myMouldsLink}>View My Products</Link>
+  </div></div>;
 
-  const steps = buildSteps(listing);
-
-  return (
-    <div className={styles.page}>
-     
-
-      <div className={styles.content}>
-        <h1 className={styles.title}>Listing Review</h1>
-        <p className={styles.subtitle}>MouldX admin reviews every listing before it goes live.</p>
-
-        {/* ---------- Status card ---------- */}
-        <div className={styles.statusCard}>
-          <span className={styles.statusPill}>UNDER REVIEW</span>
-          <h2 className={styles.statusHeading}>Approval pending</h2>
-          <p className={styles.listingName}>{listing?.name || "Your listing"}</p>
-          <p className={styles.listingCode}>{listing?.code || ""}</p>
-        </div>
-
-        {/* ---------- Progress timeline ---------- */}
-        <div className={styles.card}>
-          <h2 className={styles.cardTitle}>Progress Timeline</h2>
-
-          {steps.map((step, i) => (
-            <div key={step.id} className={styles.timelineRow}>
-              <div className={styles.timelineDotCol}>
-                <span
-                  className={`${styles.dot} ${
-                    step.status === "done"
-                      ? styles.dotDone
-                      : step.status === "pending"
-                      ? styles.dotPending
-                      : styles.dotUpcoming
-                  }`}
-                >
-                  {step.status === "done" && <span className={styles.dotCheck}>✓</span>}
-                </span>
-                {i < steps.length - 1 && <span className={styles.connector} />}
-              </div>
-              <div className={styles.timelineText}>
-                <p className={styles.stepTitle}>{step.title}</p>
-                <p className={styles.stepMeta}>{step.meta}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ---------- Info note ---------- */}
-        <div className={styles.infoFlag}>
-          <span className={styles.infoIcon} aria-hidden>
-            i
-          </span>
-          <p className={styles.infoText}>
-            This mould will not appear in user search or Explore until admin approval is complete.
-          </p>
-        </div>
+  const update = detail.pendingUpdate;
+  const product = update?.product || detail.product;
+  const status = update?.status || detail.product.status;
+  const pending = status === "in_review";
+  const rejected = status === "rejected";
+  const approved = !update && status === "approved";
+  const steps = [
+    { title: update ? "Update submitted" : "Listing submitted", done: true, meta: formatDate(update?.submittedAt || detail.product.submittedAt) },
+    { title: "Admin review", done: approved || rejected, meta: rejected ? "Changes requested" : approved ? "Approved" : "Pending" },
+    { title: update ? "Publish approved changes" : "Live to users", done: approved, meta: update ? "Current published version remains unchanged" : approved ? "Published" : "Available after approval" },
+  ];
+  return <div className={styles.page}>
+    <div className={styles.content}>
+      <h1 className={styles.title}>{update ? "Listing Update" : "Listing Review"}</h1>
+      <p className={styles.subtitle}>{update ? "Your changes need admin approval before they are published." : "MouldX admin reviews every listing before it goes live."}</p>
+      <div className={styles.statusCard} role="status">
+        <span className={styles.statusPill}>{pending ? "UNDER REVIEW" : rejected ? "CHANGES REQUESTED" : approved ? "APPROVED" : "DRAFT"}</span>
+        <h2 className={styles.statusHeading}>{pending ? "Approval pending" : rejected ? "Update your details" : approved ? "Listing approved" : "Draft saved"}</h2>
+        <p className={styles.listingName}>{product.name}</p><p className={styles.listingCode}>{product.code}</p>
+        {rejected && <p>{update?.rejectionReason || detail.product.rejectionReason}</p>}
       </div>
-
-      {/* ---------- Actions ---------- */}
-      <div className={styles.ctaBar}>
-        <Link href="/" className={`${styles.dashboardBtn} btn-primary`}>
-          Go to Dashboard
-        </Link>
-        <Link href="/owner/moulds" className={styles.myMouldsLink}>
-          View My Moulds
-        </Link>
+      <div className={styles.card}><h2 className={styles.cardTitle}>Progress Timeline</h2>
+        {steps.map((step, index) => <div key={step.title} className={styles.timelineRow}>
+          <div className={styles.timelineDotCol}><span className={`${styles.dot} ${step.done ? styles.dotDone : index === 1 ? styles.dotPending : styles.dotUpcoming}`} />{index < steps.length - 1 && <span className={styles.connector} />}</div>
+          <div className={styles.timelineText}><p className={styles.stepTitle}>{step.title}</p><p className={styles.stepMeta}>{step.meta}</p></div>
+        </div>)}
       </div>
+      {(update || !approved) && <div className={styles.infoFlag}><p className={styles.infoText}>{update ? detail.product.availability === "maintenance" ? "Your published details stay unchanged. This product remains unavailable for new bookings while under maintenance." : "Customers can still view and book the current published version until your update is approved." : "This listing will appear in Explore after admin approval."}</p></div>}
     </div>
-  );
+    <div className={styles.ctaBar}><Link href={`/owner/moulds/${detail.product._id}`} className={`${styles.dashboardBtn} btn-primary`}>View Product</Link><Link href="/owner/moulds" className={styles.myMouldsLink}>View My Products</Link></div>
+  </div>;
 }

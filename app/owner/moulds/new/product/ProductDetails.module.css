@@ -521,6 +521,8 @@
   color: #6b7280;
 }
 
+.updateNotice { margin: 14px 0 0; padding: 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; color: #1e40af; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+
 .rejectedCard {
   margin-top: 18px;
   background: #fef2f2;

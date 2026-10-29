@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./ProductDetails.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
@@ -291,18 +291,21 @@ function Field({
   const error = ctx.touched[id] ? ctx.errors[id] : "";
   return (
     <div>
-      <label className={styles.fieldLabel}>{label}</label>
+      <label htmlFor={`listing-${id}`} className={styles.fieldLabel}>{label}</label>
       <input
+        id={`listing-${id}`}
         type="text"
         inputMode={mode === "text" ? undefined : mode === "int" ? "numeric" : "decimal"}
         value={value}
         maxLength={maxLength}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `listing-error-${id}` : undefined}
         onChange={(e) => onChange(clean(e.target.value, mode))}
         onBlur={() => ctx.touch(id)}
         placeholder={placeholder}
         className={`${styles.input} ${error ? styles.inputError : ""}`}
       />
-      {error && <p className={styles.errorText}>{error}</p>}
+      {error && <p id={`listing-error-${id}`} className={styles.errorText}>{error}</p>}
     </div>
   );
 }
@@ -324,10 +327,12 @@ function SelectField({
   placeholder?: string;
   error?: string;
 }) {
+  const fieldId = useId();
   return (
     <div>
-      <label className={styles.fieldLabel}>{label}</label>
+      <label htmlFor={fieldId} className={styles.fieldLabel}>{label}</label>
       <select
+        id={fieldId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
@@ -637,7 +642,7 @@ function MouldFields({
 export default function ProductDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Present when editing a draft or fixing a rejected listing.
+  // The same form edits initial drafts and proposed updates to live listings.
   const editingId = searchParams.get("id");
 
   const [product, setProduct] = useState<ProductState>(emptyProduct);
@@ -664,6 +669,7 @@ export default function ProductDetailsPage() {
   // Media already uploaded in this session, keyed by File, so a retry after a
   // failed submit does not upload the same photo twice.
   const uploadedMedia = useRef(new Map<File, string>());
+  const saveInFlight = useRef(false);
 
   const count = Number(product.componentCount);
   const hasSelection = count >= 1;
@@ -738,6 +744,10 @@ export default function ProductDetailsPage() {
   // ---------- Load an existing listing when editing ----------
   const [loadingListing, setLoadingListing] = useState(Boolean(editingId));
   const [listingStatus, setListingStatus] = useState<string | null>(null);
+  const [revisionStatus, setRevisionStatus] = useState<string | null>(null);
+  const [revisionId, setRevisionId] = useState<string | undefined>();
+  const [listingLoadError, setListingLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
@@ -749,14 +759,20 @@ export default function ProductDetailsPage() {
     // inside the effect.
     const timer = window.setTimeout(() => {
       setLoadingListing(true);
+      setListingLoadError("");
+      setListingStatus(null);
+      setRevisionStatus(null);
 
       productApi
         .get(editingId)
-        .then(({ product: listing, moulds: storedMoulds }) => {
+        .then((detail) => {
         if (cancelled) return;
 
-        setListingStatus(listing.status);
-        setRejectionReason(listing.rejectionReason || "");
+        const { product: listing, moulds: storedMoulds } = detail.pendingUpdate || detail;
+        setListingStatus(detail.product.status);
+        setRevisionStatus(detail.pendingUpdate?.status || null);
+        setRevisionId(detail.pendingUpdate?._id);
+        setRejectionReason(detail.pendingUpdate?.rejectionReason || listing.rejectionReason || "");
 
         const total = Math.max(listing.componentCount || storedMoulds.length || 1, 1);
 
@@ -817,10 +833,10 @@ export default function ProductDetailsPage() {
           })
         );
 
-        if (listing.location) setCoords(listing.location);
+        setCoords(listing.location || null);
         })
         .catch((err) => {
-          if (!cancelled) setServerError(getApiErrorMessage(err, "Could not load the listing"));
+          if (!cancelled) setListingLoadError(getApiErrorMessage(err, "Could not load the listing"));
         })
         .finally(() => {
           if (!cancelled) setLoadingListing(false);
@@ -831,7 +847,7 @@ export default function ProductDetailsPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [editingId]);
+  }, [editingId, loadAttempt]);
 
   const errors = validateAll(product, components, moulds, subCategories.length > 0);
   const ctx: Ctx = {
@@ -1086,11 +1102,12 @@ export default function ProductDetailsPage() {
       location: coords,
       moulds: mouldPayload,
       submit,
+      ...(listingStatus === "approved" ? { revisionId: revisionId || null } : {}),
     };
   };
 
   const save = async (mode: "draft" | "submit") => {
-    if (saving) return;
+    if (saving || saveInFlight.current) return;
 
     setServerError("");
     setServerDetails([]);
@@ -1113,33 +1130,30 @@ export default function ProductDetailsPage() {
       return;
     }
 
+    saveInFlight.current = true;
     setSaving(mode);
 
     try {
       const payload = await buildPayload(mode === "submit");
 
-      if (editingId) {
-        await productApi.update(editingId, payload);
-      } else {
-        await productApi.create(payload);
-      }
-
-      router.push(mode === "submit" ? "/owner/moulds/new/submitted" : "/owner/moulds");
+      const detail = editingId ? await productApi.update(editingId, payload) : await productApi.create(payload);
+      router.push(mode === "submit" ? `/owner/moulds/new/submitted?id=${encodeURIComponent(detail.product._id)}` : "/owner/moulds");
     } catch (err) {
       const details = (err as { response?: { data?: { details?: { message: string }[] } } })?.response
         ?.data?.details;
-      setServerDetails((details || []).map((detail) => detail.message));
+      setServerDetails(Array.isArray(details) ? details.map((detail) => detail.message) : []);
       setServerError(getApiErrorMessage(err, "Could not save the listing"));
     } finally {
       setSaving(null);
       setProgress("");
+      saveInFlight.current = false;
     }
   };
 
   const countError = touched["count"] ? errors["count"] : "";
   const isBusy = saving !== null;
 
-  const isLocked = listingStatus === "in_review" || listingStatus === "approved";
+  const isLocked = listingStatus === "in_review" || revisionStatus === "in_review";
 
   if (loadingListing) {
     return (
@@ -1158,14 +1172,10 @@ export default function ProductDetailsPage() {
           <h1 className="text-[26px] font-extrabold text-gray-900">Product Details</h1>
           <div className={styles.lockedCard}>
             <p className={styles.lockedTitle}>
-              {listingStatus === "in_review"
-                ? "This listing is under admin review"
-                : "This listing is approved and live"}
+              {revisionStatus === "in_review" ? "Your listing update is under admin review" : "This listing is under admin review"}
             </p>
             <p className={styles.lockedText}>
-              {listingStatus === "in_review"
-                ? "You can edit it again if admin asks for changes."
-                : "An approved listing cannot be edited."}
+              {revisionStatus === "in_review" ? "The published version stays unchanged until this update is approved." : "You can edit it again if admin asks for changes."}
             </p>
             <button
               type="button"
@@ -1180,13 +1190,19 @@ export default function ProductDetailsPage() {
     );
   }
 
+  if (listingLoadError) return <div className={styles.page}><div className={styles.content}>
+    <p className={styles.errorText} role="alert">{listingLoadError}</p>
+    <button type="button" className={styles.ctaDraftBtn} onClick={() => setLoadAttempt((value) => value + 1)}>Try again</button>
+    <button type="button" className={styles.ctaDraftBtn} onClick={() => router.push("/owner/moulds")}>Back to My Products</button>
+  </div></div>;
+
   return (
     <div className={styles.page}>
       <div className={styles.content}>
-        <h1 className="text-[26px] font-extrabold text-gray-900">Product Details</h1>
-        <p className="mt-1 text-sm text-gray-400">Add the product, its components &amp; moulds.</p>
+        <h1 className="text-[26px] font-extrabold text-gray-900">{listingStatus === "approved" ? "Update Product" : "Product Details"}</h1>
+        {listingStatus === "approved" ? <p className={styles.updateNotice}>Changes are saved separately. The published details and booking prices stay unchanged until admin approval.</p> : <p className="mt-1 text-sm text-gray-400">Add the product, its components &amp; moulds.</p>}
         {/* ---------- Admin remarks, shown when fixing a rejected listing ---------- */}
-        {listingStatus === "rejected" && (
+        {(listingStatus === "rejected" || revisionStatus === "rejected") && (
           <div className={styles.rejectedCard}>
             <span className={styles.rejectedPill}>CHANGES REQUESTED</span>
             <p className={styles.rejectedTitle}>Admin remarks</p>
@@ -1268,6 +1284,7 @@ export default function ProductDetailsPage() {
               <p className={styles.rentalSubtext}>Per day rental charges</p>
 
               <input
+                aria-label="Per day rental charges"
                 type="text"
                 inputMode="decimal"
                 value={product.perDayCharges}
@@ -1286,6 +1303,7 @@ export default function ProductDetailsPage() {
               <h2 className={styles.cardTitle}>Set of Components / Moulds Involved</h2>
               <label className={styles.fieldLabel}>Number of components / moulds</label>
               <select
+                aria-label="Number of components or moulds"
                 value={product.componentCount}
                 onChange={(e) => handleCountChange(e.target.value)}
                 className={`${styles.select} ${countError ? styles.inputError : ""}`}
@@ -1428,7 +1446,7 @@ export default function ProductDetailsPage() {
             disabled={isBusy}
             className={styles.ctaDraftBtn}
           >
-            {saving === "draft" ? "Saving..." : editingId ? "Save Changes" : "Save as Draft"}
+            {saving === "draft" ? "Saving..." : listingStatus === "approved" ? "Save Update Draft" : editingId ? "Save Changes" : "Save as Draft"}
           </button>
           {step === 1 ? (
             <button
@@ -1448,9 +1466,9 @@ export default function ProductDetailsPage() {
             >
               {saving === "submit"
                 ? "Submitting..."
-                : listingStatus === "rejected"
+                : listingStatus === "rejected" || revisionStatus === "rejected"
                   ? "Resubmit for Approval"
-                  : "Submit for Approval"}
+                  : listingStatus === "approved" ? "Submit Update for Approval" : "Submit for Approval"}
             </button>
           )}
         </div>

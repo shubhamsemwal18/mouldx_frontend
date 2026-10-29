@@ -7,6 +7,18 @@
   gap: 16px;
 }
 
+.heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.heading h1 { font-size: 26px; font-weight: 800; color: #111827; }
+.refresh { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid #e5e7eb; border-radius: 12px; color: #2563eb; background: #fff; cursor: pointer; }
+.identity { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.identity strong { font-size: 15px; color: #111827; }
+.identity p { margin-top: 5px; font-size: 12px; color: #6b7280; line-height: 1.6; }
+.description { font-size: 13px; color: #6b7280; line-height: 1.7; margin: 8px 0 16px; }
+.documents { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.document { width: 100%; padding: 12px; min-height: 48px; text-align: left; color: #2563eb; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer; overflow-wrap: anywhere; }
+.document:disabled { color: #9ca3af; background: #f9fafb; border-color: #f0f1f3; cursor: default; }
+@media (max-width: 360px) { .identityCard { flex-wrap: wrap; } .documents { grid-template-columns: minmax(0, 1fr); } }
+
 /* ---------- Identity card ---------- */
 .identityCard {
   display: flex;

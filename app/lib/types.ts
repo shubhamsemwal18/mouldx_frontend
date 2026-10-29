@@ -69,6 +69,7 @@ export interface OwnerProfileVerification {
 }
 
 export interface AuthPayload {
+  customerRating?: import("./review-api").RatingSummary;
   tokens: {
     accessToken: string;
   };
@@ -82,8 +83,17 @@ export interface AuthPayload {
  * ------------------------------------------------------------------ */
 
 export type ProductStatus = "draft" | "in_review" | "approved" | "rejected";
-/** Owner-controlled operational state, separate from the approval `status`. */
+/** Operational state controlled by owners or admins, separate from approval. */
 export type ProductAvailability = "active" | "maintenance";
+export type ProductUpdateStatus = "draft" | "in_review" | "rejected";
+
+export interface ProductUpdateSummary {
+  _id: string;
+  status: ProductUpdateStatus;
+  rejectionReason?: string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+}
 export type MouldType = "Injection" | "Blow" | "Die-Cast" | "Compression";
 export type RunnerType = "Hot Runner" | "Cold Runner";
 export type MediaKind = "image" | "video" | "document";
@@ -173,6 +183,7 @@ export interface Product {
   /** Missing on listings saved before the field existed; treat as active. */
   availability?: ProductAvailability;
   availabilityUpdatedAt?: string | null;
+  maintenanceByRole?: "owner" | "admin" | null;
   rejectionReason?: string | null;
   resubmissionCount?: number;
   submittedAt?: string | null;
@@ -185,11 +196,19 @@ export interface Product {
   /** Resolved cover image (first of `images`), so lists stay lightweight. */
   image?: Media | null;
   mouldCount?: number;
+  pendingUpdate?: ProductUpdateSummary | null;
+  reviewType?: "update" | "new";
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface ProductDetail {
+  product: Product;
+  moulds: Mould[];
+  pendingUpdate?: ProductUpdateDetail | null;
+}
+
+export interface ProductUpdateDetail extends ProductUpdateSummary {
   product: Product;
   moulds: Mould[];
 }
@@ -203,6 +222,14 @@ export interface ProductStatusStats {
   /** Approved listings split by availability; `approved` stays the total. */
   active?: number;
   maintenance?: number;
+  /** Canonical submissions; admin `in_review` also counts submitted updates. */
+  newInReview?: number;
+  pendingUpdates?: {
+    total: number;
+    draft: number;
+    in_review: number;
+    rejected: number;
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -214,6 +241,8 @@ export interface PublicProductCard {
   code: string;
   slug: string;
   name: string;
+  /** Missing on older listings; defaults to active. */
+  availability?: ProductAvailability;
   category?: ProductCategoryRef | null;
   subCategory?: ProductCategoryRef | null;
   /** Cover image only; the full gallery comes from the detail endpoint. */

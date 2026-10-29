@@ -30,6 +30,9 @@ export const bookingApi = {
       pendingRequest,
     };
     const availability = await bookingApi.availability(productId, startDate, endDate, signal);
+    if (availability.product.availability === "maintenance") return {
+      canProceed: false as const, message: "This product is under maintenance and is not accepting new bookings.", pendingRequest: null,
+    };
     const invalid = rangeError(startDate, endDate, availability.today, availability.blockedRanges);
     if (invalid) return { canProceed: false as const, message: invalid, pendingRequest: null };
     return { canProceed: true as const, availability };
@@ -76,7 +79,7 @@ export const bookingApi = {
 };
 
 export function bookingError(error: unknown) {
-  const result: { message: string; status?: number; bookingId?: string; bookingCode?: string } = {
+  const result: { message: string; status?: number; bookingId?: string; bookingCode?: string; paymentOptionsChanged?: boolean } = {
     message: getApiErrorMessage(error, "Unable to load booking information. Please try again."),
   };
   if (axios.isAxiosError(error)) {
@@ -85,6 +88,7 @@ export function bookingError(error: unknown) {
     if (details && !Array.isArray(details)) {
       if (typeof details.bookingId === "string") result.bookingId = details.bookingId;
       if (typeof details.bookingCode === "string") result.bookingCode = details.bookingCode;
+      if (details.paymentOptionsChanged === true) result.paymentOptionsChanged = true;
     }
   }
   return result;

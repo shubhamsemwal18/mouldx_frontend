@@ -35,15 +35,39 @@ const STATUS_FILTER_OPTIONS: { key: StatusFilter; label: string }[] = [
 ];
 
 /** A resubmitted listing is still `in_review`; the count tells them apart. */
+const isUpdate = (listing: Product) => listing.reviewType === "update" || Boolean(listing.pendingUpdate);
+const reviewStatusFor = (listing: Product) => listing.pendingUpdate?.status === "in_review" ? "in_review" : listing.status;
+
 const statusLabelFor = (listing: Product) =>
-  listing.status === "in_review" && (listing.resubmissionCount ?? 0) > 0
+  !isUpdate(listing) && listing.status === "in_review" && (listing.resubmissionCount ?? 0) > 0
     ? "RESUBMITTED"
-    : STATUS_LABEL[listing.status];
+    : STATUS_LABEL[reviewStatusFor(listing)];
 
 const statusClassFor = (listing: Product) =>
-  listing.status === "in_review" && (listing.resubmissionCount ?? 0) > 0
+  !isUpdate(listing) && listing.status === "in_review" && (listing.resubmissionCount ?? 0) > 0
     ? "statusResubmitted"
-    : STATUS_CLASS[listing.status];
+    : STATUS_CLASS[reviewStatusFor(listing)];
+
+function ListingStatus({ listing }: { listing: Product }) {
+  return (
+    <div className={styles.statusStack}>
+      {isUpdate(listing) && <span className={styles.updatePill}>UPDATE</span>}
+      <span className={`${styles.statusPill} ${styles[statusClassFor(listing)]}`}>
+        {statusLabelFor(listing)}
+      </span>
+      {listing.status === "approved" && (
+        <span className={styles.availabilityNote}>
+          {listing.availability === "maintenance" ? "Maintenance · bookings paused" : "Current listing live"}
+          {listing.availability === "maintenance" && listing.maintenanceByRole === "admin" ? " · admin" : ""}
+        </span>
+      )}
+      {listing.pendingUpdate?.status === "rejected" && listing.pendingUpdate.rejectionReason && (
+        <span className={styles.availabilityNote}>Update rejected: {listing.pendingUpdate.rejectionReason}</span>
+      )}
+      {listing.pendingUpdate?.status === "draft" && <span className={styles.availabilityNote}>Update draft · not submitted</span>}
+    </div>
+  );
+}
 
 const ownerName = (listing: Product) =>
   typeof listing.owner === "object" ? (listing.owner as User).fullName : "—";
@@ -157,7 +181,7 @@ export default function ListingApprovalsPage() {
     try {
       const data = await adminApi.listProducts(buildParams({ page: 1, limit: 100 }));
       const rows: (string | number)[][] = [
-        ["Code", "Product", "Category", "Host", "Price Per Day (INR)", "Moulds", "Submitted", "Status"],
+        ["Code", "Product", "Category", "Host", "Price Per Day (INR)", "Moulds", "Submitted", "Status", "Request Type", "Availability"],
         ...data.products.map((listing) => [
           listing.code,
           listing.name,
@@ -165,8 +189,10 @@ export default function ListingApprovalsPage() {
           ownerName(listing),
           listing.pricing?.perDayCharges ?? "",
           listing.mouldCount ?? 0,
-          toDateOnly(listing.submittedAt),
+          toDateOnly(listing.pendingUpdate?.submittedAt ?? listing.submittedAt),
           statusLabelFor(listing),
+          isUpdate(listing) ? "UPDATE" : "NEW",
+          listing.availability ?? "active",
         ]),
       ];
 
@@ -296,9 +322,7 @@ export default function ListingApprovalsPage() {
                     {row.mouldCount ?? 0} mould{(row.mouldCount ?? 0) === 1 ? "" : "s"}
                   </td>
                   <td>
-                    <span className={`${styles.statusPill} ${styles[statusClassFor(row)]}`}>
-                      {statusLabelFor(row)}
-                    </span>
+                    <ListingStatus listing={row} />
                   </td>
                   <td className={styles.actionCell}>
                     <Link href={`/admin/listings/${row._id}`} className={styles.reviewBtn}>
@@ -329,9 +353,7 @@ export default function ListingApprovalsPage() {
                   {row.category?.title ? ` · ${row.category.title}` : ""}
                 </p>
               </div>
-              <span className={`${styles.statusPill} ${styles[statusClassFor(row)]}`}>
-                {statusLabelFor(row)}
-              </span>
+              <ListingStatus listing={row} />
             </div>
             <div className={styles.mobileCardBottom}>
               <span className={styles.mobileMeta}>{ownerName(row)}</span>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./MyMoulds.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
@@ -16,14 +16,17 @@ import type {
 } from "@/app/lib/types";
 import {
   LISTING_STATUS_LABEL,
+  UPDATE_STATUS_LABEL,
+  canEditListing,
   formatMouldSet,
   getListingDisplayStatus,
   getMouldSetCount,
   isUnderMaintenance,
+  isAdminMaintenance,
   type ListingDisplayStatus,
 } from "./listing-status";
 
-type StatusFilter = "ALL" | ListingDisplayStatus;
+type StatusFilter = "ALL" | ListingDisplayStatus | "approved" | "available" | "rented";
 
 const PAGE_SIZE = 10;
 
@@ -37,18 +40,24 @@ const STATUS_CLASS: Record<ListingDisplayStatus, string> = {
 
 const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "ALL", label: "All" },
+  { value: "approved", label: "Published" },
+  { value: "available", label: "Available today" },
+  { value: "rented", label: "Rented today" },
   { value: "live", label: "Live" },
-  { value: "maintenance", label: "Maintenance" },
+  { value: "maintenance", label: "Maintenance today" },
   { value: "pending", label: "Pending approval" },
   { value: "draft", label: "Draft" },
   { value: "rejected", label: "Rejected" },
 ];
 
 /** Each filter maps to the approval status plus, for approved ones, availability. */
-const FILTER_PARAMS: Record<StatusFilter, Pick<ProductListParams, "status" | "availability">> = {
+const FILTER_PARAMS: Record<StatusFilter, Pick<ProductListParams, "status" | "availability" | "occupancy">> = {
   ALL: {},
+  approved: { status: "approved" },
+  available: { occupancy: "available" },
+  rented: { occupancy: "rented" },
   live: { status: "approved", availability: "active" },
-  maintenance: { status: "approved", availability: "maintenance" },
+  maintenance: { occupancy: "maintenance" },
   pending: { status: "in_review" },
   draft: { status: "draft" },
   rejected: { status: "rejected" },
@@ -70,7 +79,7 @@ const AVAILABILITY_OPTIONS: {
   {
     value: "maintenance",
     label: "Maintenance",
-    description: "Hidden from users until you mark it live again",
+    description: "Visible in Explore; new bookings are paused",
     dot: "dotMaintenance",
   },
 ];
@@ -94,7 +103,8 @@ function StatusSheet({ listing, onClose, onSave }: StatusSheetProps) {
   const [error, setError] = useState("");
 
   // Availability is operational only; it never replaces admin approval.
-  const canSwitch = listing.status === "approved";
+  const adminMaintenance = isAdminMaintenance(listing);
+  const canSwitch = listing.status === "approved" && !adminMaintenance;
 
   // Lock the page scroll while the sheet is open
   useEffect(() => {
@@ -146,18 +156,20 @@ function StatusSheet({ listing, onClose, onSave }: StatusSheetProps) {
   const confirmTitle = toMaintenance ? "Switch to maintenance?" : "Make this listing live?";
 
   const confirmText = toMaintenance
-    ? `${listing.name} will be hidden from users in Explore and search until you make it live again.`
+    ? `${listing.name} will remain visible in Explore and search. New bookings will be paused until it is active again.`
     : `${listing.name} will be visible to users and open for booking.`;
 
   const lockedNotice =
-    listing.status === "in_review"
+    adminMaintenance
+      ? "Maintenance was set by an admin. Only an admin can enable bookings again."
+      : listing.status === "in_review"
       ? "This listing is waiting for admin approval. You can switch it between Live and Maintenance once it is approved."
       : listing.status === "rejected"
         ? "Admin requested changes on this listing. Fix and resubmit it; you can switch it between Live and Maintenance once it is approved."
         : "This listing is still a draft. Submit it for approval; you can switch it between Live and Maintenance once it is approved.";
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={styles.overlay} onClick={() => { if (!saving) onClose(); }}>
       <div
         className={styles.sheet}
         role="dialog"
@@ -384,10 +396,21 @@ function ListingCard({
         </div>
       )}
 
+      {listing.pendingUpdate && (
+        <div className={styles.updateNotice}>
+          <strong>{UPDATE_STATUS_LABEL[listing.pendingUpdate.status]}</strong>
+          <p>The approved version remains published. Updates go live after admin approval.</p>
+          {listing.pendingUpdate.status === "rejected" && listing.pendingUpdate.rejectionReason && (
+            <p>Admin remarks: {listing.pendingUpdate.rejectionReason}</p>
+          )}
+        </div>
+      )}
+
       {displayStatus === "maintenance" && (
         <div className={styles.maintenanceInfo}>
           <p className={styles.maintenanceNote}>
-            Hidden from users while under maintenance.
+            Visible to users; new bookings are paused.
+            {isAdminMaintenance(listing) && " Only an admin can enable bookings again."}
           </p>
         </div>
       )}
@@ -408,12 +431,18 @@ function ListingCard({
         >
           <span aria-hidden>🔧</span> Status
         </button>
-        <Link
-          href={`/owner/moulds/new/product?id=${listing._id}`}
-          className={styles.actionBtn}
-        >
-          <span aria-hidden>✎</span> Edit
-        </Link>
+        {canEditListing(listing) ? (
+          <Link
+            href={`/owner/moulds/new/product?id=${listing._id}`}
+            className={styles.actionBtn}
+          >
+            <span aria-hidden>✎</span> {listing.pendingUpdate?.status === "rejected" ? "Revise" : "Edit"}
+          </Link>
+        ) : (
+          <button type="button" className={styles.actionBtn} disabled title="Editing is locked while admin reviews this request">
+            In review
+          </button>
+        )}
       </div>
 
       {listing.status === "draft" && (
@@ -430,15 +459,41 @@ function ListingCard({
   );
 }
 
+const FilterIcon = () => (
+  <svg
+    width={24}
+    height={24}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#374151"
+    strokeWidth="1.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <line x1="3" y1="6" x2="21" y2="6" />
+    <line x1="3" y1="12" x2="21" y2="12" />
+    <line x1="3" y1="18" x2="21" y2="18" />
+
+    <circle cx="15" cy="6" r="2.5" fill="white" />
+    <circle cx="8" cy="12" r="2.5" fill="white" />
+    <circle cx="13" cy="18" r="2.5" fill="white" />
+  </svg>
+);
+
 /* ---------- Page ---------- */
 
 export default function MyMouldsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
+    const value = searchParams.get("status");
+    return FILTER_OPTIONS.find((option) => option.value === value)?.value || "ALL";
+  });
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [page, setPage] = useState(1);
 
@@ -454,28 +509,6 @@ export default function MyMouldsPage() {
   const isApprovedOwner =
     Boolean(user?.approvedRoles.includes("owner")) &&
     user?.profileVerificationStatus === "approved";
-
-  const FilterIcon = ({ size = 24 }) => (
-    <svg
-      width={24}
-      height={24}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="#374151"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <line x1="3" y1="12" x2="21" y2="12" />
-      <line x1="3" y1="18" x2="21" y2="18" />
-
-      <circle cx="15" cy="6" r="2.5" fill="white" />
-      <circle cx="8" cy="12" r="2.5" fill="white" />
-      <circle cx="13" cy="18" r="2.5" fill="white" />
-    </svg>
-  );
 
   useEffect(() => {
     if (authLoading) return;
@@ -556,7 +589,7 @@ export default function MyMouldsPage() {
     if (!statusListingId) return;
 
     const response = await productApi.updateAvailability(statusListingId, availability);
-    const updated = response.data.product;
+    const updated = response.product;
 
     setListings((prev) =>
       prev.map((listing) =>
@@ -565,14 +598,12 @@ export default function MyMouldsPage() {
               ...listing,
               availability: updated.availability,
               availabilityUpdatedAt: updated.availabilityUpdatedAt,
+              maintenanceByRole: updated.maintenanceByRole,
             }
           : listing
       )
     );
-    setToast(
-      response.message ||
-        (availability === "maintenance" ? "Listing is under maintenance" : "Listing is live")
-    );
+    setToast(isUnderMaintenance(updated) ? "Maintenance enabled · bookings paused" : "Listing is live · bookings enabled");
     // Refresh the counts and drop the card if it no longer matches the filter.
     await load();
   };
@@ -595,10 +626,14 @@ export default function MyMouldsPage() {
     }
   };
 
-  const counts: Record<StatusFilter, number> = {
+  const counts: Record<StatusFilter, number | undefined> = {
     ALL: stats?.total ?? 0,
-    live: stats?.active ?? stats?.approved ?? 0,
-    maintenance: stats?.maintenance ?? 0,
+    approved: stats?.approved,
+    available: undefined,
+    rented: undefined,
+    live: stats?.active ?? (stats?.maintenance === undefined ? undefined : Math.max(0, (stats?.approved ?? 0) - stats.maintenance)),
+    // Occupancy excludes ongoing rentals, unlike the global availability flag.
+    maintenance: undefined,
     pending: stats?.in_review ?? 0,
     draft: stats?.draft ?? 0,
     rejected: stats?.rejected ?? 0,
@@ -657,7 +692,7 @@ export default function MyMouldsPage() {
             aria-expanded={isFilterOpen}
             aria-label="Filter listings"
           >
-            <FilterIcon size={24} />
+            <FilterIcon />
             {activeFilterCount > 0 && (
               <span className={styles.filterCount}>{activeFilterCount}</span>
             )}
@@ -676,7 +711,7 @@ export default function MyMouldsPage() {
                   className={`${styles.chip} ${statusFilter === opt.value ? styles.chipActive : ""}`}
                 >
                   {opt.label}
-                  <span className={styles.chipCount}>{counts[opt.value]}</span>
+                  {counts[opt.value] !== undefined && <span className={styles.chipCount}>{counts[opt.value]}</span>}
                 </button>
               ))}
             </div>

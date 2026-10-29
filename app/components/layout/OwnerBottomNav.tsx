@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { label: "Bookings", href: "/owner/bookings", icon: ClipboardList },
   { label: "Moulds", href: "/owner/moulds", icon: Grid3x3 },
   { label: "Inbox", href: "/owner/inbox", icon: Inbox },
-  { label: "Profile", href: "/owner/profile", icon: User },
+  { label: "Profile", href: "/profile", icon: User },
 ];
 
 export default function OwnerBottomNav() {

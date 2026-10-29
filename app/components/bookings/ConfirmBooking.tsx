@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/app/lib/auth-context";
 import { getUserLandingPath } from "@/app/lib/auth-routing";
@@ -11,6 +11,7 @@ import { bookingApi, bookingError } from "@/app/lib/booking-api";
 import { publicApi } from "@/app/lib/public-api";
 import { bookingMoney, formatBookingDate, isUpiReference, rangeError, rentalDays, upiPaymentUri } from "@/app/lib/booking-dates";
 import { useBookingQuery } from "./useBookingQuery";
+import { useRentalDayRefresh } from "./useRentalDayRefresh";
 import type { PaymentMethod } from "@/app/lib/booking-types";
 import styles from "@/app/explore/[id]/confirm/ConfirmPay.module.css";
 import shared from "./Bookings.module.css";
@@ -20,6 +21,7 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
   const router = useRouter();
   const [method, setMethod] = useState<PaymentMethod>("owner");
   const [reference, setReference] = useState("");
+  const [upiPayeeChanged, setUpiPayeeChanged] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
@@ -29,18 +31,15 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
   const verified = Boolean(user && !user.isBlocked && user.profileVerificationStatus === "approved");
   const days = rentalDays(start, end);
   const fetchCheckout = useCallback(async (signal: AbortSignal) => {
-    const { product } = await publicApi.getProduct(slug);
-    if (signal.aborted) throw new Error("Cancelled");
+    const { product } = await publicApi.getProduct(slug, signal);
     // Deep links/back navigation must not bypass the date-step duplicate check.
-    const pendingRequest = await bookingApi.pendingRequest(product._id, start, end, signal);
-    if (pendingRequest) return { pendingRequest, availability: null, paymentOptions: null };
-    const [availability, paymentOptions] = await Promise.all([
-      bookingApi.availability(product._id, start, end, signal),
-      bookingApi.paymentOptions(product._id, signal),
-    ]);
-    return { pendingRequest: null, availability, paymentOptions };
+    const check = await bookingApi.checkRequest(product._id, start, end, signal);
+    if (!check.canProceed) return { check, paymentOptions: null };
+    const paymentOptions = await bookingApi.paymentOptions(product._id, signal);
+    return { check, paymentOptions };
   }, [slug, start, end]);
   const query = useBookingQuery(`${user?._id}:${slug}:${start}:${end}`, fetchCheckout, verified && days > 0);
+  useRentalDayRefresh(query.reload);
 
   if (loading) return <div className={shared.state} role="status">Checking your account...</div>;
   if (!user) return <div className={shared.state}><h1>Sign in to request a booking</h1><Link className="btn-primary" href={`/login?next=${encodeURIComponent(next)}`}>Sign in</Link><Link href={datesHref}>Back to dates</Link></div>;
@@ -48,19 +47,20 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
   if (!days) return <div className={shared.state}><p role="alert">Select valid pickup and return dates.</p><Link href={datesHref}>Choose dates</Link></div>;
   if (query.loading) return <div className={shared.state} role="status">Checking dates and payment options...</div>;
   if (!query.data) return <div className={shared.state}><p role="alert">{query.error?.message}</p><button onClick={query.reload}>Try again</button><Link href={datesHref}>Back to dates</Link></div>;
-  if (query.data.pendingRequest) return <div className={shared.state}><p role="alert">A request is already pending for this product and these dates.</p><Link href={`/bookings/${encodeURIComponent(query.data.pendingRequest.bookingId)}`}>View existing booking {query.data.pendingRequest.bookingCode}</Link><Link href={datesHref}>Change dates</Link></div>;
-  if (!query.data.availability || !query.data.paymentOptions) return null;
+  if (!query.data.check.canProceed) {
+    const { message, pendingRequest } = query.data.check;
+    return <div className={shared.state}><p role="alert">{message}</p>{pendingRequest && <Link href={`/bookings/${encodeURIComponent(pendingRequest.bookingId)}`}>View existing booking {pendingRequest.bookingCode}</Link>}<Link href={datesHref}>Change dates</Link></div>;
+  }
+  if (!query.data.paymentOptions) return null;
 
-  const { availability, paymentOptions } = query.data;
+  const { availability } = query.data.check;
+  const { paymentOptions } = query.data;
   const { product } = availability;
-  const ownerId = typeof product.owner === "string" ? product.owner : product.owner?._id;
-  const ownProduct = ownerId === user._id;
-  const invalidDates = rangeError(start, end, availability.today, availability.blockedRanges);
   const rent = Math.round(product.pricing.perDayCharges * 100) * days / 100;
   const securityDeposit = method === "platform" ? product.pricing.securityDeposit : 0;
   const total = rent + securityDeposit;
   const validMethod = method === "owner" ? paymentOptions.owner : method === "upi" && Boolean(paymentOptions.upi && isUpiReference(reference.trim()));
-  const canSubmit = !busy && !ownProduct && !invalidDates && acknowledged && validMethod && !error?.bookingId;
+  const canSubmit = !busy && acknowledged && validMethod && !error?.bookingId && !(method === "upi" && upiPayeeChanged);
 
   const submit = async () => {
     if (!canSubmit || inFlight.current) return;
@@ -69,6 +69,9 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
     setError(null);
     try {
       const current = await bookingApi.availability(product._id, start, end);
+      if (current.product.availability === "maintenance") {
+        setError({ message: "This product is under maintenance and is not accepting new bookings." }); query.reload(); return;
+      }
       const invalid = rangeError(start, end, current.today, current.blockedRanges);
       if (invalid) { setError({ message: invalid }); query.reload(); return; }
       if (current.product.pricing.perDayCharges !== product.pricing.perDayCharges || (method === "platform" && current.product.pricing.securityDeposit !== product.pricing.securityDeposit)) {
@@ -77,23 +80,29 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
         query.reload();
         return;
       }
-      const booking = await bookingApi.create({ productId: product._id, startDate: start, endDate: end, paymentMethod: method, ...(method === "upi" && { upiReference: reference.trim() }) });
+      if (method === "upi") {
+        const options = await bookingApi.paymentOptions(product._id);
+        if (!options.upi || options.upi.id.toLowerCase() !== paymentOptions.upi?.id.toLowerCase()) {
+          setUpiPayeeChanged(true); setAcknowledged(false);
+          setError({ message: "The host's UPI details have changed. Do not pay again. Contact support if you have already transferred funds.", paymentOptionsChanged: true });
+          return;
+        }
+      }
+      const booking = await bookingApi.create({ productId: product._id, startDate: start, endDate: end, paymentMethod: method, ...(method === "upi" && { upiReference: reference.trim(), expectedUpiId: paymentOptions.upi?.id }) });
       router.replace(`/bookings/${encodeURIComponent(booking._id)}`);
     } catch (err) {
       const failure = bookingError(err);
       setError(failure);
-      if (failure.status === 409 && !failure.bookingId) query.reload();
+      if (failure.paymentOptionsChanged) { setUpiPayeeChanged(true); setAcknowledged(false); }
+      else if (failure.status === 409 && !failure.bookingId) query.reload();
     } finally { setBusy(false); inFlight.current = false; }
   };
 
   return <div className={styles.page}>
     <div className={styles.content}>
-      {/* <Link href={datesHref} className={shared.back}><ArrowLeft size={16} /> Change dates</Link> */}
       <h1 className={styles.title}>Confirm booking</h1>
       <p className={styles.subtitle}>{product.name} · {product.code}</p>
       <p className={shared.note}>{formatBookingDate(start)} to {formatBookingDate(end)} · {days} {days === 1 ? "day" : "days"}</p>
-      {ownProduct && <p className={shared.error} role="alert">You cannot book your own product.</p>}
-      {invalidDates && <p className={shared.error} role="alert">{invalidDates} <Link href={datesHref}>Change dates</Link></p>}
       <section className={shared.section}>
         <h2 className={styles.cardTitle}>Fare breakdown</h2>
         <div className={styles.fareRow}><span className={styles.fareLabel}>Rent ({days} x {bookingMoney(product.pricing.perDayCharges)})</span><strong className={styles.fareValue}>{bookingMoney(rent)}</strong></div>
@@ -101,7 +110,7 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
         <div className={styles.divider} />
         <div className={styles.fareRow}><strong className={styles.totalLabel}>Total payable</strong><strong className={styles.totalValue}>{bookingMoney(total)}</strong></div>
       </section>
-      <fieldset className={shared.section} disabled={busy || ownProduct || Boolean(invalidDates)}>
+      <fieldset className={shared.section} disabled={busy}>
         <legend className={styles.cardTitle}>Payment method</legend>
         {[
           { value: "owner" as const, title: "Pay owner directly", desc: "Arrange payment with the host.", enabled: paymentOptions.owner },
@@ -111,17 +120,16 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
           <input type="radio" className={styles.radio} name="paymentMethod" value={option.value} disabled={!option.enabled} checked={method === option.value} onChange={() => { setMethod(option.value); setAcknowledged(false); }} />
           <span className={styles.methodInfo}><span className={styles.methodTitle}>{option.title}</span><span className={shared.note}>{option.desc}</span></span>
         </label>)}
-        {method === "upi" && paymentOptions.upi && <div className={shared.upi}>
+        {method === "upi" && paymentOptions.upi && !upiPayeeChanged && <div className={shared.upi}>
           <QRCodeSVG value={upiPaymentUri(paymentOptions.upi, total, product.code)} size={208} marginSize={4} title={`Pay ${paymentOptions.upi.name} by UPI`} />
           <strong>{paymentOptions.upi.name}</strong><span>{paymentOptions.upi.id}</span><strong>{bookingMoney(total)}</strong>
-          {/* <a className={shared.back} href={upiPaymentUri(paymentOptions.upi, total, product.code)}>Open UPI app <ArrowRight size={16} /></a> */}
           <label className={shared.field}>UPI transaction reference<input name="upiReference" value={reference} onChange={(event) => setReference(event.target.value.toUpperCase())} minLength={6} maxLength={64} pattern="[A-Z0-9]{6,64}" required autoComplete="off" aria-describedby="upi-reference-help" /></label>
           <p className={shared.note} id="upi-reference-help">6-64 letters and numbers. Each payment reference can be used only once for this payee, including rejected bookings. For a previous payment, contact support about a refund.</p>
           <p className={shared.note}>A reference reports your payment; it does not confirm receipt. Your booking still requires admin approval.</p>
         </div>}
         <label className={styles.ackRow}><input className={styles.checkbox} type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />I understand that payment is arranged with the host and this request requires admin approval.</label>
       </fieldset>
-      {error && <div role="alert" className={shared.error}><p>{error.message}</p>{error.bookingId && <Link href={`/bookings/${encodeURIComponent(error.bookingId)}`}>View existing booking {error.bookingCode || ""}</Link>}</div>}
+      {error && <div role="alert" className={shared.error}><p>{error.message}</p>{error.bookingId && <Link href={`/bookings/${encodeURIComponent(error.bookingId)}`}>View existing booking {error.bookingCode || ""}</Link>}{error.paymentOptionsChanged && <Link href="/contact">Contact support</Link>}</div>}
     </div>
     <div className={styles.ctaBar}><button type="button" disabled={!canSubmit} onClick={submit} className={`${styles.ctaBtn} ${canSubmit ? "btn-primary" : styles.ctaBtnDisabled}`}>{busy ? "Submitting request..." : "Send for approval"}<ArrowRight size={18} /></button></div>
   </div>;

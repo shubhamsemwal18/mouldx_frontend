@@ -9,8 +9,11 @@ import { productApi } from "@/app/lib/product-api";
 import type { Dimensions, LatLng, Media, Mould, ProductDetail } from "@/app/lib/types";
 import {
   LISTING_STATUS_LABEL,
+  UPDATE_STATUS_LABEL,
+  canEditListing,
   formatMouldSet,
   getListingDisplayStatus,
+  isAdminMaintenance,
   type ListingDisplayStatus,
 } from "../listing-status";
 
@@ -73,6 +76,20 @@ export default function OwnerMouldDetailPage({
   const [detail, setDetail] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const updateAvailability = async () => {
+    if (!detail || saving || detail.product.status !== "approved" || isAdminMaintenance(detail.product)) return;
+    setSaving(true);
+    setError("");
+    try {
+      setDetail(await productApi.updateAvailability(id, detail.product.availability === "maintenance" ? "active" : "maintenance"));
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not update availability"));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // 0 = Product, 1..N = Mould 1..N
   const [activeTab, setActiveTab] = useState(0);
@@ -138,8 +155,9 @@ export default function OwnerMouldDetailPage({
   }
 
   const { product, moulds } = detail;
+  const pendingUpdate = detail.pendingUpdate ?? product.pendingUpdate;
+  const editable = canEditListing({ ...product, pendingUpdate });
   const displayStatus = getListingDisplayStatus(product);
-  const isLive = displayStatus === "live";
   const mouldSetCount = moulds.length || product.componentCount || 0;
 
   // One tab per mould when the listing is a set; a single mould shows under
@@ -314,6 +332,31 @@ export default function OwnerMouldDetailPage({
           </div>
         )}
 
+        {pendingUpdate && (
+          <section className={styles.updateCard} aria-label="Listing update status">
+            <h2>{UPDATE_STATUS_LABEL[pendingUpdate.status]}</h2>
+            <p>You are viewing the current approved version. Your saved update will replace it after admin approval.</p>
+            {pendingUpdate.status === "in_review" && <p>Editing is locked while the update is under review.</p>}
+            {pendingUpdate.status === "rejected" && (
+              <p><strong>Admin remarks:</strong> {pendingUpdate.rejectionReason || "No reason was provided."}</p>
+            )}
+            {pendingUpdate.submittedAt && <p>Update submitted: {formatDateTime(pendingUpdate.submittedAt)}</p>}
+            {pendingUpdate.reviewedAt && <p>Update reviewed: {formatDateTime(pendingUpdate.reviewedAt)}</p>}
+            {editable && (
+              <Link href={`/owner/moulds/new/product?id=${product._id}`}>
+                {pendingUpdate.status === "rejected" ? "Reopen update and address feedback →" : "Continue editing update →"}
+              </Link>
+            )}
+          </section>
+        )}
+
+        {displayStatus === "maintenance" && (
+          <div className={styles.updateCard}>
+            <p>Visible in Explore and search. New bookings are paused during maintenance.</p>
+            {isAdminMaintenance(product) && <p>Maintenance was set by an admin. Only an admin can enable bookings again.</p>}
+          </div>
+        )}
+
         {quickSpecs.length > 0 && (
           <div className={styles.quickSpecs}>
             {quickSpecs.map((spec) => (
@@ -372,8 +415,12 @@ export default function OwnerMouldDetailPage({
               />
               <Row
                 label="Visible to users"
-                value={isLive ? "Yes" : "No"}
+                value={product.status === "approved" ? "Yes" : "No"}
               />
+              <Row label="Open for booking" value={displayStatus === "live" ? "Yes" : "No"} />
+              {displayStatus === "maintenance" && product.maintenanceByRole && (
+                <Row label="Maintenance set by" value={product.maintenanceByRole === "admin" ? "Admin" : "You"} />
+              )}
               <Row label="Submitted" value={formatDateTime(product.submittedAt)} />
               <Row label="Reviewed" value={formatDateTime(product.reviewedAt)} />
               <Row label="Published" value={formatDateTime(product.publishedAt)} />
@@ -440,13 +487,28 @@ export default function OwnerMouldDetailPage({
         )}
 
         {/* ---------- Owner actions ---------- */}
+        {error && <p className={styles.errorText} role="alert">{error}</p>}
         <div className={styles.actions}>
-          <Link
-            href={`/owner/moulds/new/product?id=${product._id}`}
-            className={`${styles.actionPrimary} btn-primary`}
-          >
-            ✎ Edit Listing
-          </Link>
+          {editable ? (
+            <Link
+              href={`/owner/moulds/new/product?id=${product._id}`}
+              className={`${styles.actionPrimary} btn-primary`}
+            >
+              ✎ {pendingUpdate?.status === "rejected" ? "Revise Rejected Update" : pendingUpdate ? "Edit Update" : "Edit Listing"}
+            </Link>
+          ) : (
+            <p className={styles.metaRow}>Editing is locked while admin reviews this request.</p>
+          )}
+          {product.status === "approved" && (
+            <button
+              type="button"
+              className={styles.actionSecondary}
+              onClick={updateAvailability}
+              disabled={saving || isAdminMaintenance(product)}
+            >
+              {saving ? "Saving…" : displayStatus === "maintenance" ? "Enable bookings" : "Set maintenance · pause bookings"}
+            </button>
+          )}
           <Link href="/owner/moulds" className={styles.actionSecondary}>
             Back to My Products
           </Link>

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState, use } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { Wrench } from "lucide-react";
+import ReviewList from "@/app/components/reviews/ReviewList";
 import styles from "./MouldDetail.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { publicApi } from "@/app/lib/public-api";
@@ -48,6 +50,18 @@ export default function ProductDetailPage({
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
   const recordedVisits = useRef(new Set<string>());
+
+  useEffect(() => {
+    let controller: AbortController | null = null;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      controller?.abort(); controller = new AbortController();
+      const signal = controller.signal;
+      publicApi.getProduct(slug, signal).then((data) => { if (!signal.aborted) setDetail(data); }).catch(() => { /* Checkout rechecks availability while offline. */ });
+    };
+    window.addEventListener("focus", refresh);
+    return () => { controller?.abort(); window.removeEventListener("focus", refresh); };
+  }, [slug]);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,6 +131,7 @@ export default function ProductDetailPage({
   }
 
   const { product, moulds } = detail;
+  const underMaintenance = product.availability === "maintenance";
   // Component tabs only exist when the listing has more than one component.
   const components = moulds.filter((mould) => Boolean(mould.component?.name));
   const hasComponents = components.length > 0;
@@ -331,6 +346,8 @@ export default function ProductDetailPage({
           </>
         )}
 
+        <Section title="Ratings & Reviews"><ReviewList scope="product" slug={product.slug} /></Section>
+
         {/* ---------- Component tabs ---------- */}
         {activeComponent && (
           <>
@@ -356,12 +373,12 @@ export default function ProductDetailPage({
       </div>
 
       {!authLoading && !isAdminUser(user) && <div className={styles.ctaBar}>
-        <Link
+        {underMaintenance ? <div className={styles.maintenanceNotice} role="status"><Wrench size={19} aria-hidden="true" /><span><strong>Under maintenance</strong><span>This product is temporarily unavailable for new bookings.</span></span></div> : <Link
           href={`/explore/${product.slug}/dates`}
           className={`${styles.ctaBtn} flex items-center justify-center no-underline btn-primary`}
         >
           Select Dates →
-        </Link>
+        </Link>}
       </div>}
     </div>
   );
