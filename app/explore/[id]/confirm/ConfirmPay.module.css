@@ -3,39 +3,132 @@
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  padding-bottom: 90px; /* space for the sticky CTA */
+  padding-bottom: calc(130px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 
-/* ---------- Content ---------- */
 .content {
-  padding: 20px;
+  padding: 20px 16px;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .title {
   font-size: 24px;
   font-weight: 800;
   color: #111827;
-  margin: 0;
-}
-
-.subtitle {
-  margin-top: 4px;
-  font-size: 13px;
-  color: #9ca3af;
+  margin: 0 0 16px;
+  line-height: 1.25;
 }
 
 .cardTitle {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   color: #111827;
   margin: 0 0 14px;
 }
 
-/* ---------- Fare breakdown ---------- */
+.legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+
+.legend + * {
+  clear: both;
+}
+
+.summaryCard {
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  min-width: 0;
+}
+
+.summaryName {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.summaryCode {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.dateRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  background: #f6f7f9;
+  border-radius: 12px;
+}
+
+.dateIcon {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.dateBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dateBlock span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dateBlock strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.dateArrow {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.durationChip {
+  margin-left: auto;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.card {
+  margin: 14px 0 0;
+  padding: 16px;
+  background: #f6f7f9;
+  border: 0;
+  border-radius: 16px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .fareRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   padding: 6px 0;
 }
 
@@ -48,6 +141,7 @@
   font-size: 13px;
   font-weight: 700;
   color: #374151;
+  white-space: nowrap;
 }
 
 .divider {
@@ -63,19 +157,19 @@
 }
 
 .totalValue {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
   color: #2563eb;
 }
 
-/* ---------- Payment method options ---------- */
 .methodOption {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 12px;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 14px;
   border: 1.5px solid #e5e7eb;
+  background: #ffffff;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
@@ -84,78 +178,270 @@
   margin-top: 10px;
 }
 
-.methodOptionActive {
+.methodOption:hover {
+  border-color: #bfdbfe;
+}
+
+.methodOption:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.methodOptionActive,
+.methodOptionActive:hover {
   border-color: #2563eb;
   background: #eff6ff;
 }
 
 .radio {
   margin-top: 2px;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   accent-color: #2563eb;
   flex-shrink: 0;
 }
 
 .methodInfo {
   flex: 1;
+  min-width: 0;
 }
 
 .methodTitle {
-  font-size: 13px;
+  display: block;
+  font-size: 14px;
   font-weight: 700;
   color: #111827;
   margin: 0;
 }
 
-/* ---------- Direct-to-owner warning ---------- */
+.methodInfo > span:last-child {
+  margin-top: 3px;
+}
+
+.upiBox {
+  margin-top: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.upiLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.upiQr {
+  order: -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.qrFrame {
+  width: 100%;
+  max-width: 180px;
+  padding: 8px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+
+.qrHint {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-align: center;
+}
+
+.upiInfo {
+  min-width: 0;
+}
+
+.upiHeading {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.upiList {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upiRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.upiRow dt {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.upiRow dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.upiAmount {
+  margin-top: 14px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #eff6ff;
+  border-radius: 10px;
+}
+
+.upiAmount span {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.upiAmount strong {
+  font-size: 16px;
+  font-weight: 800;
+  color: #2563eb;
+  white-space: nowrap;
+}
+
+.refField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  text-align: left;
+}
+
+.refField input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #111827;
+  background: #ffffff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  outline: none;
+}
+
+.refField input:focus {
+  border-color: #2563eb;
+}
+
+.upiNote {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #6b7280;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
 
 .ackRow {
-  margin-top: 12px;
+  margin-top: 14px;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
   font-size: 12px;
+  line-height: 1.6;
   color: #92400e;
   font-weight: 600;
   cursor: pointer;
 }
 
 .checkbox {
-  margin-top: 2px;
-  width: 15px;
-  height: 15px;
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
   accent-color: #d97706;
   flex-shrink: 0;
 }
 
-/* ---------- Sticky CTA ---------- */
 .ctaBar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  background: #ffffff;
-  border-top: 1px solid #f1f1f3;
-  padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid #eef0f2;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.ctaInner {
+  width: 100%;
+}
+
+.ctaPriceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ctaPriceLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.ctaPriceValue {
+  font-size: 17px;
+  font-weight: 800;
+  color: #111827;
 }
 
 .ctaBtn {
   width: 100%;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 15px;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
 }
 
-/* Uses the background/hover color of the global .btn-primary (globals.css).
-   :global() is required, otherwise CSS Modules would scope 'btn-primary'
-   locally and the override would never match. */
 .ctaBtn:global(.btn-primary) {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 15px;
   font-size: 14px;
   justify-content: center;
@@ -168,23 +454,72 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
-/* ---------- Responsive ---------- */
+@media (max-width: 359px) {
+  .content {
+    padding: 16px 12px;
+  }
+  .title {
+    font-size: 21px;
+  }
+  .dateRow {
+    gap: 8px;
+  }
+  .durationChip {
+    margin-left: 0;
+  }
+  .upiBox {
+    padding: 12px;
+  }
+}
+
+@media (min-width: 400px) {
+  .upiLayout {
+    grid-template-columns: minmax(0, 1fr) 150px;
+    gap: 16px;
+  }
+  .upiQr {
+    order: 0;
+  }
+  .qrFrame {
+    max-width: 150px;
+  }
+}
+
 @media (min-width: 640px) {
   .content {
-    max-width: 480px;
+    max-width: 520px;
+    width: 100%;
     margin: 0 auto;
+    padding: 28px 20px;
   }
-  .ctaBar > * {
-    max-width: 480px;
+  .title {
+    font-size: 26px;
+  }
+  .upiLayout {
+    grid-template-columns: minmax(0, 1fr) 170px;
+    gap: 20px;
+  }
+  .qrFrame {
+    max-width: 170px;
+  }
+  .ctaInner {
+    max-width: 520px;
     margin: 0 auto;
+    padding: 0 20px;
+    box-sizing: border-box;
+  }
+  .ctaBar {
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
 @media (min-width: 1024px) {
   .page {
-    max-width: 560px;
+    max-width: 600px;
     margin: 0 auto;
     box-shadow: 0 0 0 1px #f0f0f0;
   }

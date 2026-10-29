@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/app/lib/auth-context";
 import { getUserLandingPath } from "@/app/lib/auth-routing";
@@ -32,7 +32,6 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
   const days = rentalDays(start, end);
   const fetchCheckout = useCallback(async (signal: AbortSignal) => {
     const { product } = await publicApi.getProduct(slug, signal);
-    // Deep links/back navigation must not bypass the date-step duplicate check.
     const check = await bookingApi.checkRequest(product._id, start, end, signal);
     if (!check.canProceed) return { check, paymentOptions: null };
     const paymentOptions = await bookingApi.paymentOptions(product._id, signal);
@@ -101,17 +100,29 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
   return <div className={styles.page}>
     <div className={styles.content}>
       <h1 className={styles.title}>Confirm booking</h1>
-      <p className={styles.subtitle}>{product.name} · {product.code}</p>
-      <p className={shared.note}>{formatBookingDate(start)} to {formatBookingDate(end)} · {days} {days === 1 ? "day" : "days"}</p>
-      <section className={shared.section}>
+
+      <section className={styles.summaryCard} aria-label="Booking summary">
+        <p className={styles.summaryName}>{product.name}</p>
+        <p className={styles.summaryCode}>{product.code}</p>
+        <div className={styles.dateRow}>
+          <CalendarDays size={18} className={styles.dateIcon} aria-hidden="true" />
+          <div className={styles.dateBlock}><span>Pickup</span><strong>{formatBookingDate(start)}</strong></div>
+          <ArrowRight size={14} className={styles.dateArrow} aria-hidden="true" />
+          <div className={styles.dateBlock}><span>Return</span><strong>{formatBookingDate(end)}</strong></div>
+          <span className={styles.durationChip}>{days} {days === 1 ? "day" : "days"}</span>
+        </div>
+      </section>
+
+      <section className={styles.card}>
         <h2 className={styles.cardTitle}>Fare breakdown</h2>
         <div className={styles.fareRow}><span className={styles.fareLabel}>Rent ({days} x {bookingMoney(product.pricing.perDayCharges)})</span><strong className={styles.fareValue}>{bookingMoney(rent)}</strong></div>
         {method === "platform" && <div className={styles.fareRow}><span className={styles.fareLabel}>Security deposit</span><strong className={styles.fareValue}>{bookingMoney(securityDeposit)}</strong></div>}
         <div className={styles.divider} />
         <div className={styles.fareRow}><strong className={styles.totalLabel}>Total payable</strong><strong className={styles.totalValue}>{bookingMoney(total)}</strong></div>
       </section>
-      <fieldset className={shared.section} disabled={busy}>
-        <legend className={styles.cardTitle}>Payment method</legend>
+
+      <fieldset className={styles.card} disabled={busy}>
+        <legend className={`${styles.cardTitle} ${styles.legend}`}>Payment method</legend>
         {[
           { value: "owner" as const, title: "Pay owner directly", desc: "Arrange payment with the host.", enabled: paymentOptions.owner },
           ...(paymentOptions.upi ? [{ value: "upi" as const, title: "Pay host by UPI", desc: "Transfer to the host and provide your payment reference.", enabled: true }] : []),
@@ -120,17 +131,45 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
           <input type="radio" className={styles.radio} name="paymentMethod" value={option.value} disabled={!option.enabled} checked={method === option.value} onChange={() => { setMethod(option.value); setAcknowledged(false); }} />
           <span className={styles.methodInfo}><span className={styles.methodTitle}>{option.title}</span><span className={shared.note}>{option.desc}</span></span>
         </label>)}
-        {method === "upi" && paymentOptions.upi && !upiPayeeChanged && <div className={shared.upi}>
-          <QRCodeSVG value={upiPaymentUri(paymentOptions.upi, total, product.code)} size={208} marginSize={4} title={`Pay ${paymentOptions.upi.name} by UPI`} />
-          <strong>{paymentOptions.upi.name}</strong><span>{paymentOptions.upi.id}</span><strong>{bookingMoney(total)}</strong>
-          <label className={shared.field}>UPI transaction reference<input name="upiReference" value={reference} onChange={(event) => setReference(event.target.value.toUpperCase())} minLength={6} maxLength={64} pattern="[A-Z0-9]{6,64}" required autoComplete="off" aria-describedby="upi-reference-help" /></label>
-          <p className={shared.note} id="upi-reference-help">6-64 letters and numbers. Each payment reference can be used only once for this payee, including rejected bookings. For a previous payment, contact support about a refund.</p>
-          <p className={shared.note}>A reference reports your payment; it does not confirm receipt. Your booking still requires admin approval.</p>
+
+        {method === "upi" && paymentOptions.upi && !upiPayeeChanged && <div className={styles.upiBox}>
+          <div className={styles.upiLayout}>
+            <div className={styles.upiInfo}>
+              <h3 className={styles.upiHeading}>Host payment details</h3>
+              <dl className={styles.upiList}>
+                <div className={styles.upiRow}><dt>Account holder</dt><dd>{paymentOptions.upi.name}</dd></div>
+                <div className={styles.upiRow}><dt>UPI ID</dt><dd>{paymentOptions.upi.id}</dd></div>
+              </dl>
+              <div className={styles.upiAmount}>
+                <span>Amount to pay</span>
+                <strong>{bookingMoney(total)}</strong>
+              </div>
+            </div>
+            <div className={styles.upiQr}>
+              <div className={styles.qrFrame}>
+                <QRCodeSVG value={upiPaymentUri(paymentOptions.upi, total, product.code)} size={160} marginSize={2} style={{ width: "100%", height: "auto", display: "block" }} title={`Pay ${paymentOptions.upi.name} by UPI`} />
+              </div>
+              <span className={styles.qrHint}>Scan with any UPI app</span>
+            </div>
+          </div>
+
+          <label className={styles.refField}>
+            <span>UPI transaction reference</span>
+            <input name="upiReference" value={reference} onChange={(event) => setReference(event.target.value.toUpperCase())} minLength={6} maxLength={64} pattern="[A-Z0-9]{6,64}" required autoComplete="off" aria-describedby="upi-reference-help" />
+          </label>
+          <p className={styles.upiNote} id="upi-reference-help">6-64 letters and numbers. Each payment reference can be used only once for this payee, including rejected bookings. For a previous payment, contact support about a refund.</p>
+          <p className={styles.upiNote}>A reference reports your payment; it does not confirm receipt. Your booking still requires admin approval.</p>
         </div>}
-        <label className={styles.ackRow}><input className={styles.checkbox} type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />I understand that payment is arranged with the host and this request requires admin approval.</label>
+
+        <label className={styles.ackRow}><input className={styles.checkbox} type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} /><span>I understand that payment is arranged with the host and this request requires admin approval.</span></label>
       </fieldset>
       {error && <div role="alert" className={shared.error}><p>{error.message}</p>{error.bookingId && <Link href={`/bookings/${encodeURIComponent(error.bookingId)}`}>View existing booking {error.bookingCode || ""}</Link>}{error.paymentOptionsChanged && <Link href="/contact">Contact support</Link>}</div>}
     </div>
-    <div className={styles.ctaBar}><button type="button" disabled={!canSubmit} onClick={submit} className={`${styles.ctaBtn} ${canSubmit ? "btn-primary" : styles.ctaBtnDisabled}`}>{busy ? "Submitting request..." : "Send for approval"}<ArrowRight size={18} /></button></div>
+    <div className={styles.ctaBar}>
+      <div className={styles.ctaInner}>
+        <div className={styles.ctaPriceRow}><span className={styles.ctaPriceLabel}>Total payable</span><strong className={styles.ctaPriceValue}>{bookingMoney(total)}</strong></div>
+        <button type="button" disabled={!canSubmit} onClick={submit} className={`${styles.ctaBtn} ${canSubmit ? "btn-primary" : styles.ctaBtnDisabled}`}>{busy ? "Submitting request..." : "Send for approval"}<ArrowRight size={18} /></button>
+      </div>
+    </div>
   </div>;
 }
