@@ -218,7 +218,7 @@
   margin-top: 3px;
 }
 
-.upiBox {
+.transferBox {
   margin-top: 12px;
   padding: 16px;
   background: #ffffff;
@@ -262,18 +262,18 @@
   text-align: center;
 }
 
-.upiInfo {
+.transferInfo {
   min-width: 0;
 }
 
-.upiHeading {
+.transferHeading {
   margin: 0 0 10px;
   font-size: 13px;
   font-weight: 800;
   color: #111827;
 }
 
-.upiList {
+.transferList {
   margin: 0;
   padding: 0;
   display: flex;
@@ -281,14 +281,14 @@
   gap: 10px;
 }
 
-.upiRow {
+.transferRow {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.upiRow dt {
+.transferRow dt {
   font-size: 10px;
   font-weight: 700;
   color: #9ca3af;
@@ -296,7 +296,7 @@
   letter-spacing: 0.03em;
 }
 
-.upiRow dd {
+.transferRow dd {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
@@ -306,7 +306,7 @@
   word-break: break-word;
 }
 
-.upiAmount {
+.transferAmount {
   margin-top: 14px;
   padding: 10px 12px;
   display: flex;
@@ -317,13 +317,13 @@
   border-radius: 10px;
 }
 
-.upiAmount span {
+.transferAmount span {
   font-size: 12px;
   font-weight: 600;
   color: #6b7280;
 }
 
-.upiAmount strong {
+.transferAmount strong {
   font-size: 16px;
   font-weight: 800;
   color: #2563eb;
@@ -359,7 +359,7 @@
   border-color: #2563eb;
 }
 
-.upiNote {
+.transferNote {
   margin: 8px 0 0;
   font-size: 11.5px;
   line-height: 1.6;
@@ -470,7 +470,7 @@
   .durationChip {
     margin-left: 0;
   }
-  .upiBox {
+  .transferBox {
     padding: 12px;
   }
 }

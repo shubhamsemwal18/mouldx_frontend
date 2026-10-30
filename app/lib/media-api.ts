@@ -47,7 +47,7 @@ export function getUploadRejection(file: File, kind: "image" | "video"): string 
 }
 
 /** Folder purposes the listing-media route accepts. */
-export type MediaFolder = "product" | "products" | "moulds" | "image" | "images";
+export type MediaFolder = "product" | "products" | "moulds" | "image" | "images" | "bookings";
 
 interface PresignedMediaUpload {
   mediaId: string;

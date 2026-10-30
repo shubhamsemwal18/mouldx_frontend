@@ -5,12 +5,18 @@ export type BookingStatus = "pending" | "approved" | "rejected";
 export type RentalPhase = "upcoming" | "active" | "completed";
 export type BookingFilter = BookingStatus | RentalPhase | "";
 export type BookingView = "customer" | "host" | "admin";
-export type PaymentMethod = "owner" | "upi" | "platform";
+export type PaymentMethod = "owner" | "bank_transfer" | "upi" | "platform";
+export interface BankAccount {
+  bankAccountNumber: string;
+  ifscCode: string;
+  bankName: string;
+  accountHolderName: string;
+}
 export interface BlockedRange { startDate: string; endDate: string }
 export interface BookingPaymentOptions {
   owner: boolean;
   platform: false;
-  upi: { id: string; name: string } | null;
+  bankAccount: BankAccount | null;
 }
 export interface BookingAvailability {
   today: string;
@@ -46,6 +52,9 @@ export interface Booking {
     status: "unpaid" | "reported";
     upiId?: string;
     upiReference?: string;
+    bankAccount?: BankAccount;
+    reference?: string;
+    receipt?: { fileName: string };
   };
   pricing: {
     currency: "INR";
@@ -96,4 +105,7 @@ export interface CreateBookingInput {
   paymentMethod: PaymentMethod;
   upiReference?: string;
   expectedUpiId?: string;
+  reference?: string;
+  expectedBankAccount?: BankAccount;
+  receiptMediaId?: string;
 }

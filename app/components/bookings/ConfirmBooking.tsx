@@ -4,12 +4,11 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CalendarDays } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { useAuth } from "@/app/lib/auth-context";
 import { getUserLandingPath } from "@/app/lib/auth-routing";
-import { bookingApi, bookingError } from "@/app/lib/booking-api";
+import { bookingApi, bookingError, getPaymentReceiptError, uploadPaymentReceipt } from "@/app/lib/booking-api";
 import { publicApi } from "@/app/lib/public-api";
-import { bookingMoney, formatBookingDate, isUpiReference, rangeError, rentalDays, upiPaymentUri } from "@/app/lib/booking-dates";
+import { bookingMoney, formatBookingDate, rangeError, rentalDays } from "@/app/lib/booking-dates";
 import { useBookingQuery } from "./useBookingQuery";
 import { useRentalDayRefresh } from "./useRentalDayRefresh";
 import type { PaymentMethod } from "@/app/lib/booking-types";
@@ -21,7 +20,11 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
   const router = useRouter();
   const [method, setMethod] = useState<PaymentMethod>("owner");
   const [reference, setReference] = useState("");
-  const [upiPayeeChanged, setUpiPayeeChanged] = useState(false);
+  const [bankDetailsChanged, setBankDetailsChanged] = useState(false);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const uploadedReceipt = useRef<{ file: File; mediaId: string } | null>(null);
+  const receiptInput = useRef<HTMLInputElement>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const inFlight = useRef(false);
@@ -58,8 +61,8 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
   const rent = Math.round(product.pricing.perDayCharges * 100) * days / 100;
   const securityDeposit = method === "platform" ? product.pricing.securityDeposit : 0;
   const total = rent + securityDeposit;
-  const validMethod = method === "owner" ? paymentOptions.owner : method === "upi" && Boolean(paymentOptions.upi && isUpiReference(reference.trim()));
-  const canSubmit = !busy && acknowledged && validMethod && !error?.bookingId && !(method === "upi" && upiPayeeChanged);
+  const validMethod = method === "owner" ? paymentOptions.owner : method === "bank_transfer" && Boolean(paymentOptions.bankAccount && /^[A-Z0-9]{6,64}$/.test(reference.trim()) && !receiptError);
+  const canSubmit = !busy && acknowledged && validMethod && !error?.bookingId && !(method === "bank_transfer" && bankDetailsChanged);
 
   const submit = async () => {
     if (!canSubmit || inFlight.current) return;
@@ -79,20 +82,28 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
         query.reload();
         return;
       }
-      if (method === "upi") {
+      if (method === "bank_transfer") {
         const options = await bookingApi.paymentOptions(product._id);
-        if (!options.upi || options.upi.id.toLowerCase() !== paymentOptions.upi?.id.toLowerCase()) {
-          setUpiPayeeChanged(true); setAcknowledged(false);
-          setError({ message: "The host's UPI details have changed. Do not pay again. Contact support if you have already transferred funds.", paymentOptionsChanged: true });
+        if (!options.bankAccount || (["bankAccountNumber", "ifscCode", "bankName", "accountHolderName"] as const).some((key) => options.bankAccount?.[key] !== paymentOptions.bankAccount?.[key])) {
+          setBankDetailsChanged(true); setAcknowledged(false);
+          setError({ message: "The host's bank details have changed. Do not pay again. Contact support if you have already transferred funds.", paymentOptionsChanged: true });
           return;
         }
       }
-      const booking = await bookingApi.create({ productId: product._id, startDate: start, endDate: end, paymentMethod: method, ...(method === "upi" && { upiReference: reference.trim(), expectedUpiId: paymentOptions.upi?.id }) });
+      let receiptMediaId: string | undefined;
+      if (method === "bank_transfer" && receiptFile) {
+        if (uploadedReceipt.current?.file !== receiptFile) {
+          uploadedReceipt.current = { file: receiptFile, mediaId: await uploadPaymentReceipt(receiptFile) };
+        }
+        receiptMediaId = uploadedReceipt.current.mediaId;
+      }
+      const booking = await bookingApi.create({ productId: product._id, startDate: start, endDate: end, paymentMethod: method,
+        ...(method === "bank_transfer" && { reference: reference.trim(), expectedBankAccount: paymentOptions.bankAccount!, receiptMediaId }) });
       router.replace(`/bookings/${encodeURIComponent(booking._id)}`);
     } catch (err) {
       const failure = bookingError(err);
       setError(failure);
-      if (failure.paymentOptionsChanged) { setUpiPayeeChanged(true); setAcknowledged(false); }
+      if (failure.paymentOptionsChanged) { setBankDetailsChanged(true); setAcknowledged(false); }
       else if (failure.status === 409 && !failure.bookingId) query.reload();
     } finally { setBusy(false); inFlight.current = false; }
   };
@@ -125,40 +136,50 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
         <legend className={`${styles.cardTitle} ${styles.legend}`}>Payment method</legend>
         {[
           { value: "owner" as const, title: "Pay owner directly", desc: "Arrange payment with the host.", enabled: paymentOptions.owner },
-          ...(paymentOptions.upi ? [{ value: "upi" as const, title: "Pay host by UPI", desc: "Transfer to the host and provide your payment reference.", enabled: true }] : []),
+          ...(paymentOptions.bankAccount ? [{ value: "bank_transfer" as const, title: "Pay host by bank transfer", desc: "Transfer to the host and provide your payment reference.", enabled: true }] : []),
           { value: "platform" as const, title: "Pay through MouldX", desc: "Coming soon. Includes a security deposit.", enabled: false },
         ].map((option) => <label key={option.value} className={`${styles.methodOption} ${method === option.value ? styles.methodOptionActive : ""}`}>
           <input type="radio" className={styles.radio} name="paymentMethod" value={option.value} disabled={!option.enabled} checked={method === option.value} onChange={() => { setMethod(option.value); setAcknowledged(false); }} />
           <span className={styles.methodInfo}><span className={styles.methodTitle}>{option.title}</span><span className={shared.note}>{option.desc}</span></span>
         </label>)}
 
-        {method === "upi" && paymentOptions.upi && !upiPayeeChanged && <div className={styles.upiBox}>
-          <div className={styles.upiLayout}>
-            <div className={styles.upiInfo}>
-              <h3 className={styles.upiHeading}>Host payment details</h3>
-              <dl className={styles.upiList}>
-                <div className={styles.upiRow}><dt>Account holder</dt><dd>{paymentOptions.upi.name}</dd></div>
-                <div className={styles.upiRow}><dt>UPI ID</dt><dd>{paymentOptions.upi.id}</dd></div>
-              </dl>
-              <div className={styles.upiAmount}>
-                <span>Amount to pay</span>
-                <strong>{bookingMoney(total)}</strong>
-              </div>
-            </div>
-            <div className={styles.upiQr}>
-              <div className={styles.qrFrame}>
-                <QRCodeSVG value={upiPaymentUri(paymentOptions.upi, total, product.code)} size={160} marginSize={2} style={{ width: "100%", height: "auto", display: "block" }} title={`Pay ${paymentOptions.upi.name} by UPI`} />
-              </div>
-              <span className={styles.qrHint}>Scan with any UPI app</span>
+        {method === "bank_transfer" && paymentOptions.bankAccount && !bankDetailsChanged && <div className={styles.transferBox}>
+          <div className={styles.transferInfo}>
+            <h3 className={styles.transferHeading}>Host bank details</h3>
+            <dl className={styles.transferList}>
+              <div className={styles.transferRow}><dt>Account holder</dt><dd>{paymentOptions.bankAccount.accountHolderName}</dd></div>
+              <div className={styles.transferRow}><dt>Bank name</dt><dd>{paymentOptions.bankAccount.bankName}</dd></div>
+              <div className={styles.transferRow}><dt>Account number</dt><dd>{paymentOptions.bankAccount.bankAccountNumber}</dd></div>
+              <div className={styles.transferRow}><dt>IFSC code</dt><dd>{paymentOptions.bankAccount.ifscCode}</dd></div>
+            </dl>
+            <div className={styles.transferAmount}>
+              <span>Amount to pay</span>
+              <strong>{bookingMoney(total)}</strong>
             </div>
           </div>
 
           <label className={styles.refField}>
-            <span>UPI transaction reference</span>
-            <input name="upiReference" value={reference} onChange={(event) => setReference(event.target.value.toUpperCase())} minLength={6} maxLength={64} pattern="[A-Z0-9]{6,64}" required autoComplete="off" aria-describedby="upi-reference-help" />
+            <span>Bank transfer reference ID</span>
+            <input name="reference" value={reference} onChange={(event) => setReference(event.target.value.toUpperCase())} minLength={6} maxLength={64} pattern="[A-Z0-9]{6,64}" required autoComplete="off" aria-describedby="transfer-reference-help" />
           </label>
-          <p className={styles.upiNote} id="upi-reference-help">6-64 letters and numbers. Each payment reference can be used only once for this payee, including rejected bookings. For a previous payment, contact support about a refund.</p>
-          <p className={styles.upiNote}>A reference reports your payment; it does not confirm receipt. Your booking still requires admin approval.</p>
+          <p className={styles.transferNote} id="transfer-reference-help">6-64 letters and numbers. Each payment reference can be used only once for this bank account, including rejected bookings. For a previous payment, contact support about a refund.</p>
+          <label className={styles.refField}>
+            <span>Payment receipt (PDF, optional)</span>
+            <input ref={receiptInput} type="file" accept="application/pdf,.pdf" aria-describedby="receipt-help" onChange={(event) => {
+              const file = event.target.files?.[0] || null;
+              const rejection = file ? getPaymentReceiptError(file) : null;
+              setReceiptError(rejection);
+              setReceiptFile(rejection ? null : file);
+              uploadedReceipt.current = null;
+            }} />
+          </label>
+          <p className={styles.transferNote} id="receipt-help">PDF only, up to 15MB.</p>
+          {(receiptFile || receiptError) && <button type="button" className={shared.button} onClick={() => {
+            setReceiptFile(null); setReceiptError(null); uploadedReceipt.current = null;
+            if (receiptInput.current) receiptInput.current.value = "";
+          }}>Remove receipt</button>}
+          {receiptError && <p role="alert" className={shared.error}>{receiptError}</p>}
+          <p className={styles.transferNote}>A reference or receipt reports your payment; it does not confirm receipt. Your booking still requires admin approval.</p>
         </div>}
 
         <label className={styles.ackRow}><input className={styles.checkbox} type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} /><span>I understand that payment is arranged with the host and this request requires admin approval.</span></label>
