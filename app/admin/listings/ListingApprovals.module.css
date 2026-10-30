@@ -2,6 +2,33 @@
   max-width: 1600px;
 }
 
+.statusStack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 240px;
+}
+
+.updatePill {
+  padding: 4px 8px;
+  border-radius: 9999px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.availabilityNote {
+  width: 100%;
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 /* ---------- Header ---------- */
 .headerRow {
   display: flex;

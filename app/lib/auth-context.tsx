@@ -11,8 +11,9 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
+import axios from "axios";
 import { authApi } from "@/app/lib/auth-api";
-import { clearAuthSession, hasAuthSessionHint, setAuthSession } from "@/app/lib/auth-storage";
+import { AUTH_SESSION_EXPIRED_EVENT, clearAuthSession, hasAuthSessionHint, setAuthSession } from "@/app/lib/auth-storage";
 import { clearActiveRole, initActiveRoleFor } from "@/app/lib/active-role";
 import { clearSelectedSignupRole } from "@/app/lib/role-selection";
 import { clearPendingAuth } from "@/app/lib/pending-auth";
@@ -73,16 +74,19 @@ const bootstrapAuth = (pathname: string | null) => {
     bootstrapPromise = authApi
       .refreshSession()
       .then((payload) => {
+        bootstrapComplete = true;
         bootstrapPayload = payload;
         return payload;
       })
-      .catch(() => {
-        clearAuthSession();
-        bootstrapPayload = null;
+      .catch((error) => {
+        if (axios.isAxiosError(error) && [401, 403].includes(error.response?.status || 0)) {
+          clearAuthSession();
+          bootstrapPayload = null;
+          bootstrapComplete = true;
+        }
         return null;
       })
       .finally(() => {
-        bootstrapComplete = true;
         bootstrapPromise = null;
       });
   }
@@ -100,6 +104,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logoutPromise = useRef<Promise<void> | null>(null);
   const sessionVersion = useRef(0);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    const expired = () => {
+      sessionVersion.current += 1;
+      initialized.current = true;
+      bootstrapComplete = true;
+      bootstrapPayload = null;
+      clearAuthSession();
+      clearActiveRole();
+      setUser(null);
+      setOwnerProfileVerification(null);
+    };
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, expired);
+    return () => window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, expired);
+  }, []);
 
   const applyAuthPayload = useCallback((payload: AuthPayload) => {
     sessionVersion.current += 1;

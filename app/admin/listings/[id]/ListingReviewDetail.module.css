@@ -2,6 +2,74 @@
   max-width: 1600px;
 }
 
+.availabilityCard {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.availabilityBtn {
+  padding: 10px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1d4ed8;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.availabilityBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.updateNotice {
+  margin-top: 16px;
+  min-width: 0;
+  padding: 16px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  color: #1e40af;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.updateNotice p {
+  margin: 8px 0;
+}
+
+.comparisonWrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.comparisonTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: left;
+  font-size: 12px;
+}
+
+.comparisonTable th,
+.comparisonTable td {
+  padding: 8px;
+  border-bottom: 1px solid #bfdbfe;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.changedRow {
+  background: #dbeafe;
+}
+
 .notFound {
   min-height: 60vh;
   display: flex;

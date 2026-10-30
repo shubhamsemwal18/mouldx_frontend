@@ -1,4 +1,4 @@
-import { apiClient, type ApiResponse } from "@/app/lib/api";
+import { apiClient, refreshSession, withSessionLock, type ApiResponse } from "@/app/lib/api";
 import type { AuthPayload } from "@/app/lib/types";
 
 export interface SignupResponse {
@@ -24,8 +24,8 @@ export const authApi = {
   },
 
   verifySignupOtp(payload: { phone: string; otp: string }) {
-    return apiClient
-      .post<ApiResponse<AuthPayload>>("/auth/signup/verify-otp", payload, { skipAuthRefresh: true })
+    return withSessionLock(() => apiClient
+      .post<ApiResponse<AuthPayload>>("/auth/signup/verify-otp", payload, { skipAuthRefresh: true }))
       .then((response) => response.data.data);
   },
 
@@ -40,28 +40,26 @@ export const authApi = {
   },
 
   verifyLoginOtp(payload: { identifier: string; otp: string }) {
-    return apiClient
-      .post<ApiResponse<AuthPayload>>("/auth/login/verify-otp", payload, { skipAuthRefresh: true })
+    return withSessionLock(() => apiClient
+      .post<ApiResponse<AuthPayload>>("/auth/login/verify-otp", payload, { skipAuthRefresh: true }))
       .then((response) => response.data.data);
   },
 
   loginWithPassword(payload: { identifier: string; password: string }) {
-    return apiClient
-      .post<ApiResponse<AuthPayload>>("/auth/login/password", payload, { skipAuthRefresh: true })
+    return withSessionLock(() => apiClient
+      .post<ApiResponse<AuthPayload>>("/auth/login/password", payload, { skipAuthRefresh: true }))
       .then((response) => response.data.data);
   },
 
   refreshSession() {
-    return apiClient
-      .post<ApiResponse<AuthPayload>>("/auth/refresh-token", {}, { skipAuthRefresh: true })
-      .then((response) => response.data.data);
+    return refreshSession();
   },
 
-  me() {
-    return apiClient.get<ApiResponse<Omit<AuthPayload, "tokens">>>("/user/profile").then((response) => response.data.data);
+  me(signal?: AbortSignal) {
+    return apiClient.get<ApiResponse<Omit<AuthPayload, "tokens">>>("/user/profile", { signal }).then((response) => response.data.data);
   },
 
   logout() {
-    return apiClient.post<ApiResponse<Record<string, never>>>("/auth/logout", {}, { skipAuthRefresh: true });
+    return withSessionLock(() => apiClient.post<ApiResponse<Record<string, never>>>("/auth/logout", {}, { skipAuthRefresh: true }));
   },
 };

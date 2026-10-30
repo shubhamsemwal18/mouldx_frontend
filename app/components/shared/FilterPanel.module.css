@@ -1,114 +1,135 @@
+/* ---------- Panel ---------- */
 .filterPanel {
   margin-top: 12px;
   background: #f6f7f9;
-  border-radius: 8px;
-  padding: 14px 0 14px 14px;
+  border: 1px solid #eef0f4;
+  border-radius: 12px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
+  width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  letter-spacing: 0;
 }
+
+.filterPanel *, .filterPanel *::before, .filterPanel *::after { box-sizing: border-box; }
+
+/* Kept for the wrapChips prop: chips always wrap now, so nothing extra is needed */
+.wrapChips { width: 100%; }
 
 .filterGroup {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
+}
+
+/* Divider above the clear button (only exists when that button is rendered) */
+.filterGroup:has(+ .clearFilters)::after {
+  content: "";
+  display: block;
+  height: 1px;
+  background: #e2e8f0;
+  margin-top: 4px;
 }
 
 .filterLabel {
   margin: 0;
-  padding-right: 14px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0;
-}
-
-.clearFilters {
-  align-self: flex-start;
-  background: none;
-  border: none;
-  color: #2563eb;
   font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 6px 14px 0 0;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #334155;
 }
 
-/* ---------- Filter chips: horizontal scroll, never clip ---------- */
+/* ---------- Filter chips: wrap onto new lines, nothing is cut off ---------- */
 .chipsRow {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  overflow-x: auto;
-  padding-right: 14px;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.chipsRow::-webkit-scrollbar {
-  display: none;
+  min-width: 0;
 }
 
 .chip {
-  flex-shrink: 0;
-  padding: 8px 14px;
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 8px 16px;
+  border: 1px solid #e2e8f0;
   border-radius: 9999px;
-  border: 1px solid #e5e7eb;
   background: #ffffff;
-  color: #374151;
+  color: #334155;
+  font: inherit;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  white-space: nowrap;
-  min-height: 44px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.optionStatus { margin: 0; padding-right: 14px; color: #64748b; font-size: 12px; }
+.chip:hover { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+.chip:active { background: #dbeafe; }
 .chip:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 
-.chipActive {
+.chipActive,
+.chipActive:hover,
+.chipActive:active {
   background: #2563eb;
   border-color: #2563eb;
   color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
 }
 
-/* Wrapping layout: every chip stays inside the panel, nothing bleeds off the edge. */
-.wrapChips {
-  width: 100%;
-  padding-right: 14px;
-}
+.optionStatus { margin: 0; color: #64748b; font-size: 12px; line-height: 1.5; }
 
-.wrapChips .filterLabel,
-.wrapChips .chipsRow,
-.wrapChips .clearFilters {
-  padding-right: 0;
-}
-
-.wrapChips .chipsRow {
-  flex-wrap: wrap;
-  overflow-x: visible;
-}
-
-.wrapChips .chip {
-  flex-shrink: 1;
+/* ---------- Clear all filters (compact blue pill) ---------- */
+.clearFilters {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-height: 34px;
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 9999px;
+  background: #2563eb;
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.25);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.clearFilters:hover { background: #1d4ed8; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35); }
+.clearFilters:active { transform: scale(0.98); }
+.clearFilters:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+
+/* ---------- Responsive ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .chip, .clearFilters { transition: none; }
+  .clearFilters:active { transform: none; }
 }
 
 @media (max-width: 359px) {
-  .chip { padding: 7px 12px; font-size: 12px; }
+  .filterPanel { padding: 12px; gap: 16px; }
+  .chip { min-height: 36px; padding: 6px 12px; font-size: 12px; }
 }
 
 @media (min-width: 640px) {
-  .chip { padding: 10px 18px; font-size: 14px; }
+  .filterPanel { padding: 20px; gap: 20px; }
+  .chip { min-height: 38px; padding: 8px 18px; font-size: 14px; }
+  .clearFilters { min-height: 36px; padding: 8px 18px; font-size: 14px; }
 }

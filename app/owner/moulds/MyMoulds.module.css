@@ -400,6 +400,27 @@
   background: #f9fafb;
 }
 
+.actionBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.updateNotice {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.updateNotice p {
+  margin: 4px 0 0;
+}
+
 .emptyBox {
   text-align: center;
 }

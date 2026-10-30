@@ -1,15 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-
-export default function EditIndexPage() {
-  const router = useRouter();
-  const { id } = useParams<{ id: string }>();
-
-  useEffect(() => {
-    router.replace(`/owner/moulds/${id}/edit/technical`);
-  }, [id, router]);
-
-  return null;
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(`/owner/moulds/new/product?id=${encodeURIComponent(id)}`);
 }

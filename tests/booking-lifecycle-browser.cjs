@@ -99,9 +99,22 @@ async function run() {
   await expect(hostPage.getByRole("heading", { name: pending.code, exact: true })).toHaveCount(0);
   await hostPage.goto(`${url}/owner/bookings/${completed._id}`);
   await expect(hostPage.getByText("Booking completed", { exact: true })).toBeVisible();
+  for (const route of ["dispatch", "claim/resolved", "return/accepted"]) {
+    await hostPage.goto(`${url}/owner/bookings/${completed._id}/${route}`);
+    await expect(hostPage).toHaveURL(`${url}/owner/bookings/${completed._id}`);
+    await expect(hostPage.getByText("Booking completed", { exact: true })).toBeVisible();
+  }
   await hostPage.goto(`${url}/owner/bookings/${active._id}`);
   await expect(hostPage.getByText("Booking active", { exact: true })).toBeVisible();
   const { page: renter } = await actor(customer);
+  for (const route of ["receive", "refund", "mould-details"]) {
+    await renter.goto(`${url}/bookings/${completed._id}/${route}`);
+    await expect(renter).toHaveURL(`${url}/bookings/${completed._id}`);
+    await expect(renter.getByText("Booking completed", { exact: true })).toBeVisible();
+  }
+  await renter.goto(`${url}/booking-success`);
+  await expect(renter).toHaveURL(`${url}/bookings`);
+  await expect(renter.getByText("Payment received", { exact: true })).toHaveCount(0);
   for (const width of [320, 390, 1440]) {
     await renter.setViewportSize({ width, height: 900 });
     await renter.goto(`${url}/bookings`);

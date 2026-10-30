@@ -7,10 +7,11 @@ const INDIA_OFFSET_MS = 19_800_000;
 const rentalDay = () => Math.floor((Date.now() + INDIA_OFFSET_MS) / DAY_MS);
 
 /** Refresh date-derived states at India midnight, including after a sleeping tab resumes. */
-export function useRentalDayRefresh(reload: () => void) {
+export function useRentalDayRefresh(reload: () => void, enabled = true) {
   const reloadRef = useRef(reload);
   useEffect(() => { reloadRef.current = reload; }, [reload]);
   useEffect(() => {
+    if (!enabled) return;
     let day = rentalDay();
     let timer: ReturnType<typeof setTimeout>;
     const check = () => {
@@ -31,5 +32,5 @@ export function useRentalDayRefresh(reload: () => void) {
       document.removeEventListener("visibilitychange", check);
       window.removeEventListener("focus", check);
     };
-  }, []);
+  }, [enabled]);
 }

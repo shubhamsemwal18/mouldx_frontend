@@ -1,7 +1,6 @@
 .page {
   min-height: 100vh;
   background: #ffffff;
-  /* Must clear the sticky CTA bar (~101px) plus the bottom nav (79px). */
   padding-bottom: 180px;
 }
 
@@ -103,7 +102,6 @@
   cursor: not-allowed;
 }
 
-/* ---------- Media upload boxes ---------- */
 .mediaBox {
   position: relative;
   display: flex;
@@ -199,7 +197,6 @@
   padding: 2px 8px;
 }
 
-/* ---------- Location info flag ---------- */
 .geoFlag {
   margin-top: 12px;
   display: flex;
@@ -239,7 +236,6 @@
   line-height: 1.4;
 }
 
-/* ---------- Rental hero card ---------- */
 .rentalCard {
   margin-top: 16px;
   position: relative;
@@ -332,7 +328,6 @@
   color: #7f1d1d;
 }
 
-/* ---------- Collapsible component section ---------- */
 .accordion {
   margin-top: 18px;
   background: #fafafa;
@@ -405,47 +400,63 @@
   padding-top: 16px;
 }
 
-/* ---------- Sticky CTA ---------- */
 .ctaBar {
   position: fixed;
-  /* Height of OwnerBottomNav — the bar must clear it, not overlap it. */
   bottom: 79px;
   left: 0;
   right: 0;
   background: #ffffff;
   border-top: 1px solid #f1f1f3;
-  padding: 14px 20px;
+  padding: 12px 20px;
+  box-sizing: border-box;
   z-index: 20;
 }
 
-/* Side by side at every width. Stacking these cost ~70px of vertical space on
-   a phone, where the sticky bar and bottom nav already take a quarter of the
-   screen. "Save as Draft" is secondary, so it gets the smaller share. */
 .ctaActions {
   display: flex;
   flex-direction: row;
+  align-items: stretch;
   gap: 10px;
+  width: 100%;
 }
 
-.ctaBtn {
-  width: 100%;
-  border: none;
-  padding: 15px;
-  font-size: 14px;
+.ctaBtn,
+.ctaBtn:global(.btn-primary),
+.ctaDraftBtn {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 48px;
+  min-height: 48px;
+  max-height: 48px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 13px;
   font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
 
+.ctaBtn,
+.ctaBtn:global(.btn-primary) {
+  flex: 1 1 0;
+  width: auto;
+  border: none;
+  border-radius: 12px;
+}
+
 .ctaDraftBtn {
-  width: 100%;
+  flex: 0 1 38%;
+  width: auto;
   border: 1px solid #d8dbe0;
   border-radius: 12px;
   background: #ffffff;
   color: #374151;
-  padding: 14px 10px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 .ctaDraftBtn:disabled,
@@ -456,6 +467,8 @@
 
 .ctaStatus {
   margin-bottom: 10px;
+  max-height: 96px;
+  overflow-y: auto;
 }
 
 .ctaProgress {
@@ -478,24 +491,34 @@
   list-style: disc;
 }
 
-.ctaDraftBtn {
-  flex: 0 0 40%;
-}
-
-.ctaBtn,
-.ctaBtn:global(.btn-primary) {
-  flex: 1 1 auto;
-}
-
-.ctaBtn:global(.btn-primary) {
+.content > .ctaDraftBtn {
+  display: flex;
   width: 100%;
-  border-radius: 12px;
-  padding: 15px;
-  font-size: 14px;
-  justify-content: center;
+  flex: none;
+  margin-top: 12px;
 }
 
-/* ---------- Responsive ---------- */
+.lockedCard .ctaBtn,
+.lockedCard .ctaBtn:global(.btn-primary) {
+  width: 100%;
+  flex: none;
+}
+
+@media (max-width: 359px) {
+  .ctaBar {
+    padding: 10px 12px;
+  }
+  .ctaActions {
+    gap: 8px;
+  }
+  .ctaBtn,
+  .ctaBtn:global(.btn-primary),
+  .ctaDraftBtn {
+    font-size: 12px;
+    padding: 0 6px;
+  }
+}
+
 @media (min-width: 640px) {
   .content {
     max-width: 560px;
@@ -513,12 +536,23 @@
     margin: 0 auto;
   }
 }
-/* ---------- Edit / resubmit states ---------- */
 
 .loadingText {
   margin-top: 24px;
   font-size: 13px;
   color: #6b7280;
+}
+
+.updateNotice {
+  margin: 14px 0 0;
+  padding: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1e40af;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .rejectedCard {
@@ -576,8 +610,6 @@
   color: #6b7280;
 }
 
-/* ---------- Multi-file media galleries ---------- */
-
 .galleryBlock {
   margin-top: 12px;
 }
@@ -587,7 +619,6 @@
   color: #9ca3af;
 }
 
-/* Four tiles per row on a phone; more as the viewport grows. */
 .galleryGrid {
   margin-top: 6px;
   display: grid;
@@ -653,9 +684,6 @@
 }
 
 .galleryAdd {
-  /* `position: relative` is required: .mediaInput is absolutely positioned,
-     and without a positioned ancestor it escapes the tile and covers the
-     whole viewport, swallowing every tap on the form. */
   position: relative;
   overflow: hidden;
   display: flex;

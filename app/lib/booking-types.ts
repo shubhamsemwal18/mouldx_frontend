@@ -1,4 +1,4 @@
-import type { Dimensions, MediaRef, Mould, ProductCategoryRef, User } from "./types";
+import type { Dimensions, MediaRef, Mould, ProductCategoryRef } from "./types";
 import type { Pagination } from "./product-api";
 
 export type BookingStatus = "pending" | "approved" | "rejected";
@@ -22,7 +22,7 @@ export interface BookingAvailability {
     name: string;
     code: string;
     slug: string;
-    owner?: string | Pick<User, "_id">;
+    availability?: "active" | "maintenance";
     pricing: { perDayCharges: number; securityDeposit: number };
   };
 }
@@ -95,4 +95,5 @@ export interface CreateBookingInput {
   endDate: string;
   paymentMethod: PaymentMethod;
   upiReference?: string;
+  expectedUpiId?: string;
 }

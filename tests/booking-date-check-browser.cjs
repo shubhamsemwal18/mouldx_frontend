@@ -19,7 +19,7 @@ async function run() {
   for (const width of [320, 390, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     await context.addInitScript(() => { sessionStorage.setItem("splashShown", "1"); localStorage.setItem("mouldx:auth-session-present", "1"); });
-    let duplicate = true, failCheck = false, malformed = "", releaseCheck;
+    let duplicate = true, failCheck = false, blocked = false, malformed = "", releaseCheck;
     let holdCheck = true;
     const requests = [];
     await context.route("**/api/**", async (route) => {
@@ -33,7 +33,7 @@ async function run() {
       if (path === "/products/date-check") return send({ product, moulds: [] });
       if (path.endsWith("/visit")) return route.fulfill({ status: 204 });
       if (path === "/bookings/payment-options") return send({ owner: true, platform: false, upi: null });
-      if (path === "/bookings/availability") return send({ product, today, cooldownDays: 3, blockedRanges: [] });
+      if (path === "/bookings/availability") return send({ product, today, cooldownDays: 3, blockedRanges: blocked ? [{ startDate: start, endDate: end }] : [] });
       if (path === "/bookings/pending-request") {
         if (holdCheck) await new Promise((resolve) => { releaseCheck = resolve; });
         if (failCheck) return route.fulfill({ status: 503, json: { success: false, message: "Could not check pending requests" } });
@@ -106,6 +106,14 @@ async function run() {
     await page.goto(`${url}/explore/date-check/confirm?startDate=${start}&endDate=${end}`);
     await expect(page.getByRole("link", { name: "View existing booking BK-EXISTING", exact: true })).toBeVisible();
     await expect(page.getByRole("radio")).toHaveCount(0);
+    expect(requests.filter((request) => request.path === "/bookings/payment-options")).toHaveLength(beforeDirect);
+    // An unavailable checkout deep link also stops before fetching payment destinations.
+    duplicate = false;
+    blocked = true;
+    await page.goto(`${url}/explore/date-check/confirm?startDate=${start}&endDate=${end}`);
+    await expect(page.getByRole("alert").filter({ hasText: "These dates include an approved booking" })).toBeVisible();
+    await expect(page.getByRole("radio")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Confirm booking", exact: true })).toHaveCount(0);
     expect(requests.filter((request) => request.path === "/bookings/payment-options")).toHaveLength(beforeDirect);
     expect(requests.some((request) => request.method === "POST" && request.path === "/bookings")).toBe(false);
     await context.close();

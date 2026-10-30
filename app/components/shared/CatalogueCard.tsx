@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ImageOff } from "lucide-react";
+import { ImageOff, Wrench } from "lucide-react";
 import type { PublicProductCard } from "@/app/lib/types";
 import styles from "./CatalogueCard.module.css";
 
@@ -19,6 +19,7 @@ export default function CatalogueCard({ product, className = "", onNavigate }: {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={imageUrl} alt={product.name} loading="lazy" className={styles.image} onError={() => setFailedImage(imageUrl)} />
           ) : <span className={styles.placeholder} aria-hidden="true"><ImageOff size={28} strokeWidth={1.4} /></span>}
+          {product.availability === "maintenance" && <span className={styles.maintenanceBadge}><Wrench size={12} aria-hidden="true" />Maintenance</span>}
         </div>
         <h3 className={styles.name}>{product.name}</h3>
         <p className={styles.price}>{product.pricing?.perDayCharges === undefined ? "Price on request" : `₹${product.pricing.perDayCharges.toLocaleString("en-IN")}/day`}</p>

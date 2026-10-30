@@ -226,6 +226,39 @@
   border: 1px solid #fed7aa;
 }
 
+.updateCard {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.updateCard h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.updateCard p {
+  margin: 6px 0;
+}
+
+.updateCard a {
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.errorText {
+  color: #b91c1c;
+  font-size: 13px;
+  margin-top: 14px;
+}
+
 .rejectedTitle {
   margin: 0;
   font-size: 13px;
@@ -439,6 +472,13 @@
   border: 1px solid #e5e7eb;
   background: #ffffff;
   color: #374151;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.actionSecondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .notFoundWrap {
