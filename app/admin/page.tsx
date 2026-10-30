@@ -12,6 +12,7 @@ const QUICK_ACTIONS = [
   { label: "Review KYC", icon: "🪪", href: "/admin/kyc" },
   { label: "Review Listings", icon: "▦", href: "/admin/listings" },
   { label: "Review Bookings", icon: "☰", href: "/admin/bookings" },
+   { label: "Support", icon: "🎧", href: "/admin/support" },
 ];
 
 const PERIOD_OPTIONS: { key: DashboardPeriod; label: string; current: string; previous: string }[] = [

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Eye, Search, Trash2, X } from "lucide-react";
 import { adminApi, type AdminKycPagination, type AdminReview, type AdminReviewMedia, type AdminReviewStats } from "@/app/lib/admin-api";
 import { getApiErrorMessage } from "@/app/lib/api";
 import styles from "./Reviews.module.css";
@@ -184,7 +185,7 @@ export default function ReviewsPage() {
       <div className={styles.toolbar}>
         <div className={styles.searchWrap}>
           <span className={styles.searchIcon} aria-hidden>
-            🔍
+            <Search size={17} />
           </span>
           <input
             type="text"
@@ -250,16 +251,17 @@ export default function ReviewsPage() {
                   <td className={styles.reviewSnippetCell}>{r.comment}</td>
                   <td className={styles.mutedCell}>{formatDate(r.createdAt)}</td>
                   <td className={styles.actionCell}>
-                    <button type="button" onClick={() => openReview(r)} className={styles.iconBtn} aria-label="View review">
-                      👁
+                    <button type="button" onClick={() => openReview(r)} className={styles.iconBtn} aria-label="View review" title="View review">
+                      <Eye size={16} />
                     </button>
                     <button
                       type="button"
                       onClick={() => askDelete(r)}
                       className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
                       aria-label="Delete review"
+                      title="Delete review"
                     >
-                      🗑
+                      <Trash2 size={16} />
                     </button>
                   </td>
                 </tr>
@@ -295,14 +297,14 @@ export default function ReviewsPage() {
 
             <div className={styles.mobileCardBottom}>
               <button type="button" onClick={() => openReview(r)} className={styles.mobileActionBtn}>
-                👁 View
+                <Eye size={16} /> View
               </button>
               <button
                 type="button"
                 onClick={() => askDelete(r)}
                 className={`${styles.mobileActionBtn} ${styles.mobileActionBtnDanger}`}
               >
-                🗑 Delete
+                <Trash2 size={16} /> Delete
               </button>
             </div>
           </div>
@@ -320,11 +322,11 @@ export default function ReviewsPage() {
           <div className={styles.paginationActions}>
             <button type="button" className={styles.pageBtn} disabled={!pagination.hasPrevPage || loading}
               onClick={() => setPage((current) => Math.max(1, current - 1))}>
-              Previous
+              <ChevronLeft size={15} /> Previous
             </button>
             <button type="button" className={styles.pageBtn} disabled={!pagination.hasNextPage || loading}
               onClick={() => setPage((current) => current + 1)}>
-              Next
+              Next <ChevronRight size={15} />
             </button>
           </div>
         </div>
@@ -334,7 +336,7 @@ export default function ReviewsPage() {
         <div className={styles.detailOverlay} onClick={() => setViewReview(null)}>
           <div className={styles.detailModal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <button type="button" onClick={() => setViewReview(null)} aria-label="Close" className={styles.closeBtn}>
-              ✕
+              <X size={16} />
             </button>
 
             <div className={styles.detailLayout}>
@@ -355,7 +357,7 @@ export default function ReviewsPage() {
                         /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={item.url} alt="Booked mould" className={styles.mediaThumbImg} />
                       )}
-                      {item.kind === "video" && <span className={styles.playIcon}>▶</span>}
+                      {item.kind === "video" && <span className={styles.playIcon} />}
                     </button>
                   ))}
                 </div>
@@ -398,7 +400,7 @@ export default function ReviewsPage() {
                   onClick={() => askDelete(viewReview)}
                   className={styles.deletePanelBtn}
                 >
-                  🗑 Delete This Review
+                  <Trash2 size={16} /> Delete This Review
                 </button>
               </div>
             </div>
@@ -410,7 +412,7 @@ export default function ReviewsPage() {
         <div className={styles.lightboxOverlay} onClick={() => setActiveMedia(null)}>
           <div className={styles.lightboxContent} onClick={(e) => e.stopPropagation()}>
             <button type="button" onClick={() => setActiveMedia(null)} className={styles.lightboxCloseBtn} aria-label="Close preview">
-              ✕
+              <X size={16} />
             </button>
             {activeMedia.kind === "video" ? (
               <video src={activeMedia.url} className={styles.lightboxImage} controls autoPlay />
@@ -425,7 +427,7 @@ export default function ReviewsPage() {
       {confirmDelete && (
         <div className={styles.confirmOverlay} onClick={() => !deleting && setConfirmDelete(null)}>
           <div className={styles.confirmContent} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <div className={styles.confirmIcon}>⚠</div>
+            <div className={styles.confirmIcon}><AlertTriangle size={26} /></div>
             <h3 className={styles.confirmTitle}>Delete this review?</h3>
             <p className={styles.confirmText}>
               This will permanently remove the review by <strong>{confirmDelete.reviewer.name}</strong>

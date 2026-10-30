@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AlertTriangle, ChevronLeft, ChevronRight, Download, Eye, Search, Trash2 } from "lucide-react";
 import { adminApi, type AdminKycPagination, type AdminUserRow } from "@/app/lib/admin-api";
 import { getApiErrorMessage } from "@/app/lib/api";
 import styles from "./UserManagement.module.css";
@@ -121,16 +122,24 @@ export default function UserManagementPage() {
   return (
     <div className={styles.page}>
       <div className={styles.headerRow}>
-        <h1 className={styles.title}>User Management</h1>
-        <span className={styles.countPill}>
-          {stats.total.toLocaleString("en-IN")} APPROVED · {stats.hosts.toLocaleString("en-IN")} HOSTS
-        </span>
+        <div className={styles.headerText}>
+          <h1 className={styles.title}>User Management</h1>
+          <p className={styles.subtitle}>Approved users, hosts and their activity.</p>
+        </div>
+        <div className={styles.statGroup}>
+          <span className={styles.countPill}>
+            <strong>{stats.total.toLocaleString("en-IN")}</strong> Approved
+          </span>
+          <span className={`${styles.countPill} ${styles.countPillHost}`}>
+            <strong>{stats.hosts.toLocaleString("en-IN")}</strong> Hosts
+          </span>
+        </div>
       </div>
 
       <div className={styles.toolbar}>
         <div className={styles.searchWrap}>
           <span className={styles.searchIcon} aria-hidden>
-            🔍
+            <Search size={17} />
           </span>
           <input
             type="text"
@@ -169,7 +178,7 @@ export default function UserManagementPage() {
           disabled={!range.from || !range.to || exporting}
           title="Approved users who joined in the selected dates, with complete KYC and activity history"
         >
-          <span aria-hidden>⬇</span> {exporting ? "Preparing…" : "Download CSV"}
+          <Download size={16} aria-hidden /> {exporting ? "Preparing…" : "Download CSV"}
         </button>
       </div>
 
@@ -197,30 +206,37 @@ export default function UserManagementPage() {
                       <span className={styles.avatar} style={{ background: gradientFor(u._id) }}>
                         {initials(u.fullName)}
                       </span>
-                      <span>
+                      <span className={styles.userInfo}>
                         <span className={styles.userName}>{u.fullName}</span>
                         <span className={styles.subMeta}>{u.firmName || u.phone}</span>
                       </span>
                     </div>
                   </td>
-                  <td className={styles.mutedCell}>{u.isHost ? "Host" : "User"}</td>
+                  <td>
+                    <span className={`${styles.rolePill} ${u.isHost ? styles.roleHost : styles.roleUser}`}>
+                      {u.isHost ? "Host" : "User"}
+                    </span>
+                  </td>
                   <td className={styles.mutedCell}>{formatDate(u.createdAt)}</td>
                   <td className={styles.mutedCell}>{activityText(u)}</td>
                   <td>
                     <span className={`${styles.kycPill} ${styles.kycVerified}`}>VERIFIED</span>
                   </td>
                   <td className={styles.actionCell}>
-                    <button type="button" onClick={() => view(u._id)} className={styles.eyeBtn} aria-label={`View ${u.fullName}`}>
-                      👁
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete(u)}
-                      className={`${styles.eyeBtn} ${styles.deleteBtn}`}
-                      aria-label={`Delete ${u.fullName}`}
-                    >
-                      🗑
-                    </button>
+                    <div className={styles.actionGroup}>
+                      <button type="button" onClick={() => view(u._id)} className={styles.eyeBtn} aria-label={`View ${u.fullName}`} title="View user">
+                        <Eye size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(u)}
+                        className={`${styles.eyeBtn} ${styles.deleteBtn}`}
+                        aria-label={`Delete ${u.fullName}`}
+                        title="Delete user"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -241,19 +257,19 @@ export default function UserManagementPage() {
               <span className={styles.avatar} style={{ background: gradientFor(u._id) }}>
                 {initials(u.fullName)}
               </span>
-              <div className="min-w-0 flex-1">
-                <p className={styles.userName}>{u.fullName}</p>
-                <p className={styles.mobileMeta}>
+              <div className={styles.mobileInfo}>
+                <span className={styles.userName}>{u.fullName}</span>
+                <span className={styles.mobileMeta}>
                   {u.isHost ? "Host" : "User"} · {formatDate(u.createdAt)}
-                </p>
+                </span>
               </div>
               <span className={`${styles.kycPill} ${styles.kycVerified}`}>VERIFIED</span>
             </div>
             <div className={styles.mobileCardBottom}>
               <span className={styles.mobileMeta}>{activityText(u)}</span>
-              <div className="flex items-center gap-2">
+              <div className={styles.actionGroup}>
                 <button type="button" onClick={() => view(u._id)} className={styles.eyeBtn} aria-label={`View ${u.fullName}`}>
-                  👁 View
+                  <Eye size={16} /> View
                 </button>
                 <button
                   type="button"
@@ -261,7 +277,7 @@ export default function UserManagementPage() {
                   className={`${styles.eyeBtn} ${styles.deleteBtn}`}
                   aria-label={`Delete ${u.fullName}`}
                 >
-                  🗑
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
@@ -282,11 +298,11 @@ export default function UserManagementPage() {
           <div className={styles.paginationActions}>
             <button type="button" className={styles.pageBtn} disabled={!pagination.hasPrevPage || loading}
               onClick={() => setPage((current) => Math.max(1, current - 1))}>
-              Previous
+              <ChevronLeft size={15} /> Previous
             </button>
             <button type="button" className={styles.pageBtn} disabled={!pagination.hasNextPage || loading}
               onClick={() => setPage((current) => current + 1)}>
-              Next
+              Next <ChevronRight size={15} />
             </button>
           </div>
         </div>
@@ -295,7 +311,7 @@ export default function UserManagementPage() {
       {confirmDelete && (
         <div className={styles.confirmOverlay} onClick={() => setConfirmDelete(null)}>
           <div className={styles.confirmContent} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-            <div className={styles.confirmIcon}>⚠</div>
+            <div className={styles.confirmIcon}><AlertTriangle size={26} /></div>
             <h3 className={styles.confirmTitle}>Delete this user?</h3>
             <p className={styles.confirmText}>
               Deleting <strong>{confirmDelete.fullName}</strong> is not available yet. This action is a placeholder and
