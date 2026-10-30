@@ -465,3 +465,60 @@
   color: #9ca3af;
 }
  
+/* ---------- Live data additions ---------- */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.statGrid .statCard {
+  padding: 16px 12px;
+}
+
+.statGrid .statValue {
+  font-size: 22px;
+}
+
+.rowLink {
+  color: inherit;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.rowLink:hover {
+  background: #f8fafc;
+}
+
+.revealBtn {
+  margin-left: 8px;
+  border: none;
+  background: #eff6ff;
+  color: #2563eb;
+  border-radius: 9999px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cardLink {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.noticeText {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}

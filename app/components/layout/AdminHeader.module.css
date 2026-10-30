@@ -65,7 +65,7 @@
   right: 0;
   z-index: 50;
   width: 320px;
-  max-width: 90vw;
+  max-width: calc(100vw - 88px);
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
@@ -92,7 +92,16 @@
   font-weight: 700;
   color: #2563eb;
   text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
 }
+
+.notifViewAll:disabled { opacity: 0.5; cursor: default; }
+.notifState { padding: 14px; font-size: 12px; color: #6b7280; margin: 0; }
+.notifFooter { padding: 12px 14px; border-top: 1px solid #f0f1f5; }
+.dotRead { background: #d1d5db; }
 
 .notifRow {
   display: flex;
@@ -100,7 +109,12 @@
   gap: 10px;
   padding: 12px 14px;
   border-bottom: 1px solid #f6f7fb;
+  text-decoration: none;
+  color: inherit;
 }
+
+.notifRow:hover { background: #f6f7fb; }
+.notifRow > div { min-width: 0; overflow-wrap: anywhere; }
 
 .notifRow:last-child {
   border-bottom: none;

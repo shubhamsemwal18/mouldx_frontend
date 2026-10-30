@@ -263,6 +263,124 @@
   background: #fecaca;
 }
 
+.viewBtn {
+  display: inline-block;
+  text-decoration: none;
+  text-align: center;
+}
+
+.activateBtn {
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #d1fae5;
+  color: #059669;
+  transition: background-color 0.15s ease;
+}
+
+.activateBtn:hover {
+  background: #a7f3d0;
+}
+
+.archiveBtn:disabled,
+.activateBtn:disabled,
+.deleteBtn:disabled,
+.confirmDeleteBtn:disabled,
+.confirmCancelBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.listingCell {
+  min-width: 160px;
+  max-width: 260px;
+}
+
+.listingCell .idCell {
+  white-space: nowrap;
+}
+
+.listingCell .subMeta {
+  margin-top: 2px;
+  color: #6b7280;
+  line-height: 1.35;
+}
+
+.statusMaintenance {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.subMetaInline {
+  margin-left: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+.noticeText,
+.errorText {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.noticeText {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.errorText {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.pagination {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.paginationMeta {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.paginationActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pageBtn {
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pageBtn:disabled {
+  color: #9ca3af;
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
 .emptyText {
   text-align: center;
   font-size: 13px;
@@ -321,6 +439,7 @@
 }
 
 .mobileCardBottom .viewBtn,
+.mobileCardBottom .activateBtn,
 .mobileCardBottom .archiveBtn,
 .mobileCardBottom .deleteBtn {
   flex: 1;
@@ -867,7 +986,15 @@
   }
 }
 
-@media (min-width: 768px) {
+/* The table has eight columns plus three actions; below this width cards read better. */
+@media (min-width: 640px) and (max-width: 1179px) {
+  .mobileList {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1180px) {
   .card {
     display: block;
   }
