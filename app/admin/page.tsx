@@ -1,163 +1,91 @@
-"use client"
+"use client";
+
 import Link from "next/link";
-import { useMemo, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { adminApi, type AdminDashboard, type DashboardPeriod, type DashboardStat, type PendingQueue, type TrendSeries } from "@/app/lib/admin-api";
+import type { AdminNotification } from "@/app/lib/admin-notification-api";
+import { useAdminNotifications } from "@/app/lib/admin-notification-context";
+import { getApiErrorMessage } from "@/app/lib/api";
 import styles from "./Overview.module.css";
-
-const STATS = [
-  { label: "Total Users", value: "3,482", delta: "6.2% MoM", progress: 68, invert: false, live: true },
-  { label: "Active Listings", value: "1,240", delta: "3.1% MoM", progress: 45, invert: false, live: true },
-  { label: "Bookings (30D)", value: "642", delta: "11% MoM", progress: 82, invert: false, live: false },
-  { label: "Revenue (30D)", value: "₹18.4L", delta: "8.7% MoM", progress: 74, invert: false, live: false },
-  { label: "Damage Claim", value: "2.8%", delta: "0.4% MoM", progress: 28, invert: true, live: false },
-] as const;
-
-const PENDING_ACTIONS = [
-  { queue: "KYC Approvals", pending: 4, oldest: "2 days", action: "REVIEW", tone: "amber" },
-  { queue: "Listing Approvals", pending: 7, oldest: "18 hrs", action: "REVIEW", tone: "amber" },
-  { queue: "Booking Approvals", pending: 3, oldest: "4 hrs", action: "REVIEW", tone: "cyan" },
-  { queue: "Damage Claims", pending: 2, oldest: "1 day", action: "URGENT", tone: "red" },
-] as const;
-
-const TOP_OWNERS = [
-  { name: "Sharma Industries", moulds: 12, bookings: 38, revenue: "₹4.2L", initial: "S", gradient: "#2563eb" },
-  { name: "Vector Molds", moulds: 9, bookings: 27, revenue: "₹3.1L", initial: "V", gradient: "#2563eb" },
-  { name: "Precision Ltd.", moulds: 7, bookings: 21, revenue: "₹2.6L", initial: "P", gradient: "#2563eb" },
-];
-
-const RECENT_ACTIVITY = [
-  { text: "Nova Plastics booking approved for MX-000123", time: "12 min ago", tone: "green" },
-  { text: "Sharma Industries KYC submitted for review", time: "48 min ago", tone: "amber" },
-  { text: "Damage claim raised on MX-000198 — ₹4,000", time: "2 hrs ago", tone: "red" },
-  { text: "New host signup: Precision Ltd.", time: "5 hrs ago", tone: "cyan" },
-] as const;
 
 const QUICK_ACTIONS = [
   { label: "Review KYC", icon: "🪪", href: "/admin/kyc" },
   { label: "Review Listings", icon: "▦", href: "/admin/listings" },
-  { label: "Review Bookings", icon: "▦", href: "/admin/bookings" },
-  { label: "Review Damage Claims", icon: "📣", href: "/admin/damage-claims" },
+  { label: "Review Bookings", icon: "☰", href: "/admin/bookings" },
 ];
 
-const GRANULARITY_OPTIONS = [
-  { key: "weekly", label: "Weekly" },
-  { key: "monthly", label: "Monthly" },
-  { key: "yearly", label: "Yearly" },
-] as const;
+const PERIOD_OPTIONS: { key: DashboardPeriod; label: string; current: string; previous: string }[] = [
+  { key: "week", label: "Weekly", current: "This Week", previous: "last week" },
+  { key: "month", label: "Monthly", current: "This Month", previous: "last month" },
+  { key: "year", label: "Yearly", current: "This Year", previous: "last year" },
+];
 
-type Granularity = (typeof GRANULARITY_OPTIONS)[number]["key"] | "custom";
-
-const PERIOD_LABELS: Record<Granularity, string> = {
-  weekly: "This Week",
-  monthly: "This Month",
-  yearly: "This Year",
-  custom: "Custom Range",
-};
-
-/** Deterministic-looking mock trend generator — swap with real API data later. */
-function buildSeries(numPoints: number, base: number, trend: number, volatility: number) {
-  const values: number[] = [];
-  let val = base;
-  for (let i = 0; i < numPoints; i++) {
-    val += trend + Math.sin(i / 1.7) * volatility;
-    values.push(Math.max(0, Math.round(val)));
-  }
-  return values;
-}
-
-function formatDateLabel(d: Date) {
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
-}
-
-function buildCustomLabels(start: string, end: string, points: number) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  const span = endDate.getTime() - startDate.getTime();
-  const labels: string[] = [];
-  for (let i = 0; i < points; i++) {
-    const t = new Date(startDate.getTime() + (span * i) / Math.max(points - 1, 1));
-    labels.push(formatDateLabel(t));
-  }
-  return labels;
-}
-
-function getSeriesForGranularity(
-  granularity: Granularity,
-  customRange: { start: string; end: string },
-  kind: "listings" | "users"
-) {
-  const seed = kind === "listings" ? { base: 900, trend: 6, vol: 18 } : { base: 2600, trend: 14, vol: 40 };
-
-  if (granularity === "custom" && customRange.start && customRange.end) {
-    const points = 8;
-    return {
-      labels: buildCustomLabels(customRange.start, customRange.end, points),
-      values: buildSeries(points, seed.base, seed.trend, seed.vol),
-    };
-  }
-  if (granularity === "weekly") {
-    return {
-      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      values: buildSeries(7, seed.base * 0.35, seed.trend * 0.8, seed.vol * 0.6),
-    };
-  }
-  if (granularity === "yearly") {
-    return {
-      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-      values: buildSeries(12, seed.base * 2.2, seed.trend * 1.6, seed.vol * 1.4),
-    };
-  }
-  // monthly (default) — last 4 weeks
-  return {
-    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-    values: buildSeries(4, seed.base, seed.trend * 1.2, seed.vol),
-  };
-}
-
-function computeTrend(values: number[]) {
-  const first = values[0] ?? 0;
-  const last = values[values.length - 1] ?? 0;
-  const pctChange = first === 0 ? 0 : ((last - first) / first) * 100;
-  return { last, pctChange, isUp: pctChange >= 0 };
-}
+// Older than this, a pending item is flagged as urgent.
+const URGENT_AFTER_MS = 48 * 60 * 60 * 1000;
 
 function formatNumber(n: number) {
   return n.toLocaleString("en-IN");
 }
 
-function csvEscape(v: string | number) {
-  const str = String(v);
-  return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+function formatRupees(amount: number) {
+  if (amount >= 1e7) return `₹${(amount / 1e7).toFixed(1)}Cr`;
+  if (amount >= 1e5) return `₹${(amount / 1e5).toFixed(1)}L`;
+  return `₹${formatNumber(Math.round(amount))}`;
 }
 
-function downloadCsv(filename: string, rows: (string | number)[][]) {
-  // \uFEFF (BOM) so Excel shows ₹ and other symbols correctly
-  const csv = "\uFEFF" + rows.map((r) => r.map(csvEscape).join(",")).join("\r\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+function formatDay(date: string) {
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
+    .format(new Date(`${date}T00:00:00Z`));
+}
+
+function formatAge(value: string | null, now: number) {
+  if (!value) return "—";
+  const minutes = Math.max(0, Math.floor((now - new Date(value).getTime()) / 60000));
+  if (minutes < 60) return `${Math.max(minutes, 1)} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours} hr${hours === 1 ? "" : "s"}`;
+  const days = Math.floor(hours / 24);
+  return `${days} days`;
+}
+
+function timeAgo(value: string, now: number) {
+  const age = formatAge(value, now);
+  return age === "—" ? "" : `${age} ago`;
+}
+
+/** Today in India as YYYY-MM-DD, matching the API's reporting timezone. */
+function todayInIndia() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+}
+
+function ChangeBadge({ change, className }: { change: number | null; className: string }) {
+  if (change === null) return <span className={`${className} ${styles.deltaUp}`}>▲ New</span>;
+  const isUp = change >= 0;
+  return (
+    <span className={`${className} ${isUp ? styles.deltaUp : styles.deltaDown}`}>
+      {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
+    </span>
+  );
 }
 
 function DateRangeFilter({
-  granularity,
-  isCustomActive,
-  customRange,
-  onGranularityClick,
+  period,
+  periodLabel,
+  range,
+  downloading,
+  onPeriodChange,
   onDateChange,
   onDownload,
 }: {
-  granularity: Granularity;
-  isCustomActive: boolean;
-  customRange: { start: string; end: string };
-  onGranularityClick: (g: "weekly" | "monthly" | "yearly") => void;
+  period: DashboardPeriod;
+  periodLabel: string;
+  range: { start: string; end: string };
+  downloading: boolean;
+  onPeriodChange: (period: DashboardPeriod) => void;
   onDateChange: (field: "start" | "end", value: string) => void;
   onDownload: () => void;
 }) {
+  const today = todayInIndia();
   return (
     <div className={styles.filterBar}>
       <div className={styles.filterBarLeft}>
@@ -166,48 +94,56 @@ function DateRangeFilter({
         </span>
         <div>
           <p className={styles.filterBarTitle}>Data Range</p>
-          <p className={styles.filterBarSubtitle}>
-            {isCustomActive
-              ? `${customRange.start} → ${customRange.end}`
-              : PERIOD_LABELS[granularity]}
-          </p>
+          <p className={styles.filterBarSubtitle}>{periodLabel}</p>
         </div>
       </div>
 
       <div className={styles.filterBarRight}>
-        <div className={styles.granularityGroup}>
-          {GRANULARITY_OPTIONS.map((opt) => (
+        <div className={styles.granularityGroup} role="group" aria-label="Dashboard period">
+          {PERIOD_OPTIONS.map((opt) => (
             <button
               key={opt.key}
               type="button"
-              className={`${styles.granBtn} ${
-                !isCustomActive && granularity === opt.key ? styles.granBtnActive : ""
-              }`}
-              onClick={() => onGranularityClick(opt.key)}
+              aria-pressed={period === opt.key}
+              className={`${styles.granBtn} ${period === opt.key ? styles.granBtnActive : ""}`}
+              onClick={() => onPeriodChange(opt.key)}
             >
               {opt.label}
             </button>
           ))}
         </div>
 
-        <div className={`${styles.dateRangeGroup} ${isCustomActive ? styles.dateRangeGroupActive : ""}`}>
+        <div
+          className={`${styles.dateRangeGroup} ${range.start && range.end ? styles.dateRangeGroupActive : ""}`}
+          title="Date range for the CSV report"
+        >
           <input
             type="date"
+            aria-label="CSV report start date"
             className={styles.dateInput}
-            value={customRange.start}
+            value={range.start}
+            max={range.end || today}
             onChange={(e) => onDateChange("start", e.target.value)}
           />
           <span className={styles.dateSep}>→</span>
           <input
             type="date"
+            aria-label="CSV report end date"
             className={styles.dateInput}
-            value={customRange.end}
+            value={range.end}
+            min={range.start || undefined}
             onChange={(e) => onDateChange("end", e.target.value)}
           />
         </div>
 
-        <button type="button" className={styles.downloadBtn} onClick={onDownload}>
-          <span aria-hidden>⬇</span> Download CSV
+        <button
+          type="button"
+          className={styles.downloadBtn}
+          onClick={onDownload}
+          disabled={!range.start || !range.end || downloading}
+          title={range.start && range.end ? "Download the platform report for the selected dates" : "Select a start and end date first"}
+        >
+          <span aria-hidden>⬇</span> {downloading ? "Preparing…" : "Download CSV"}
         </button>
       </div>
     </div>
@@ -216,14 +152,12 @@ function DateRangeFilter({
 
 function TrendLineChart({
   title,
-  labels,
-  values,
+  series,
   color,
   companion,
 }: {
   title: string;
-  labels: string[];
-  values: number[];
+  series: TrendSeries;
   color: string;
   companion: { name: string; color: string; values: number[] };
 }) {
@@ -234,31 +168,31 @@ function TrendLineChart({
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const { labels, values } = series;
 
-  const max = Math.max(...values);
-  const min = Math.min(...values);
+  const max = Math.max(...values, 0);
+  const min = Math.min(...values, max);
   const range = max - min || 1;
+  const flat = max === min;
 
   const points = values.map((v, i) => {
-    const x = padX + (i * (width - padX * 2)) / Math.max(values.length - 1, 1);
-    const y = height - padY - ((v - min) / range) * (height - padY * 2);
+    const x = values.length === 1 ? width / 2 : padX + (i * (width - padX * 2)) / (values.length - 1);
+    // A flat series sits mid-height instead of hugging the axis.
+    const y = flat ? height / 2 : height - padY - ((v - min) / range) * (height - padY * 2);
     return [x, y] as const;
   });
 
   const linePath = points.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x},${y}`).join(" ");
-  const areaPath = `${linePath} L${points[points.length - 1][0]},${height} L${points[0][0]},${height} Z`;
-
-  const { pctChange, isUp } = computeTrend(values);
+  const areaPath = points.length
+    ? `${linePath} L${points[points.length - 1][0]},${height} L${points[0][0]},${height} Z`
+    : "";
 
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     const rect = wrapRef.current?.getBoundingClientRect();
-    if (!rect || rect.width === 0) return;
+    if (!rect || rect.width === 0 || values.length === 0) return;
     const fraction = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-    const index = Math.round(fraction * (values.length - 1));
-    setHoverIndex(index);
+    setHoverIndex(Math.round(fraction * (values.length - 1)));
   };
-
-  const handleMouseLeave = () => setHoverIndex(null);
 
   const hoverPoint = hoverIndex !== null ? points[hoverIndex] : null;
   const tooltipLeftPct = hoverPoint ? (hoverPoint[0] / width) * 100 : 0;
@@ -268,21 +202,24 @@ function TrendLineChart({
   return (
     <div className={styles.card}>
       <div className={styles.cardHeader}>
-        <h2 className={styles.cardTitle}>{title}</h2>
-        <span className={`${styles.chartDelta} ${isUp ? styles.deltaUp : styles.deltaDown}`}>
-          {isUp ? "▲" : "▼"} {Math.abs(pctChange).toFixed(1)}%
-        </span>
+        <h2 className={styles.cardTitle}>
+          {title} <span className={styles.chartCurrent}>{formatNumber(series.current)}</span>
+        </h2>
+        <ChangeBadge change={series.change} className={styles.chartDelta} />
       </div>
 
       <div
         className={styles.chartSvgWrap}
         ref={wrapRef}
         onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
+        onMouseLeave={() => setHoverIndex(null)}
       >
-        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={styles.chartSvg}>
-          <path d={areaPath} fill={`${color}1a`} stroke="none" />
-          <path d={linePath} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+        <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={styles.chartSvg} role="img"
+          aria-label={`${title}: ${labels.map((l, i) => `${l} ${values[i]}`).join(", ")}`}>
+          {points.length > 1 && <path d={areaPath} fill={`${color}1a`} stroke="none" />}
+          {points.length > 1 && (
+            <path d={linePath} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+          )}
           {points.map(([x, y], i) => (
             <circle
               key={i}
@@ -318,11 +255,13 @@ function TrendLineChart({
               <span className={styles.chartTooltipName}>{title}</span>
               <span className={styles.chartTooltipValue}>{formatNumber(values[hoverIndex])}</span>
             </div>
-            <div className={styles.chartTooltipRow}>
-              <span className={styles.chartTooltipDot} style={{ background: companion.color }} />
-              <span className={styles.chartTooltipName}>{companion.name}</span>
-              <span className={styles.chartTooltipValue}>{formatNumber(companion.values[hoverIndex])}</span>
-            </div>
+            {companion.values[hoverIndex] !== undefined && (
+              <div className={styles.chartTooltipRow}>
+                <span className={styles.chartTooltipDot} style={{ background: companion.color }} />
+                <span className={styles.chartTooltipName}>{companion.name}</span>
+                <span className={styles.chartTooltipValue}>{formatNumber(companion.values[hoverIndex])}</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -338,248 +277,274 @@ function TrendLineChart({
   );
 }
 
+function StatCard({ stat, badge, previousLabel }: { stat: DashboardStat; badge: string; previousLabel: string }) {
+  const progress = Math.max(stat.value, stat.previous) === 0 ? 0 : (stat.value / Math.max(stat.value, stat.previous)) * 100;
+  return (
+    <div className={styles.statCard}>
+      <span className={styles.liveBadge}>{badge}</span>
+      <p className={styles.statValue}>{formatNumber(stat.value)}</p>
+      <p className={styles.statLabel}>{stat.label}</p>
+      <p className={styles.statDelta}>
+        <ChangeBadge change={stat.change} className="" />
+        <span className={styles.statCompare}> · {formatNumber(stat.previous)} {previousLabel}</span>
+      </p>
+      <div className={styles.progressTrack} title={`${formatNumber(stat.value)} this period vs ${formatNumber(stat.previous)} ${previousLabel}`}>
+        <div className={styles.progressFill} style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function queueAction(queue: PendingQueue, now: number) {
+  if (queue.count === 0) return { label: "CLEAR", tone: styles.actionCyan };
+  if (queue.oldestAt && now - new Date(queue.oldestAt).getTime() > URGENT_AFTER_MS) return { label: "URGENT", tone: styles.actionRed };
+  return { label: "REVIEW", tone: styles.actionAmber };
+}
+
+function activityDot(item: AdminNotification) {
+  if (item.tone === "amber") return styles.dotAmber;
+  if (item.category === "booking" || item.category === "profile") return styles.dotGreen;
+  return styles.dotCyan;
+}
+
 export default function AdminOverviewPage() {
-  const [granularity, setGranularity] = useState<"weekly" | "monthly" | "yearly">("monthly");
-  const [customRange, setCustomRange] = useState({ start: "", end: "" });
+  const { version } = useAdminNotifications();
+  const [period, setPeriod] = useState<DashboardPeriod>("month");
+  const [data, setData] = useState<AdminDashboard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [range, setRange] = useState({ start: "", end: "" });
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+  const requestId = useRef(0);
 
-  const isCustomActive = Boolean(customRange.start && customRange.end);
-  const activeGranularity: Granularity = isCustomActive ? "custom" : granularity;
+  const load = useCallback(async (next: DashboardPeriod, quiet = false) => {
+    const request = ++requestId.current;
+    if (!quiet) setLoading(true);
+    try {
+      const result = await adminApi.getDashboard(next);
+      if (request !== requestId.current) return;
+      setData(result);
+      setNow(Date.now());
+      setError("");
+    } catch (err) {
+      if (request === requestId.current) setError(getApiErrorMessage(err, "Could not load the dashboard"));
+    } finally {
+      if (request === requestId.current) setLoading(false);
+    }
+  }, []);
 
-  const handleGranularityClick = (g: "weekly" | "monthly" | "yearly") => {
-    setGranularity(g);
-    setCustomRange({ start: "", end: "" });
-  };
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(period), 0);
+    return () => window.clearTimeout(timer);
+  }, [load, period]);
+
+  // New admin activity (bookings, KYC, listings) refreshes the numbers quietly.
+  useEffect(() => {
+    if (version === 0) return;
+    const timer = window.setTimeout(() => void load(period, true), 0);
+    return () => window.clearTimeout(timer);
+  }, [version, load, period]);
+
+  const option = PERIOD_OPTIONS.find((opt) => opt.key === period)!;
+  const periodLabel = data && data.period.key === period
+    ? `${option.current} · ${formatDay(data.period.start)} – ${formatDay(data.period.today)}`
+    : option.current;
 
   const handleDateChange = (field: "start" | "end", value: string) => {
-    setCustomRange((prev) => ({ ...prev, [field]: value }));
+    setDownloadError("");
+    setRange((prev) => ({ ...prev, [field]: value }));
   };
 
-  const listingsSeries = useMemo(
-    () => getSeriesForGranularity(activeGranularity, customRange, "listings"),
-    [activeGranularity, customRange]
-  );
-  const usersSeries = useMemo(
-    () => getSeriesForGranularity(activeGranularity, customRange, "users"),
-    [activeGranularity, customRange]
-  );
-
-  const listingsTrend = computeTrend(listingsSeries.values);
-  const usersTrend = computeTrend(usersSeries.values);
-
-  const dynamicStats = STATS.map((s) => {
-    if (s.label === "Active Listings") {
-      return { ...s, value: formatNumber(listingsTrend.last), pctChange: listingsTrend.pctChange, isUp: listingsTrend.isUp };
+  const handleDownload = async () => {
+    if (!range.start || !range.end) {
+      setDownloadError("Select both a start and an end date to download the report.");
+      return;
     }
-    if (s.label === "Total Users") {
-      return { ...s, value: formatNumber(usersTrend.last), pctChange: usersTrend.pctChange, isUp: usersTrend.isUp };
+    if (range.end < range.start) {
+      setDownloadError("End date must be on or after the start date.");
+      return;
     }
-    return { ...s, pctChange: null as number | null, isUp: true };
-  });
-
-  const handleDownloadCsv = () => {
-    const rangeText = isCustomActive
-      ? `${customRange.start} to ${customRange.end}`
-      : PERIOD_LABELS[activeGranularity];
-
-    const rows: (string | number)[][] = [
-      ["Platform Overview Report"],
-      ["Period", rangeText],
-      ["Generated On", new Date().toLocaleString("en-IN")],
-      [],
-      ["Summary"],
-      ["Metric", "Value", "Change"],
-      ...dynamicStats.map((s) => [
-        s.label,
-        s.value,
-        s.pctChange !== null ? `${s.isUp ? "+" : "-"}${Math.abs(s.pctChange).toFixed(1)}%` : s.delta,
-      ]),
-      [],
-      ["Trend"],
-      ["Period", "Active Listings", "Active Users"],
-      ...listingsSeries.labels.map((label, i) => [label, listingsSeries.values[i], usersSeries.values[i]]),
-    ];
-
-    const today = new Date().toISOString().slice(0, 10);
-    const filename = isCustomActive
-      ? `overview_${customRange.start}_to_${customRange.end}.csv`
-      : `overview_${activeGranularity}_${today}.csv`;
-
-    downloadCsv(filename, rows);
+    setDownloading(true);
+    setDownloadError("");
+    try {
+      await adminApi.downloadDashboardCsv(range.start, range.end);
+    } catch (err) {
+      setDownloadError(getApiErrorMessage(err, "Could not download the report"));
+    } finally {
+      setDownloading(false);
+    }
   };
+
+  const pendingTotal = data?.pending.reduce((sum, queue) => sum + queue.count, 0) ?? 0;
 
   return (
     <div className={styles.page}>
       <div className={styles.headerRow}>
         <div>
           <h1 className={styles.title}>Platform Overview</h1>
-          <p className={styles.subtitle}>Welcome back — here&apos;s what needs attention today.</p>
+          <p className={styles.subtitle}>
+            {data
+              ? pendingTotal > 0
+                ? `Welcome back — ${pendingTotal} item${pendingTotal === 1 ? "" : "s"} need${pendingTotal === 1 ? "s" : ""} your review.`
+                : "Welcome back — all review queues are clear."
+              : "Welcome back — here's what needs attention today."}
+          </p>
         </div>
         <span className={styles.livePill}>
-          <span className={styles.liveDot} aria-hidden /> All systems live
+          <span className={styles.liveDot} aria-hidden /> Live data
         </span>
       </div>
 
-      {/* ---------- Date range filter (weekly / monthly / yearly / custom) ---------- */}
       <DateRangeFilter
-        granularity={granularity}
-        isCustomActive={isCustomActive}
-        customRange={customRange}
-        onGranularityClick={handleGranularityClick}
+        period={period}
+        periodLabel={periodLabel}
+        range={range}
+        downloading={downloading}
+        onPeriodChange={setPeriod}
         onDateChange={handleDateChange}
-        onDownload={handleDownloadCsv}
+        onDownload={handleDownload}
       />
+      {downloadError && <p className={styles.errorText} role="alert">{downloadError}</p>}
 
-      {/* ---------- Stat cards with progress bars ---------- */}
-      <div className={styles.statsGrid}>
-        {dynamicStats.map((s) => (
-          <div key={s.label} className={styles.statCard}>
-            {s.live && <span className={styles.liveBadge}>{PERIOD_LABELS[activeGranularity]}</span>}
-            <p className={styles.statValue}>{s.value}</p>
-            <p className={styles.statLabel}>{s.label}</p>
-            <p
-              className={`${styles.statDelta} ${
-                s.pctChange !== null ? (s.isUp ? styles.deltaUp : styles.deltaDown) : s.invert ? styles.statDeltaGood : ""
-              }`}
-            >
-              {s.pctChange !== null
-                ? `${s.isUp ? "▲" : "▼"} ${Math.abs(s.pctChange).toFixed(1)}%`
-                : `${s.invert ? "▼" : "▲"} ${s.delta}`}
-            </p>
-            <div className={styles.progressTrack}>
-              <div className={styles.progressFill} style={{ width: `${s.progress}%` }} />
+      {error && (
+        <div className={styles.errorBox} role="alert">
+          {error}
+          <button type="button" onClick={() => void load(period)} className={styles.retryBtn}>Try again</button>
+        </div>
+      )}
+      {loading && !data && <p className={styles.emptyText} role="status">Loading dashboard…</p>}
+
+      {data && (
+        <div className={loading ? styles.refreshing : undefined} aria-busy={loading}>
+          <div className={styles.statsGrid}>
+            {data.stats.map((stat) => (
+              <StatCard key={stat.key} stat={stat} badge={option.current} previousLabel={option.previous} />
+            ))}
+          </div>
+
+          <div className={styles.quickActionsRow}>
+            {QUICK_ACTIONS.map((a) => (
+              <Link key={a.label} href={a.href} className={styles.quickAction}>
+                <span className={styles.quickActionIcon}>{a.icon}</span>
+                <span className={styles.quickActionLabel}>{a.label}</span>
+              </Link>
+            ))}
+          </div>
+
+          <div className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>Pending Actions</h2>
+              <span className={styles.cardHeaderMeta}>{pendingTotal} pending</span>
+            </div>
+
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Queue</th>
+                    <th>Pending</th>
+                    <th>Oldest</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.pending.map((queue) => {
+                    const action = queueAction(queue, now);
+                    return (
+                      <tr key={queue.key}>
+                        <td className={styles.queueCell}>{queue.label}</td>
+                        <td>{formatNumber(queue.count)}</td>
+                        <td className={styles.mutedCell}>{queue.count ? formatAge(queue.oldestAt, now) : "—"}</td>
+                        <td className={styles.actionCell}>
+                          <Link href={queue.href} className={`${styles.actionPill} ${action.tone}`}>
+                            {action.label}
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* ---------- Quick actions ---------- */}
-      <div className={styles.quickActionsRow}>
-        {QUICK_ACTIONS.map((a) => (
-          <a key={a.label} href={a.href} className={styles.quickAction}>
-            <span className={styles.quickActionIcon}>{a.icon}</span>
-            <span className={styles.quickActionLabel}>{a.label}</span>
-          </a>
-        ))}
-      </div>
-
-      {/* ---------- Pending actions table ---------- */}
-      <div className={styles.card}>
-        <div className={styles.cardHeader}>
-          <h2 className={styles.cardTitle}>Pending Actions</h2>
-          <span className={styles.cardHeaderMeta}>{PENDING_ACTIONS.length} queues</span>
-        </div>
-
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Queue</th>
-                <th>Pending</th>
-                <th>Oldest</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {PENDING_ACTIONS.map((row) => (
-                <tr key={row.queue}>
-                  <td className={styles.queueCell}>{row.queue}</td>
-                  <td>{row.pending}</td>
-                  <td className={styles.mutedCell}>{row.oldest}</td>
-                  <td className={styles.actionCell}>
-                    <button
-                      type="button"
-                      className={`${styles.actionPill} ${
-                        row.tone === "red"
-                          ? styles.actionRed
-                          : row.tone === "cyan"
-                          ? styles.actionCyan
-                          : styles.actionAmber
-                      }`}
-                    >
-                      {row.action}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ---------- Trend charts: Active Listings + Active Users ---------- */}
-      <div className={styles.twoColGrid}>
-        <TrendLineChart
-          title="Active Listings"
-          labels={listingsSeries.labels}
-          values={listingsSeries.values}
-          color="#2563eb"
-          companion={{ name: "Active Users", color: "#059669", values: usersSeries.values }}
-        />
-        <TrendLineChart
-          title="Active Users"
-          labels={usersSeries.labels}
-          values={usersSeries.values}
-          color="#059669"
-          companion={{ name: "Active Listings", color: "#2563eb", values: listingsSeries.values }}
-        />
-      </div>
-
-      {/* ---------- Two-column layout: Top owners + Recent activity ---------- */}
-      <div className={styles.twoColGrid}>
-        {/* Top performing owners */}
-        <div className={styles.card}>
-          <div className={styles.cardHeader}>
-            <h2 className={styles.cardTitle}>Top Performing Hosts</h2>
-            <Link href="/admin/users" className={styles.cardHeaderLink}>
-              View all →
-            </Link>
+          <div className={styles.twoColGrid}>
+            <TrendLineChart
+              title="Active Listings"
+              series={data.charts.activeListings}
+              color="#2563eb"
+              companion={{ name: "Active Users", color: "#059669", values: data.charts.activeUsers.values }}
+            />
+            <TrendLineChart
+              title="Active Users"
+              series={data.charts.activeUsers}
+              color="#059669"
+              companion={{ name: "Active Listings", color: "#2563eb", values: data.charts.activeListings.values }}
+            />
           </div>
 
-          <div className={styles.ownersList}>
-            {TOP_OWNERS.map((owner, i) => (
-              <div key={owner.name} className={styles.ownerRow}>
-                <span className={styles.ownerRank}>{i + 1}</span>
-                <div className={styles.ownerAvatar} style={{ background: owner.gradient }}>
-                  {owner.initial}
-                </div>
-                <div className={styles.ownerInfo}>
-                  <p className={styles.ownerName}>{owner.name}</p>
-                  <p className={styles.ownerMeta}>
-                    {owner.moulds} moulds · {owner.bookings} bookings
-                  </p>
-                </div>
-                <span className={styles.ownerRevenue}>{owner.revenue}</span>
+          <div className={styles.twoColGrid}>
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardTitle}>Top Performing Hosts</h2>
+                <Link href="/admin/users" className={styles.cardHeaderLink}>
+                  View all →
+                </Link>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Recent activity */}
-        <div className={styles.card}>
-          <h2 className={styles.cardTitle}>Recent Activity</h2>
-          <div className={styles.activityList}>
-            {RECENT_ACTIVITY.map((item, i) => (
-              <div key={i} className={styles.activityRow}>
-                <span
-                  className={`${styles.activityDot} ${
-                    item.tone === "green"
-                      ? styles.dotGreen
-                      : item.tone === "red"
-                      ? styles.dotRed
-                      : item.tone === "amber"
-                      ? styles.dotAmber
-                      : styles.dotCyan
-                  }`}
-                />
-                <div>
-                  <p className={styles.activityText}>{item.text}</p>
-                  <p className={styles.activityTime}>{item.time}</p>
+              {data.topHosts.length === 0 ? (
+                <p className={styles.emptyText}>No bookings were confirmed {option.current.toLowerCase()}.</p>
+              ) : (
+                <div className={styles.ownersList}>
+                  {data.topHosts.map((host, i) => (
+                    <Link key={host.hostId} href={`/admin/users/${host.hostId}`} className={styles.ownerRow}>
+                      <span className={styles.ownerRank}>{i + 1}</span>
+                      <div className={styles.ownerAvatar} style={{ background: "#2563eb" }}>
+                        {(host.name || "?").charAt(0).toUpperCase()}
+                      </div>
+                      <div className={styles.ownerInfo}>
+                        <p className={styles.ownerName}>{host.name}</p>
+                        <p className={styles.ownerMeta}>
+                          {host.listings} listing{host.listings === 1 ? "" : "s"} · {host.bookings} booking{host.bookings === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                      <span className={styles.ownerRevenue} title="Rental value of confirmed bookings">{formatRupees(host.revenue)}</span>
+                    </Link>
+                  ))}
                 </div>
+              )}
+            </div>
+
+            <div className={styles.card}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardTitle}>Recent Activity</h2>
+                <Link href="/admin/activity" className={styles.cardHeaderLink}>
+                  View all →
+                </Link>
               </div>
-            ))}
+              {data.recentActivity.length === 0 ? (
+                <p className={styles.emptyText}>No activity yet.</p>
+              ) : (
+                <div className={styles.activityList}>
+                  {data.recentActivity.map((item) => (
+                    <Link key={item._id} href={item.href} className={`${styles.activityRow} ${styles.activityLink}`}>
+                      <span className={`${styles.activityDot} ${activityDot(item)}`} />
+                      <div>
+                        <p className={styles.activityText}>{item.title}</p>
+                        <p className={styles.activityTime}>
+                          {timeAgo(item.createdAt, now)}{item.actorLabel ? ` · ${item.actorLabel}` : ""}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -66,6 +66,13 @@ export interface OwnerProfileVerification {
   reviewedAt?: string;
   reviewedBy?: User;
   resubmissionCount?: number;
+  /** Admin responses only: every submission and review, oldest first. */
+  history?: {
+    action: "submitted" | "resubmitted" | "approved" | "rejected";
+    at: string;
+    by?: string | { _id?: string; fullName?: string; email?: string } | null;
+    reason?: string;
+  }[];
 }
 
 export interface AuthPayload {

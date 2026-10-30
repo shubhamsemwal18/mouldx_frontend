@@ -347,8 +347,13 @@ export default function ListingReviewDetailPage({
 
   return (
     <div className={styles.page}>
+      {canonicalProduct.status === "approved" && !revision ? (
+        <Link href="/admin/active-listings" className={styles.notFoundLink}>← Back to Active Listings</Link>
+      ) : (
+        <Link href="/admin/listings" className={styles.notFoundLink}>← Back to Listing Approvals</Link>
+      )}
       {/* ---------- Header ---------- */}
-      <div className={styles.headerRow}>
+      <div className={styles.headerRow} style={{ marginTop: 10 }}>
         <h1 className={styles.title}>
           {product.code} · {product.name}
         </h1>

@@ -508,7 +508,49 @@
   cursor: not-allowed;
 }
 
+.exportBar {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+}
+
+.exportLabel {
+  flex: 1;
+  min-width: 140px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #374151;
+}
+
+.errorText {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
 @media (max-width: 767px) {
+  .exportBar .dateRangeGroup {
+    flex: 1;
+    justify-content: space-between;
+  }
+
+  .exportBar .dateInput {
+    max-width: none;
+    flex: 1;
+  }
+
+  .exportBar .downloadBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
   .tabs {
     width: 100%;
     justify-content: space-between;

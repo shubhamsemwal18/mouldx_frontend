@@ -60,6 +60,17 @@ const DEFAULT_STATS: AdminKycStats = {
 
 const SEARCH_DEBOUNCE_MS = 400;
 
+type ExportStatus = "all" | "approved" | "rejected";
+
+const EXPORT_STATUS_OPTIONS: { key: ExportStatus; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "approved", label: "Approved" },
+  { key: "rejected", label: "Rejected" },
+];
+
+/** Today in India as YYYY-MM-DD, matching the API's reporting timezone. */
+const todayInIndia = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+
 const statusFilterToApi = (status: StatusFilter): ProfileVerificationStatus | undefined =>
   status === "ALL" ? undefined : (status.toLowerCase() as ProfileVerificationStatus);
 
@@ -76,6 +87,30 @@ export default function KycApprovalsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const isAdmin = Boolean(user?.approvedRoles.includes("admin"));
+  const [exportRange, setExportRange] = useState({ from: "", to: "" });
+  const [exportStatus, setExportStatus] = useState<ExportStatus>("all");
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+
+  const handleExport = async () => {
+    if (!exportRange.from || !exportRange.to) {
+      setExportError("Select both a start and an end date to download KYC history.");
+      return;
+    }
+    if (exportRange.to < exportRange.from) {
+      setExportError("End date must be on or after the start date.");
+      return;
+    }
+    setExporting(true);
+    setExportError("");
+    try {
+      await adminApi.downloadKycCsv(exportRange.from, exportRange.to, exportStatus);
+    } catch (err) {
+      setExportError(getApiErrorMessage(err, "Could not download KYC history"));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -233,6 +268,52 @@ export default function KycApprovalsPage() {
           )}
         </div>
       </div>
+
+      <div className={styles.exportBar}>
+        <span className={styles.exportLabel}>Export KYC history</span>
+        <div className={styles.tabs} role="group" aria-label="KYC export status">
+          {EXPORT_STATUS_OPTIONS.map((opt) => (
+            <button
+              key={opt.key}
+              type="button"
+              aria-pressed={exportStatus === opt.key}
+              className={`${styles.tabBtn} ${exportStatus === opt.key ? styles.tabBtnActive : ""}`}
+              onClick={() => setExportStatus(opt.key)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <div className={styles.dateRangeGroup}>
+          <input
+            type="date"
+            aria-label="Export start date"
+            className={styles.dateInput}
+            value={exportRange.from}
+            max={exportRange.to || todayInIndia()}
+            onChange={(e) => { setExportError(""); setExportRange((prev) => ({ ...prev, from: e.target.value })); }}
+          />
+          <span className={styles.dateSep}>→</span>
+          <input
+            type="date"
+            aria-label="Export end date"
+            className={styles.dateInput}
+            value={exportRange.to}
+            min={exportRange.from || undefined}
+            onChange={(e) => { setExportError(""); setExportRange((prev) => ({ ...prev, to: e.target.value })); }}
+          />
+        </div>
+        <button
+          type="button"
+          className={styles.downloadBtn}
+          onClick={handleExport}
+          disabled={!exportRange.from || !exportRange.to || exporting}
+          title="Every application, rejection, re-application and approval with full details"
+        >
+          <span aria-hidden>⬇</span> {exporting ? "Preparing…" : "Download CSV"}
+        </button>
+      </div>
+      {exportError && <p className={styles.errorText} role="alert">{exportError}</p>}
 
       {!authLoading && !isAdmin && (
         <p className={styles.emptyText}>Admin login is required to view KYC approvals.</p>

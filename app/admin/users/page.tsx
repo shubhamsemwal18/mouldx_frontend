@@ -1,142 +1,132 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminApi, type AdminKycPagination, type AdminUserRow } from "@/app/lib/admin-api";
+import { getApiErrorMessage } from "@/app/lib/api";
 import styles from "./UserManagement.module.css";
 
-type Role = "Host" | "User";
-type KycStatus = "VERIFIED" | "PENDING" | "N/A";
-
-interface UserRow {
-  id: string;
-  name: string;
-  role: Role;
-  joined: string;
-  activityCount: number;
-  activityLabel: string;
-  kyc: KycStatus;
-  initial: string;
-  gradient: string;
-}
-
-const TABS = ["All", "Hosts", "Users"] as const;
-
-// TEMP dummy data — real users API se aayega
-const INITIAL_USERS: UserRow[] = [
-  {
-    id: "1",
-    name: "Rohit Sharma",
-    role: "Host",
-    joined: "2 Mar 2026",
-    activityCount: 12,
-    activityLabel: "listings",
-    kyc: "VERIFIED",
-    initial: "R",
-    gradient: "linear-gradient(135deg, #22d3ee, #2563eb)",
-  },
-  {
-    id: "2",
-    name: "Neha Kapoor",
-    role: "User",
-    joined: "18 Apr 2026",
-    activityCount: 9,
-    activityLabel: "bookings",
-    kyc: "N/A",
-    initial: "N",
-    gradient: "linear-gradient(135deg, #34d399, #059669)",
-  },
-  {
-    id: "3",
-    name: "Vikram Rao",
-    role: "Host",
-    joined: "30 Jan 2026",
-    activityCount: 6,
-    activityLabel: "listings",
-    kyc: "VERIFIED",
-    initial: "V",
-    gradient: "linear-gradient(135deg, #818cf8, #7c3aed)",
-  },
+const PAGE_SIZE = 10;
+const SEARCH_DEBOUNCE_MS = 400;
+const AVATAR_GRADIENTS = [
+  "linear-gradient(135deg, #22d3ee, #2563eb)",
+  "linear-gradient(135deg, #34d399, #059669)",
+  "linear-gradient(135deg, #818cf8, #7c3aed)",
+  "linear-gradient(135deg, #f59e0b, #d97706)",
 ];
 
-const KYC_CLASS: Record<KycStatus, string> = {
-  VERIFIED: "kycVerified",
-  PENDING: "kycPending",
-  "N/A": "kycNa",
+const DEFAULT_PAGINATION: AdminKycPagination = {
+  page: 1, limit: PAGE_SIZE, total: 0, pages: 1, hasNextPage: false, hasPrevPage: false,
 };
 
-function csvEscape(v: string | number) {
-  const str = String(v);
-  return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+/** Today in India as YYYY-MM-DD, matching the API's reporting timezone. */
+const todayInIndia = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })
+    .format(new Date(value));
 }
 
-function downloadCsv(filename: string, rows: (string | number)[][]) {
-  // BOM so Excel reads UTF-8 correctly
-  const csv = "\uFEFF" + rows.map((r) => r.map(csvEscape).join(",")).join("\r\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+function gradientFor(id: string) {
+  const sum = [...id].reduce((total, char) => total + char.charCodeAt(0), 0);
+  return AVATAR_GRADIENTS[sum % AVATAR_GRADIENTS.length];
+}
+
+function activityText(user: AdminUserRow) {
+  const parts = [`${user.counts.bookings} booking${user.counts.bookings === 1 ? "" : "s"}`];
+  if (user.isHost) parts.unshift(`${user.counts.listings} listing${user.counts.listings === 1 ? "" : "s"}`);
+  return parts.join(" · ");
 }
 
 export default function UserManagementPage() {
   const router = useRouter();
-  const [users, setUsers] = useState<UserRow[]>(INITIAL_USERS);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("All");
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<AdminKycPagination>(DEFAULT_PAGINATION);
+  const [stats, setStats] = useState({ total: 0, hosts: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [range, setRange] = useState({ from: "", to: "" });
+  const [exporting, setExporting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<AdminUserRow | null>(null);
+  const requestId = useRef(0);
 
-  const filtered = useMemo(() => {
-    let list = users;
-    if (activeTab === "Hosts") list = list.filter((u) => u.role === "Host");
-    if (activeTab === "Users") list = list.filter((u) => u.role === "User");
-    if (search.trim() !== "") {
-      const q = search.toLowerCase();
-      list = list.filter((u) => u.name.toLowerCase().includes(q));
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const next = search.trim();
+      setDebouncedSearch((current) => {
+        if (current === next) return current;
+        setPage(1);
+        return next;
+      });
+    }, SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const load = useCallback(async () => {
+    const request = ++requestId.current;
+    setLoading(true);
+    try {
+      const data = await adminApi.listUsers({ search: debouncedSearch || undefined, page, limit: PAGE_SIZE });
+      if (request !== requestId.current) return;
+      setUsers(data.users);
+      setPagination(data.pagination);
+      setStats(data.stats);
+      setError("");
+    } catch (err) {
+      if (request === requestId.current) setError(getApiErrorMessage(err, "Could not load users"));
+    } finally {
+      if (request === requestId.current) setLoading(false);
     }
-    return list;
-  }, [users, search, activeTab]);
+  }, [debouncedSearch, page]);
 
-  const handleView = (id: string) => {
-    router.push(`/admin/users/${id}`);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+
+  const handleDownloadCsv = async () => {
+    if (!range.from || !range.to) {
+      setError("Select both a start and an end date to download users.");
+      return;
+    }
+    if (range.to < range.from) {
+      setError("End date must be on or after the start date.");
+      return;
+    }
+    setExporting(true);
+    setError("");
+    try {
+      await adminApi.downloadUsersCsv(range.from, range.to);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not download users"));
+    } finally {
+      setExporting(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    // TODO: call delete-user API
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-    setConfirmDeleteId(null);
+  // Deletion is intentionally not wired yet; the dialog only explains that.
+  const handleDelete = () => {
+    setNotice(`User deletion is not available yet. ${confirmDelete?.fullName ?? "This user"} was not changed.`);
+    setConfirmDelete(null);
   };
 
-  const userToDelete = users.find((u) => u.id === confirmDeleteId);
-
-  const handleDownloadCsv = () => {
-    if (filtered.length === 0) return;
-
-    const rows: (string | number)[][] = [
-      ["Name", "Role", "Joined", "Activity Count", "Activity Type", "KYC Status"],
-      ...filtered.map((u) => [u.name, u.role, u.joined, u.activityCount, u.activityLabel, u.kyc]),
-    ];
-
-    const parts = ["users"];
-    if (activeTab !== "All") parts.push(activeTab.toLowerCase());
-    parts.push(new Date().toISOString().slice(0, 10));
-
-    downloadCsv(`${parts.join("_")}.csv`, rows);
-  };
+  const view = (id: string) => router.push(`/admin/users/${id}`);
+  const initials = (name: string) => name.split(" ").filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   return (
     <div className={styles.page}>
-      {/* ---------- Header ---------- */}
       <div className={styles.headerRow}>
         <h1 className={styles.title}>User Management</h1>
-        <span className={styles.countPill}>{users.length.toLocaleString("en-IN")} TOTAL</span>
+        <span className={styles.countPill}>
+          {stats.total.toLocaleString("en-IN")} APPROVED · {stats.hosts.toLocaleString("en-IN")} HOSTS
+        </span>
       </div>
 
-      {/* ---------- Search + Tabs ---------- */}
       <div className={styles.toolbar}>
         <div className={styles.searchWrap}>
           <span className={styles.searchIcon} aria-hidden>
@@ -144,39 +134,48 @@ export default function UserManagementPage() {
           </span>
           <input
             type="text"
-            placeholder="Search by name, phone, email..."
+            placeholder="Search by name, phone, email, firm..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={styles.searchInput}
+            aria-label="Search users"
           />
         </div>
 
-        <div className={styles.tabs}>
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ""}`}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className={styles.dateRangeGroup} title="Users who joined in this date range">
+          <input
+            type="date"
+            aria-label="Joined from"
+            className={styles.dateInput}
+            value={range.from}
+            max={range.to || todayInIndia()}
+            onChange={(e) => setRange((prev) => ({ ...prev, from: e.target.value }))}
+          />
+          <span className={styles.dateSep}>→</span>
+          <input
+            type="date"
+            aria-label="Joined to"
+            className={styles.dateInput}
+            value={range.to}
+            min={range.from || undefined}
+            onChange={(e) => setRange((prev) => ({ ...prev, to: e.target.value }))}
+          />
         </div>
 
         <button
           type="button"
           className={styles.downloadBtn}
           onClick={handleDownloadCsv}
-          disabled={filtered.length === 0}
-          title="Download filtered users as CSV"
+          disabled={!range.from || !range.to || exporting}
+          title="Approved users who joined in the selected dates, with complete KYC and activity history"
         >
-          <span aria-hidden>⬇</span> Download CSV
-          <span className={styles.downloadCount}>{filtered.length}</span>
+          <span aria-hidden>⬇</span> {exporting ? "Preparing…" : "Download CSV"}
         </button>
       </div>
 
-      {/* ---------- Table (desktop) ---------- */}
+      {notice && <p className={styles.noticeText} role="status">{notice}</p>}
+      {error && <p className={styles.errorText} role="alert">{error}</p>}
+
       <div className={styles.card}>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -185,44 +184,40 @@ export default function UserManagementPage() {
                 <th>User</th>
                 <th>Role</th>
                 <th>Joined</th>
-                <th>Bookings/Listings</th>
+                <th>Activity</th>
                 <th>KYC</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => (
-                <tr key={u.id}>
+              {users.map((u) => (
+                <tr key={u._id}>
                   <td>
                     <div className={styles.userCell}>
-                      <span className={styles.avatar} style={{ background: u.gradient }}>
-                        {u.initial}
+                      <span className={styles.avatar} style={{ background: gradientFor(u._id) }}>
+                        {initials(u.fullName)}
                       </span>
-                      <span className={styles.userName}>{u.name}</span>
+                      <span>
+                        <span className={styles.userName}>{u.fullName}</span>
+                        <span className={styles.subMeta}>{u.firmName || u.phone}</span>
+                      </span>
                     </div>
                   </td>
-                  <td className={styles.mutedCell}>{u.role}</td>
-                  <td className={styles.mutedCell}>{u.joined}</td>
-                  <td className={styles.mutedCell}>
-                    {u.activityCount} {u.activityLabel}
-                  </td>
+                  <td className={styles.mutedCell}>{u.isHost ? "Host" : "User"}</td>
+                  <td className={styles.mutedCell}>{formatDate(u.createdAt)}</td>
+                  <td className={styles.mutedCell}>{activityText(u)}</td>
                   <td>
-                    <span className={`${styles.kycPill} ${styles[KYC_CLASS[u.kyc]]}`}>{u.kyc}</span>
+                    <span className={`${styles.kycPill} ${styles.kycVerified}`}>VERIFIED</span>
                   </td>
                   <td className={styles.actionCell}>
-                    <button
-                      type="button"
-                      onClick={() => handleView(u.id)}
-                      className={styles.eyeBtn}
-                      aria-label={`View ${u.name}`}
-                    >
+                    <button type="button" onClick={() => view(u._id)} className={styles.eyeBtn} aria-label={`View ${u.fullName}`}>
                       👁
                     </button>
                     <button
                       type="button"
-                      onClick={() => setConfirmDeleteId(u.id)}
+                      onClick={() => setConfirmDelete(u)}
                       className={`${styles.eyeBtn} ${styles.deleteBtn}`}
-                      aria-label={`Delete ${u.name}`}
+                      aria-label={`Delete ${u.fullName}`}
                     >
                       🗑
                     </button>
@@ -232,44 +227,39 @@ export default function UserManagementPage() {
             </tbody>
           </table>
 
-          {filtered.length === 0 && <p className={styles.emptyText}>No users match your search.</p>}
+          {loading && users.length === 0 && <p className={styles.emptyText}>Loading users…</p>}
+          {!loading && users.length === 0 && (
+            <p className={styles.emptyText}>{debouncedSearch ? "No users match your search." : "No approved users yet."}</p>
+          )}
         </div>
       </div>
 
-      {/* ---------- Cards (mobile) ---------- */}
       <div className={styles.mobileList}>
-        {filtered.map((u) => (
-          <div key={u.id} className={styles.mobileCard}>
+        {users.map((u) => (
+          <div key={u._id} className={styles.mobileCard}>
             <div className={styles.mobileCardTop}>
-              <span className={styles.avatar} style={{ background: u.gradient }}>
-                {u.initial}
+              <span className={styles.avatar} style={{ background: gradientFor(u._id) }}>
+                {initials(u.fullName)}
               </span>
               <div className="min-w-0 flex-1">
-                <p className={styles.userName}>{u.name}</p>
+                <p className={styles.userName}>{u.fullName}</p>
                 <p className={styles.mobileMeta}>
-                  {u.role} · {u.joined}
+                  {u.isHost ? "Host" : "User"} · {formatDate(u.createdAt)}
                 </p>
               </div>
-              <span className={`${styles.kycPill} ${styles[KYC_CLASS[u.kyc]]}`}>{u.kyc}</span>
+              <span className={`${styles.kycPill} ${styles.kycVerified}`}>VERIFIED</span>
             </div>
             <div className={styles.mobileCardBottom}>
-              <span className={styles.mobileMeta}>
-                {u.activityCount} {u.activityLabel}
-              </span>
+              <span className={styles.mobileMeta}>{activityText(u)}</span>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleView(u.id)}
-                  className={styles.eyeBtn}
-                  aria-label={`View ${u.name}`}
-                >
+                <button type="button" onClick={() => view(u._id)} className={styles.eyeBtn} aria-label={`View ${u.fullName}`}>
                   👁 View
                 </button>
                 <button
                   type="button"
-                  onClick={() => setConfirmDeleteId(u.id)}
+                  onClick={() => setConfirmDelete(u)}
                   className={`${styles.eyeBtn} ${styles.deleteBtn}`}
-                  aria-label={`Delete ${u.name}`}
+                  aria-label={`Delete ${u.fullName}`}
                 >
                   🗑
                 </button>
@@ -278,33 +268,44 @@ export default function UserManagementPage() {
           </div>
         ))}
 
-        {filtered.length === 0 && <p className={styles.emptyText}>No users match your search.</p>}
+        {loading && users.length === 0 && <p className={styles.emptyText}>Loading users…</p>}
+        {!loading && users.length === 0 && (
+          <p className={styles.emptyText}>{debouncedSearch ? "No users match your search." : "No approved users yet."}</p>
+        )}
       </div>
 
-      {/* ---------- Delete confirmation modal ---------- */}
-      {confirmDeleteId && userToDelete && (
-        <div className={styles.confirmOverlay} onClick={() => setConfirmDeleteId(null)}>
-          <div className={styles.confirmContent} onClick={(e) => e.stopPropagation()}>
+      {pagination.total > 0 && (
+        <div className={styles.pagination}>
+          <span className={styles.paginationMeta}>
+            Page {pagination.page} of {pagination.pages} · {pagination.total} user{pagination.total === 1 ? "" : "s"}
+          </span>
+          <div className={styles.paginationActions}>
+            <button type="button" className={styles.pageBtn} disabled={!pagination.hasPrevPage || loading}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}>
+              Previous
+            </button>
+            <button type="button" className={styles.pageBtn} disabled={!pagination.hasNextPage || loading}
+              onClick={() => setPage((current) => current + 1)}>
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className={styles.confirmOverlay} onClick={() => setConfirmDelete(null)}>
+          <div className={styles.confirmContent} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <div className={styles.confirmIcon}>⚠</div>
             <h3 className={styles.confirmTitle}>Delete this user?</h3>
             <p className={styles.confirmText}>
-              This will permanently remove <strong>{userToDelete.name}</strong> (
-              {userToDelete.role}) and all their {userToDelete.activityLabel} from the platform.
-              This cannot be undone.
+              Deleting <strong>{confirmDelete.fullName}</strong> is not available yet. This action is a placeholder and
+              will not change any data.
             </p>
             <div className={styles.confirmActions}>
-              <button
-                type="button"
-                onClick={() => setConfirmDeleteId(null)}
-                className={styles.confirmCancelBtn}
-              >
+              <button type="button" onClick={() => setConfirmDelete(null)} className={styles.confirmCancelBtn}>
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={() => handleDelete(confirmDeleteId)}
-                className={styles.confirmDeleteBtn}
-              >
+              <button type="button" onClick={handleDelete} className={styles.confirmDeleteBtn}>
                 Delete Permanently
               </button>
             </div>
