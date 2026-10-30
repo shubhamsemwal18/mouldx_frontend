@@ -1,6 +1,7 @@
 import axios from "axios";
 import { apiClient, getApiErrorMessage, type ApiResponse } from "./api";
 import { addDays, rangeError } from "./booking-dates";
+import { mediaApi } from "./media-api";
 import type {
   Booking, BookingAvailability, BookingList, BookingListParams,
   BookingPaymentOptions, BookingStatus, BookingView, CreateBookingInput,
@@ -71,12 +72,36 @@ export const bookingApi = {
       `${view === "admin" ? "/admin" : ""}/bookings/${encodeURIComponent(id)}`, { signal },
     ).then(({ data }) => data.data.booking);
   },
+  receiptUrl(id: string, view: BookingView) {
+    return apiClient.get<ApiResponse<{ previewUrl: string }>>(
+      `${view === "admin" ? "/admin" : ""}/bookings/${encodeURIComponent(id)}/payment-receipt`,
+    ).then(({ data }) => data.data.previewUrl);
+  },
   review(id: string, status: Exclude<BookingStatus, "pending">, reason?: string) {
     return apiClient.patch<ApiResponse<{ booking: Booking }>>(
       `/admin/bookings/${encodeURIComponent(id)}/review`, { status, ...(reason && { reason }) },
     ).then(({ data }) => data.data.booking);
   },
 };
+
+export function getPaymentReceiptError(file: File): string | null {
+  if (!file.name.toLowerCase().endsWith(".pdf") || (file.type && file.type !== "application/pdf")) return "Choose a PDF receipt.";
+  if (file.size === 0) return "The PDF receipt is empty.";
+  if (file.size > 15 * 1024 * 1024) return "The PDF receipt must be 15MB or smaller.";
+  return null;
+}
+
+export async function uploadPaymentReceipt(file: File): Promise<string> {
+  const error = getPaymentReceiptError(file);
+  if (error) throw new Error(error);
+  const upload = await mediaApi.createUploadTarget({
+    folder: "bookings", fileName: file.name, contentType: "application/pdf", fileSize: file.size,
+  });
+  const response = await fetch(upload.uploadUrl, { method: "PUT", headers: upload.headers, body: file });
+  if (!response.ok) throw new Error("The PDF receipt could not be uploaded. Please try again.");
+  await mediaApi.confirm(upload.mediaId, { size: file.size });
+  return upload.mediaId;
+}
 
 export function bookingError(error: unknown) {
   const result: { message: string; status?: number; bookingId?: string; bookingCode?: string; paymentOptionsChanged?: boolean } = {

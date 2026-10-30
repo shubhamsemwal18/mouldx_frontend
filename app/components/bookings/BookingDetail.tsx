@@ -41,12 +41,36 @@ function FareBreakdown({ booking }: { booking: Booking }) {
   </section>;
 }
 
-function PaymentSummary({ booking }: { booking: Booking }) {
+function PaymentSummary({ booking, view }: { booking: Booking; view: BookingView }) {
+  const [openingReceipt, setOpeningReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState("");
+  const inFlight = useRef(false);
+  const openReceipt = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true; setOpeningReceipt(true); setReceiptError("");
+    const popup = window.open("about:blank", "_blank");
+    if (popup) popup.opener = null;
+    try {
+      const url = await bookingApi.receiptUrl(booking._id, view);
+      if (popup) popup.location.replace(url);
+      else window.location.assign(url);
+    } catch (error) {
+      popup?.close();
+      setReceiptError(bookingError(error).message);
+    } finally { inFlight.current = false; setOpeningReceipt(false); }
+  };
   return <section className={styles.detailSection}>
     <h2>Payment</h2>
     <div className={styles.paymentHeading}><span className={styles.paymentIcon}><CreditCard size={20} /></span><div><strong>{paymentMethodLabel[booking.payment.method]}</strong><p>{booking.payment.status === "reported" ? "Reported, not verified" : "Unpaid"}</p></div></div>
     {booking.payment.method === "upi" && <Facts items={[["Payee UPI ID", booking.payment.upiId], ["UPI reference", booking.payment.upiReference]]} />}
-    <p className={styles.note}>{booking.payment.method === "upi" ? "Your UPI reference has been recorded. Booking approval does not confirm payment receipt. Contact MouldX support for payment or refund help." : booking.payment.method === "platform" ? "Booking approval does not confirm payment receipt." : "Payment is arranged directly with the host. Booking approval does not confirm payment receipt."}</p>
+    {booking.payment.method === "bank_transfer" && <Facts items={[
+      ["Account holder", booking.payment.bankAccount?.accountHolderName], ["Bank name", booking.payment.bankAccount?.bankName],
+      ["Account number", booking.payment.bankAccount?.bankAccountNumber], ["IFSC code", booking.payment.bankAccount?.ifscCode],
+      ["Reference ID", booking.payment.reference], ["Payment receipt", booking.payment.receipt?.fileName],
+    ]} />}
+    {booking.payment.receipt && <button type="button" className={styles.button} onClick={openReceipt} disabled={openingReceipt}>{openingReceipt ? "Opening receipt..." : "View PDF receipt"}</button>}
+    {receiptError && <p role="alert" className={styles.error}>{receiptError}</p>}
+    <p className={styles.note}>{booking.payment.method === "bank_transfer" ? "The bank transfer reference and any receipt have been recorded. Booking approval does not confirm payment receipt. Contact MouldX support for payment or refund help." : booking.payment.method === "upi" ? "Your UPI reference has been recorded. Booking approval does not confirm payment receipt. Contact MouldX support for payment or refund help." : booking.payment.method === "platform" ? "Booking approval does not confirm payment receipt." : "Payment is arranged directly with the host. Booking approval does not confirm payment receipt."}</p>
   </section>;
 }
 
@@ -111,7 +135,7 @@ function BookingContent({ booking, view, reload }: { booking: Booking; view: Boo
         </section>}
         <BookingTimeline booking={booking} />
         <FareBreakdown booking={booking} />
-        <PaymentSummary booking={booking} />
+        <PaymentSummary booking={booking} view={view} />
         {!isAdmin && booking.rentalPhase === "completed" && <BookingReviews id={booking._id} host={view === "host"} />}
         <BookingHelp bookingId={booking._id} status={booking.status} view={view} />
       </aside>

@@ -6,7 +6,7 @@ import { Package } from "lucide-react";
 import type { BookingStatus, RentalPhase } from "@/app/lib/booking-types";
 import styles from "./Bookings.module.css";
 
-export const paymentMethodLabel = { owner: "Pay owner directly", upi: "UPI to host", platform: "Pay through MouldX" };
+export const paymentMethodLabel = { owner: "Pay owner directly", bank_transfer: "Bank transfer to host", upi: "UPI to host", platform: "Pay through MouldX" };
 
 export function BookingBadge({ status, phase }: { status: BookingStatus; phase?: RentalPhase | null }) {
   const label = status === "approved" && phase ? phase : status === "pending" ? "Pending approval" : status;
