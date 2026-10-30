@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import styles from "./ProductDetails.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
@@ -15,9 +15,6 @@ import {
 import { productApi, type MouldInput, type ProductWritePayload } from "@/app/lib/product-api";
 import type { MouldType, RunnerType } from "@/app/lib/types";
 
-/* =====================================================================
-   CONSTANTS
-===================================================================== */
 const REGEX = {
   name: /^[a-zA-Z0-9\s.,'\-()]{2,80}$/,
   mouldNameOrId: /^[a-zA-Z0-9\s.,'\-·]{3,80}$/,
@@ -37,14 +34,12 @@ interface Option {
   label: string;
 }
 
-/** Plain string lists reuse the same option shape as fetched categories. */
 const toOptions = (values: readonly string[]): Option[] =>
   values.map((value) => ({ value, label: value }));
 
 const toCategoryOptions = (categories: PublishedCategory[]): Option[] =>
   categories.map((category) => ({ value: category._id, label: category.title }));
 
-/** Media already on the listing becomes an item that needs no re-upload. */
 const toStoredMedia = (media?: { _id: string; url?: string; originalName?: string }[] | null): MediaItem[] =>
   (media || []).map((item) => ({
     mediaId: item._id,
@@ -62,19 +57,11 @@ const num = (value: string): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
-/* =====================================================================
-   TYPES + INITIAL STATE
-===================================================================== */
 interface Coords {
   lat: number;
   lng: number;
 }
 
-/**
- * One picked or already-stored media item. `file` is set for a fresh pick,
- * `mediaId` for something already uploaded — an edit keeps the latter so the
- * owner never re-uploads what is already on the listing.
- */
 interface MediaItem {
   file?: File;
   mediaId?: string;
@@ -141,7 +128,7 @@ const emptyProduct = (): ProductState => ({
   surfaceFinish: "",
   perDayCharges: "",
   securityDeposit: "",
-  componentCount: "0", // 0 = nothing selected, component and mould forms stay hidden
+  componentCount: "0",
 });
 
 const emptyComponent = (): ComponentState => ({
@@ -170,9 +157,6 @@ const emptyMould = (): MouldState => ({
   changeableLogo: "No",
 });
 
-/* =====================================================================
-   VALIDATION
-===================================================================== */
 const req = (v: string, re: RegExp, msg: string) =>
   v.trim() === "" ? "Required" : !re.test(v.trim()) ? msg : "";
 const dec = (v: string) => req(v, REGEX.posDec, "Numeric value only");
@@ -191,7 +175,6 @@ function validateAll(
 
   const count = Number(product.componentCount);
 
-  // ----- Product -----
   add("p.productName", req(product.productName, REGEX.name, "2–80 characters, letters/numbers only"));
   if (!product.category) {
     add("p.category", "Required");
@@ -209,12 +192,10 @@ function validateAll(
   add("p.perDayCharges", dec(product.perDayCharges));
   add("p.securityDeposit", dec(product.securityDeposit));
 
-  // ----- Count must be selected -----
   if (count < 1) {
     add("count", "Select at least 1 component / mould");
   }
 
-  // ----- Components (only when more than 1) -----
   if (count > 1) {
     components.slice(0, count).forEach((c, i) => {
       const k = `c.${i}`;
@@ -228,7 +209,6 @@ function validateAll(
     });
   }
 
-  // ----- Moulds (one per component, or one for the product) -----
   if (count >= 1) {
     moulds.slice(0, count).forEach((m, i) => {
       const k = `m.${i}`;
@@ -247,9 +227,6 @@ function validateAll(
   return e;
 }
 
-/* =====================================================================
-   SMALL UI PIECES
-===================================================================== */
 interface Ctx {
   errors: Record<string, string>;
   touched: Record<string, boolean>;
@@ -291,18 +268,21 @@ function Field({
   const error = ctx.touched[id] ? ctx.errors[id] : "";
   return (
     <div>
-      <label className={styles.fieldLabel}>{label}</label>
+      <label htmlFor={`listing-${id}`} className={styles.fieldLabel}>{label}</label>
       <input
+        id={`listing-${id}`}
         type="text"
         inputMode={mode === "text" ? undefined : mode === "int" ? "numeric" : "decimal"}
         value={value}
         maxLength={maxLength}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `listing-error-${id}` : undefined}
         onChange={(e) => onChange(clean(e.target.value, mode))}
         onBlur={() => ctx.touch(id)}
         placeholder={placeholder}
         className={`${styles.input} ${error ? styles.inputError : ""}`}
       />
-      {error && <p className={styles.errorText}>{error}</p>}
+      {error && <p id={`listing-error-${id}`} className={styles.errorText}>{error}</p>}
     </div>
   );
 }
@@ -324,10 +304,12 @@ function SelectField({
   placeholder?: string;
   error?: string;
 }) {
+  const fieldId = useId();
   return (
     <div>
-      <label className={styles.fieldLabel}>{label}</label>
+      <label htmlFor={fieldId} className={styles.fieldLabel}>{label}</label>
       <select
+        id={fieldId}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
@@ -348,10 +330,6 @@ function SelectField({
 const MAX_IMAGES = 10;
 const MAX_VIDEOS = 5;
 
-/**
- * Multi-file picker for one gallery (images or videos). Thumbnails are
- * removable and the add tile disappears once the cap is reached.
- */
 function MediaGallery({
   label,
   accept,
@@ -387,7 +365,7 @@ function MediaGallery({
         {items.map((item, index) => (
           <div key={`${item.mediaId ?? item.name ?? "item"}-${index}`} className={styles.galleryTile}>
             {kind === "image" && item.previewUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={item.previewUrl} alt={`${label} ${index + 1}`} className={styles.galleryThumb} />
             ) : (
               <span className={styles.galleryVideoTile} aria-hidden>
@@ -434,7 +412,6 @@ function MediaGallery({
 
                 setRejected(problems);
                 if (accepted.length) onAdd(accepted);
-                // Allow re-picking the same file after a remove.
                 e.target.value = "";
               }}
               className={styles.mediaInput}
@@ -461,7 +438,6 @@ function MediaGallery({
   );
 }
 
-/** Images + videos for one entity (the product, or one mould). */
 function MediaSection({
   ctx,
   base,
@@ -569,7 +545,6 @@ function Accordion({
   );
 }
 
-/* ---------- Mould Details block (re-used for every component) ---------- */
 function MouldFields({
   ctx,
   base,
@@ -631,13 +606,9 @@ function MouldFields({
   );
 }
 
-/* =====================================================================
-   PAGE
-===================================================================== */
 export default function ProductDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Present when editing a draft or fixing a rejected listing.
   const editingId = searchParams.get("id");
 
   const [product, setProduct] = useState<ProductState>(emptyProduct);
@@ -646,24 +617,20 @@ export default function ProductDetailsPage() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [open, setOpen] = useState<Record<number, boolean>>({});
 
-  // ---------- Geo-tag state (shared by every image and video) ----------
   const [coords, setCoords] = useState<Coords | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
 
-  // ---------- Categories, loaded from the published category tree ----------
   const [rootCategories, setRootCategories] = useState<PublishedCategory[]>([]);
   const [subCategories, setSubCategories] = useState<PublishedCategory[]>([]);
   const [categoryError, setCategoryError] = useState("");
 
-  // ---------- Submission ----------
   const { user, loading: authLoading } = useAuth();
   const [saving, setSaving] = useState<null | "draft" | "submit">(null);
   const [progress, setProgress] = useState("");
   const [serverError, setServerError] = useState("");
   const [serverDetails, setServerDetails] = useState<string[]>([]);
-  // Media already uploaded in this session, keyed by File, so a retry after a
-  // failed submit does not upload the same photo twice.
   const uploadedMedia = useRef(new Map<File, string>());
+  const saveInFlight = useRef(false);
 
   const count = Number(product.componentCount);
   const hasSelection = count >= 1;
@@ -706,8 +673,6 @@ export default function ProductDetailsPage() {
     };
   }, []);
 
-  // Subcategories follow the selected root category. Deferred to a macrotask so
-  // the state updates do not run synchronously inside the effect.
   useEffect(() => {
     let cancelled = false;
 
@@ -735,9 +700,12 @@ export default function ProductDetailsPage() {
     };
   }, [product.category, rootCategories]);
 
-  // ---------- Load an existing listing when editing ----------
   const [loadingListing, setLoadingListing] = useState(Boolean(editingId));
   const [listingStatus, setListingStatus] = useState<string | null>(null);
+  const [revisionStatus, setRevisionStatus] = useState<string | null>(null);
+  const [revisionId, setRevisionId] = useState<string | undefined>();
+  const [listingLoadError, setListingLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
@@ -745,18 +713,22 @@ export default function ProductDetailsPage() {
 
     let cancelled = false;
 
-    // Deferred to a macrotask so the state updates do not run synchronously
-    // inside the effect.
     const timer = window.setTimeout(() => {
       setLoadingListing(true);
+      setListingLoadError("");
+      setListingStatus(null);
+      setRevisionStatus(null);
 
       productApi
         .get(editingId)
-        .then(({ product: listing, moulds: storedMoulds }) => {
+        .then((detail) => {
         if (cancelled) return;
 
-        setListingStatus(listing.status);
-        setRejectionReason(listing.rejectionReason || "");
+        const { product: listing, moulds: storedMoulds } = detail.pendingUpdate || detail;
+        setListingStatus(detail.product.status);
+        setRevisionStatus(detail.pendingUpdate?.status || null);
+        setRevisionId(detail.pendingUpdate?._id);
+        setRejectionReason(detail.pendingUpdate?.rejectionReason || listing.rejectionReason || "");
 
         const total = Math.max(listing.componentCount || storedMoulds.length || 1, 1);
 
@@ -817,10 +789,10 @@ export default function ProductDetailsPage() {
           })
         );
 
-        if (listing.location) setCoords(listing.location);
+        setCoords(listing.location || null);
         })
         .catch((err) => {
-          if (!cancelled) setServerError(getApiErrorMessage(err, "Could not load the listing"));
+          if (!cancelled) setListingLoadError(getApiErrorMessage(err, "Could not load the listing"));
         })
         .finally(() => {
           if (!cancelled) setLoadingListing(false);
@@ -831,7 +803,7 @@ export default function ProductDetailsPage() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [editingId]);
+  }, [editingId, loadAttempt]);
 
   const errors = validateAll(product, components, moulds, subCategories.length > 0);
   const ctx: Ctx = {
@@ -842,7 +814,6 @@ export default function ProductDetailsPage() {
     coords,
   };
 
-  /* ---------- updaters ---------- */
   const setP = (patch: Partial<ProductState>) => setProduct((prev) => ({ ...prev, ...patch }));
   const setComp = (i: number, patch: Partial<ComponentState>) =>
     setComponents((prev) => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
@@ -857,7 +828,6 @@ export default function ProductDetailsPage() {
     const n = Number(value);
     setP({ componentCount: value });
     setTouched((prev) => ({ ...prev, count: true }));
-    // arrays only grow, so typed data is kept when the count is reduced
     setComponents((prev) =>
       prev.length >= n ? prev : [...prev, ...Array.from({ length: n - prev.length }, emptyComponent)]
     );
@@ -866,7 +836,6 @@ export default function ProductDetailsPage() {
     );
   };
 
-  /* ---------- Geolocation (cached after first success) ---------- */
   const fetchLocation = (): Promise<Coords | null> => {
     if (coords) return Promise.resolve(coords);
     if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
@@ -891,8 +860,6 @@ export default function ProductDetailsPage() {
     });
   };
 
-  /* ---------- Media handlers ---------- */
-
   const toMediaItems = (files: File[]): MediaItem[] =>
     files.map((file) => ({
       file,
@@ -900,7 +867,6 @@ export default function ProductDetailsPage() {
       previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined,
     }));
 
-  /** Adding media triggers one geolocation read, shared by every file. */
   const addProductMedia = (key: "images" | "videos", files: File[]) => {
     setP({ [key]: [...product[key], ...toMediaItems(files)] } as Partial<ProductState>);
     fetchLocation();
@@ -939,7 +905,6 @@ export default function ProductDetailsPage() {
       (k) => (k.startsWith(`c.${i}.`) || k.startsWith(`m.${i}.`)) && errors[k] && touched[k]
     );
 
-  /* ---------- Steps: product + component count → component & mould details ---------- */
   const [step, setStep] = useState<1 | 2>(1);
 
   const isStepOneKey = (k: string) => k === "count" || k.startsWith("p.");
@@ -949,7 +914,6 @@ export default function ProductDetailsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  /** Next only advances once the product details and component count are valid. */
   const goNext = () => {
     const stepKeys = Object.keys(errors).filter(isStepOneKey);
     if (stepKeys.length > 0) {
@@ -959,12 +923,6 @@ export default function ProductDetailsPage() {
     goToStep(2);
   };
 
-  /* ---------- Submission ---------- */
-
-  /**
-   * Uploads a file once per session and returns its media id. Files already
-   * uploaded (because an earlier submit failed) are reused.
-   */
   const uploadOnce = useCallback(async (file: File, location: Coords | null) => {
     const cached = uploadedMedia.current.get(file);
     if (cached) return cached;
@@ -974,11 +932,6 @@ export default function ProductDetailsPage() {
     return mediaId;
   }, []);
 
-  /**
-   * Resolves a gallery to media ids: already-stored items pass straight
-   * through, freshly picked files are uploaded. `onProgress` ticks once per
-   * uploaded file so the owner sees honest progress.
-   */
   const resolveGallery = async (items: MediaItem[], onProgress: () => void) => {
     const ids: string[] = [];
 
@@ -1086,24 +1039,22 @@ export default function ProductDetailsPage() {
       location: coords,
       moulds: mouldPayload,
       submit,
+      ...(listingStatus === "approved" ? { revisionId: revisionId || null } : {}),
     };
   };
 
   const save = async (mode: "draft" | "submit") => {
-    if (saving) return;
+    if (saving || saveInFlight.current) return;
 
     setServerError("");
     setServerDetails([]);
 
-    // A draft only needs a product name; a submission must pass every rule.
     if (mode === "submit") {
       setTouched(Object.fromEntries(Object.keys(errors).map((k) => [k, true])));
       if (Object.keys(errors).length > 0) {
-        // open every component so every error is visible
         if (count > 0) {
           setOpen(Object.fromEntries(Array.from({ length: count }, (_, i) => [i, true])));
         }
-        // product / count errors live on step 1, so show them there
         if (Object.keys(errors).some(isStepOneKey)) goToStep(1);
         return;
       }
@@ -1113,33 +1064,30 @@ export default function ProductDetailsPage() {
       return;
     }
 
+    saveInFlight.current = true;
     setSaving(mode);
 
     try {
       const payload = await buildPayload(mode === "submit");
 
-      if (editingId) {
-        await productApi.update(editingId, payload);
-      } else {
-        await productApi.create(payload);
-      }
-
-      router.push(mode === "submit" ? "/owner/moulds/new/submitted" : "/owner/moulds");
+      const detail = editingId ? await productApi.update(editingId, payload) : await productApi.create(payload);
+      router.push(mode === "submit" ? `/owner/moulds/new/submitted?id=${encodeURIComponent(detail.product._id)}` : "/owner/moulds");
     } catch (err) {
       const details = (err as { response?: { data?: { details?: { message: string }[] } } })?.response
         ?.data?.details;
-      setServerDetails((details || []).map((detail) => detail.message));
+      setServerDetails(Array.isArray(details) ? details.map((detail) => detail.message) : []);
       setServerError(getApiErrorMessage(err, "Could not save the listing"));
     } finally {
       setSaving(null);
       setProgress("");
+      saveInFlight.current = false;
     }
   };
 
   const countError = touched["count"] ? errors["count"] : "";
   const isBusy = saving !== null;
 
-  const isLocked = listingStatus === "in_review" || listingStatus === "approved";
+  const isLocked = listingStatus === "in_review" || revisionStatus === "in_review";
 
   if (loadingListing) {
     return (
@@ -1158,14 +1106,10 @@ export default function ProductDetailsPage() {
           <h1 className="text-[26px] font-extrabold text-gray-900">Product Details</h1>
           <div className={styles.lockedCard}>
             <p className={styles.lockedTitle}>
-              {listingStatus === "in_review"
-                ? "This listing is under admin review"
-                : "This listing is approved and live"}
+              {revisionStatus === "in_review" ? "Your listing update is under admin review" : "This listing is under admin review"}
             </p>
             <p className={styles.lockedText}>
-              {listingStatus === "in_review"
-                ? "You can edit it again if admin asks for changes."
-                : "An approved listing cannot be edited."}
+              {revisionStatus === "in_review" ? "The published version stays unchanged until this update is approved." : "You can edit it again if admin asks for changes."}
             </p>
             <button
               type="button"
@@ -1180,13 +1124,21 @@ export default function ProductDetailsPage() {
     );
   }
 
+  if (listingLoadError) return <div className={styles.page}><div className={styles.content}>
+    <p className={styles.errorText} role="alert">{listingLoadError}</p>
+    <button type="button" className={styles.ctaDraftBtn} onClick={() => setLoadAttempt((value) => value + 1)}>Try again</button>
+    <button type="button" className={styles.ctaDraftBtn} onClick={() => router.push("/owner/moulds")}>Back to My Products</button>
+  </div></div>;
+
+  const isUpdate = listingStatus === "approved";
+  const isResubmit = listingStatus === "rejected" || revisionStatus === "rejected";
+
   return (
     <div className={styles.page}>
       <div className={styles.content}>
-        <h1 className="text-[26px] font-extrabold text-gray-900">Product Details</h1>
-        <p className="mt-1 text-sm text-gray-400">Add the product, its components &amp; moulds.</p>
-        {/* ---------- Admin remarks, shown when fixing a rejected listing ---------- */}
-        {listingStatus === "rejected" && (
+        <h1 className="text-[26px] font-extrabold text-gray-900">{isUpdate ? "Update Product" : "Product Details"}</h1>
+        {isUpdate ? <p className={styles.updateNotice}>Changes are saved separately. The published details and booking prices stay unchanged until admin approval.</p> : <p className="mt-1 text-sm text-gray-400">Add the product, its components &amp; moulds.</p>}
+        {(listingStatus === "rejected" || revisionStatus === "rejected") && (
           <div className={styles.rejectedCard}>
             <span className={styles.rejectedPill}>CHANGES REQUESTED</span>
             <p className={styles.rejectedTitle}>Admin remarks</p>
@@ -1194,10 +1146,8 @@ export default function ProductDetailsPage() {
           </div>
         )}
 
-        {/* ================= STEP 1: PRODUCT DETAILS + COMPONENT COUNT ================= */}
         {step === 1 && (
           <>
-            {/* ================= PRODUCT DETAILS ================= */}
             <div className={styles.card}>
               <h2 className={styles.cardTitle}>Product Details</h2>
 
@@ -1258,7 +1208,6 @@ export default function ProductDetailsPage() {
               </div>
             </div>
 
-            {/* ---------- Rental price hero card ---------- */}
             <div className={styles.rentalCard}>
               <span className={styles.rentalPill}>RENTAL</span>
               <div className={styles.rentalPriceRow}>
@@ -1268,6 +1217,7 @@ export default function ProductDetailsPage() {
               <p className={styles.rentalSubtext}>Per day rental charges</p>
 
               <input
+                aria-label="Per day rental charges"
                 type="text"
                 inputMode="decimal"
                 value={product.perDayCharges}
@@ -1281,11 +1231,11 @@ export default function ProductDetailsPage() {
               )}
             </div>
 
-            {/* ================= SET OF COMPONENTS / MOULDS ================= */}
             <div className={styles.card}>
               <h2 className={styles.cardTitle}>Set of Components / Moulds Involved</h2>
               <label className={styles.fieldLabel}>Number of components / moulds</label>
               <select
+                aria-label="Number of components or moulds"
                 value={product.componentCount}
                 onChange={(e) => handleCountChange(e.target.value)}
                 className={`${styles.select} ${countError ? styles.inputError : ""}`}
@@ -1308,7 +1258,6 @@ export default function ProductDetailsPage() {
           </>
         )}
 
-        {/* ================= STEP 2: COMPONENT & MOULD DETAILS ================= */}
         {step === 2 && (
           <>
             <button
@@ -1331,7 +1280,6 @@ export default function ProductDetailsPage() {
               </p>
             </div>
 
-            {/* ================= SINGLE MOULD ================= */}
             {count === 1 && (
               <div className={styles.card}>
                 <h2 className={styles.cardTitle}>Mould Details</h2>
@@ -1348,7 +1296,6 @@ export default function ProductDetailsPage() {
               </div>
             )}
 
-            {/* ================= MULTIPLE COMPONENTS (collapsible) ================= */}
             {multiple &&
               Array.from({ length: count }, (_, i) => {
                 const c = components[i];
@@ -1364,7 +1311,6 @@ export default function ProductDetailsPage() {
                     onToggle={() => toggle(i)}
                     hasError={sectionHasError(i)}
                   >
-                    {/* ----- Component Details ----- */}
                     <p className={styles.subTitle}>Component Details</p>
 
                     <div className="mt-3">
@@ -1383,7 +1329,6 @@ export default function ProductDetailsPage() {
                       <Field ctx={ctx} id={`${cBase}.surfaceFinish`} label="Surface Finish" value={c.surfaceFinish} placeholder="Matte" onChange={(v) => setComp(i, { surfaceFinish: v })} />
                     </div>
 
-                    {/* ----- Mould Details ----- */}
                     <div className={styles.divider} />
                     <p className={styles.subTitle}>Mould Details</p>
                     <div className="mt-3">
@@ -1405,7 +1350,6 @@ export default function ProductDetailsPage() {
         )}
       </div>
 
-      {/* ---------- Sticky Submit ---------- */}
       <div className={styles.ctaBar}>
         {(serverError || progress) && (
           <div className={styles.ctaStatus}>
@@ -1428,7 +1372,7 @@ export default function ProductDetailsPage() {
             disabled={isBusy}
             className={styles.ctaDraftBtn}
           >
-            {saving === "draft" ? "Saving..." : editingId ? "Save Changes" : "Save as Draft"}
+            {saving === "draft" ? "Saving..." : isUpdate ? "Save Draft" : editingId ? "Save Changes" : "Save as Draft"}
           </button>
           {step === 1 ? (
             <button
@@ -1448,9 +1392,9 @@ export default function ProductDetailsPage() {
             >
               {saving === "submit"
                 ? "Submitting..."
-                : listingStatus === "rejected"
-                  ? "Resubmit for Approval"
-                  : "Submit for Approval"}
+                : isResubmit
+                  ? "Resubmit"
+                  : isUpdate ? "Submit Update" : "Submit for Approval"}
             </button>
           )}
         </div>

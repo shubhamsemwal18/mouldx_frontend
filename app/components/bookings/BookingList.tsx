@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, Layers, Package, RefreshCw, Search, XCircle } from "lucide-react";
 import { bookingMoney, formatBookingDate } from "@/app/lib/booking-dates";
+import { bookingBasePath } from "@/app/lib/booking-routing";
 import type { Booking, BookingFilter, BookingView } from "@/app/lib/booking-types";
 import { useAuth } from "@/app/lib/auth-context";
 import { useInfiniteBookings } from "./useInfiniteBookings";
@@ -11,7 +13,6 @@ import { useRentalDayRefresh } from "./useRentalDayRefresh";
 import { BookingBadge, BookingProductImage, paymentMethodLabel } from "./BookingVisuals";
 import styles from "./Bookings.module.css";
 
-export const bookingBasePath = (view: BookingView) => view === "admin" ? "/admin/bookings" : view === "host" ? "/owner/bookings" : "/bookings";
 const FILTERS = [
   { key: "total", label: "All bookings", icon: Layers },
   { key: "pending", label: "Pending", icon: Clock3 },
@@ -36,19 +37,22 @@ function BookingCard({ booking, view }: { booking: Booking; view: BookingView })
         <BookingBadge status={booking.status} phase={view !== "admin" ? booking.rentalPhase : undefined} />
       </div>
     </div>
-    <div className={styles.cardDates}><CalendarDays size={16} /><span>{formatBookingDate(booking.startDate)}<span className={styles.dateSeparator}> to </span>{formatBookingDate(booking.endDate)}</span><span className={styles.duration}>{booking.pricing.days} {booking.pricing.days === 1 ? "day" : "days"}</span></div>
+    <div className={styles.cardDates}><CalendarDays size={16} /><span>{formatBookingDate(booking.startDate)} to {formatBookingDate(booking.endDate)}</span><span className={styles.duration}>{booking.pricing.days} {booking.pricing.days === 1 ? "day" : "days"}</span></div>
     {view === "admin" && <p className={styles.adminParties}>{booking.snapshot.customer?.fullName || "Customer"} <ArrowRight size={14} /> {booking.snapshot.host?.fullName || "Host"}</p>}
-    <div className={styles.bookingCardBottom}><div><strong>{bookingMoney(booking.pricing.total)}</strong>
-    {/* <span>{paymentMethodLabel[booking.payment.method]}</span> */}
-    </div><span className={styles.cardAction}>{view === "admin" ? "Review" : "View booking"}<ArrowRight size={16} /></span></div>
+    <div className={styles.bookingCardBottom}><div><strong>{bookingMoney(booking.pricing.total)}</strong></div><span className={styles.cardAction}>{view === "admin" ? "Review" : "View booking"}<ArrowRight size={16} /></span></div>
   </Link>;
 }
 
 export default function BookingList({ view }: { view: BookingView }) {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<BookingFilter>(view === "host" ? "upcoming" : "");
+  const [status, setStatus] = useState<BookingFilter>(() => {
+    const tab = searchParams.get("tab");
+    const allowed = view === "host" ? ["upcoming", "active", "completed"] : ["pending", "approved", "rejected", "completed"];
+    return tab && allowed.includes(tab) ? tab as BookingFilter : view === "host" ? "upcoming" : "";
+  });
   const sentinel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const timer = window.setTimeout(() => setSearch(searchInput.trim()), 350);
@@ -77,7 +81,6 @@ export default function BookingList({ view }: { view: BookingView }) {
   return <div className={`${styles.page} ${isAdmin ? styles.adminPage : styles.participantPage}`}>
     <div className={styles.heading}>
       <div>
-        {/* <p className={styles.eyebrow}>{isAdmin ? "Reservations" : view === "host" ? "Your listings" : "Your rentals"}</p> */}
       <h1>{isAdmin ? "Booking approvals" : view === "host" ? "Host bookings" : "My bookings"}</h1>
       </div>
       <div className={styles.headerActions}>{isAdmin && stats && <span className={`${styles.badge} ${styles.pending}`}>{stats.pending} pending</span>}<button onClick={query.reload} disabled={query.loading} className={styles.iconButton} aria-label="Refresh bookings" title="Refresh bookings"><RefreshCw size={18} /></button></div>
@@ -85,7 +88,7 @@ export default function BookingList({ view }: { view: BookingView }) {
     <div className={`${styles.statFilters} ${view === "host" ? styles.hostStatFilters : !isAdmin ? styles.customerStatFilters : ""}`} role="group" aria-label="Filter bookings by status">
       {filters.map(({ key, label, icon: Icon }) => {
         const active = key === "total" ? status === "" : status === key;
-        return <button key={key} type="button" className={`${styles.statFilter} ${styles[`stat_${key}`]} ${active ? styles.statFilterActive : ""}`} aria-label={key === "total" ? "All bookings" : `${label} bookings`} aria-pressed={active} onClick={() => setStatus(key === "total" ? "" : key)}>
+        return <button key={key} type="button" className={`${styles.statFilter} ${styles[`stat_${key}`] || ""} ${active ? styles.statFilterActive : ""}`} aria-label={key === "total" ? "All bookings" : `${label} bookings`} aria-pressed={active} onClick={() => setStatus(key === "total" ? "" : key)}>
           <span className={styles.statIcon}><Icon size={18} /></span><strong>{stats?.[key] ?? "-"}</strong><span>{label}</span>
         </button>;
       })}

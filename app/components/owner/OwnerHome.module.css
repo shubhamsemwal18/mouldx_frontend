@@ -5,6 +5,13 @@
   overflow-x: hidden;
 }
 
+.refresh { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-height: 44px; min-width: 44px; padding: 10px; color: #2563eb; border: 1px solid #dbeafe; border-radius: 12px; background: #eff6ff; cursor: pointer; font-size: 13px; font-weight: 700; }
+.refresh:disabled { opacity: .5; }
+.empty { padding: 24px 16px; background: #fafafa; border: 1px solid #eef0f2; border-radius: 16px; color: #6b7280; font-size: 13px; line-height: 1.7; }
+.error { padding: 20px; border: 1px solid #fecaca; background: #fff1f2; border-radius: 16px; color: #b91c1c; font-size: 14px; line-height: 1.7; }
+.ratingLink { display: block; margin-top: 20px; text-decoration: none; }
+.itemImageWrap { position: relative; }
+
 /* Make padding and border count inside the width everywhere */
 .page,
 .page * {

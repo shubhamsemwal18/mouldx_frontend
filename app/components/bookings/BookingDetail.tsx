@@ -5,12 +5,13 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, Check, CheckCircle2, Clock3, CreditCard, RefreshCw, ShieldCheck, X, XCircle } from "lucide-react";
 import { bookingApi, bookingError } from "@/app/lib/booking-api";
 import { bookingMoney, formatBookingDate } from "@/app/lib/booking-dates";
+import { bookingBasePath } from "@/app/lib/booking-routing";
 import type { Booking, BookingView } from "@/app/lib/booking-types";
 import BookingHelp from "../chat/BookingHelp";
+import BookingReviews from "../reviews/BookingReviews";
 import { useAuth } from "@/app/lib/auth-context";
 import { useBookingQuery } from "./useBookingQuery";
 import { useRentalDayRefresh } from "./useRentalDayRefresh";
-import { bookingBasePath } from "./BookingList";
 import { BookingBadge, BookingProductImage, paymentMethodLabel } from "./BookingVisuals";
 import styles from "./Bookings.module.css";
 
@@ -53,13 +54,13 @@ export default function BookingDetail({ id, view }: { id: string; view: BookingV
   const { user } = useAuth();
   const fetchBooking = useCallback((signal: AbortSignal) => bookingApi.get(id, view, signal), [id, view]);
   const query = useBookingQuery(`${user?._id}:${id}:${view}`, fetchBooking, Boolean(user));
+  useRentalDayRefresh(query.reload, query.data?.status === "approved");
   if (query.loading) return <div className={styles.state} role="status">Loading booking...</div>;
   if (!query.data) return <div className={styles.state}><p role="alert">{query.error?.message || "Booking not found"}</p><button className={styles.button} onClick={query.reload}>Try again</button><Link href={bookingBasePath(view)}>Back to bookings</Link></div>;
   return <BookingContent key={`${query.data._id}:${query.data.status}`} booking={query.data} view={view} reload={query.reload} />;
 }
 
 function BookingContent({ booking, view, reload }: { booking: Booking; view: BookingView; reload: () => void }) {
-  useRentalDayRefresh(reload);
   const [decision, setDecision] = useState<"approved" | "rejected" | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -77,9 +78,7 @@ function BookingContent({ booking, view, reload }: { booking: Booking; view: Boo
   };
 
   return <article className={`${styles.page} ${styles.detail} ${isAdmin ? styles.adminPage : ""}`}>
-    {/* <Link className={styles.back} href={bookingBasePath(view)}><ArrowLeft size={16} />{isAdmin ? "Booking approvals" : "My bookings"}</Link> */}
     <div className={styles.heading}><div>
-      {/* <p className={styles.eyebrow}>{isAdmin ? "Booking review" : "Booking details"}</p> */}
       <h1>{booking.code}</h1></div><div className={styles.headerActions}><BookingBadge status={booking.status} phase={!isAdmin ? booking.rentalPhase : undefined} /><button type="button" className={styles.iconButton} onClick={reload} disabled={busy} aria-label="Refresh status" title="Refresh status"><RefreshCw size={17} /></button></div></div>
     <div className={`${styles.statusNotice} ${styles[`notice_${booking.status}`]}`}><StatusIcon size={24} /><div>
       {booking.status === "pending" && <><strong>Approval pending</strong><p>Request submitted. Dates are not reserved until admin approval.</p></>}
@@ -113,6 +112,7 @@ function BookingContent({ booking, view, reload }: { booking: Booking; view: Boo
         <BookingTimeline booking={booking} />
         <FareBreakdown booking={booking} />
         <PaymentSummary booking={booking} />
+        {!isAdmin && booking.rentalPhase === "completed" && <BookingReviews id={booking._id} host={view === "host"} />}
         <BookingHelp bookingId={booking._id} status={booking.status} view={view} />
       </aside>
     </div>

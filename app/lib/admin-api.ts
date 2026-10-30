@@ -3,6 +3,7 @@ import type {
   Category,
   OwnerProfileVerification,
   ProductDetail,
+  ProductAvailability,
   ProductStatus,
   ProfileVerificationStatus,
 } from "@/app/lib/types";
@@ -138,9 +139,15 @@ export const adminApi = {
       .then((response) => response.data.data);
   },
 
-  reviewProduct(id: string, payload: { status: "approved" | "rejected"; reason?: string }) {
+  reviewProduct(id: string, payload: { status: "approved" | "rejected"; reason?: string; revisionId?: string }) {
     return apiClient
       .patch<ApiResponse<ProductDetail>>(`/admin/products/${id}/review`, payload)
+      .then((response) => response.data.data);
+  },
+
+  updateProductAvailability(id: string, availability: ProductAvailability) {
+    return apiClient
+      .patch<ApiResponse<ProductDetail>>(`/admin/products/${id}/availability`, { availability })
       .then((response) => response.data.data);
   },
 };

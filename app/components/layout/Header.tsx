@@ -118,7 +118,7 @@ export default function Header() {
         key: isAdmin ? "dashboard" : "profile",
         label: isAdmin ? "Admin" : "Profile",
         icon: isAdmin ? LayoutDashboard : User,
-        href: isAdmin ? "/admin" : !canShowMode ? "/onboarding" : isOwnerMode ? "/owner/profile" : "/profile",
+        href: isAdmin ? "/admin" : !canShowMode ? "/onboarding" : "/profile",
       },
       {
         key: "logout",

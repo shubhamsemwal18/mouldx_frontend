@@ -1,25 +1,48 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, Clock3, RefreshCw } from "lucide-react";
+import { ArrowRight, CalendarDays, CalendarX2, ChevronLeft, ChevronRight, Clock3, RefreshCw } from "lucide-react";
 import { bookingApi, bookingError } from "@/app/lib/booking-api";
 import { publicApi } from "@/app/lib/public-api";
 import { addDays, bookingMoney, dateOnly, formatBookingDate, rangeError, rentalDays } from "@/app/lib/booking-dates";
 import { useBookingQuery } from "./useBookingQuery";
+import { useRentalDayRefresh } from "./useRentalDayRefresh";
 import styles from "@/app/explore/[id]/dates/SelectDates.module.css";
 import shared from "./Bookings.module.css";
 
+/* Compact pill for the "Clear dates" action. */
+const clearDatesStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "fit-content",
+  borderRadius: "9999px",
+  padding: "0.5rem 1.125rem",
+  fontSize: "0.8125rem",
+  fontWeight: 600,
+  lineHeight: 1.2,
+  color: "#ffffff",
+  backgroundColor: "#2563eb",
+  textDecoration: "none",
+  border: "none",
+  cursor: "pointer",
+  transition: "opacity 0.2s ease",
+};
+
 export default function SelectBookingDates({ slug }: { slug: string }) {
   const fetchProduct = useCallback(async (signal: AbortSignal) => {
-    const detail = await publicApi.getProduct(slug);
+    const detail = await publicApi.getProduct(slug, signal);
     await bookingApi.paymentOptions(detail.product._id, signal);
     return detail;
   }, [slug]);
   const query = useBookingQuery(slug, fetchProduct);
   if (query.loading) return <div className={shared.state} role="status">Loading product...</div>;
-  if (!query.data) return <div className={shared.state}><p role="alert">{query.error?.message}</p><button onClick={query.reload}>Try again</button><Link href="/explore">Back to Explore</Link></div>;
+  if (!query.data) return <div className={styles.page}><div className={styles.content}><h1 className={styles.pageTitle}>Select rental dates</h1><section className={styles.errorState}>
+    <span className={styles.errorIcon}><CalendarX2 size={28} /></span><h2>Booking is currently unavailable</h2><p role="alert">{query.error?.message || "We couldn't load this product's booking options. Please try again."}</p>
+    <button className={styles.retryButton} onClick={query.reload}><RefreshCw size={17} />Try again</button><Link href={`/explore/${encodeURIComponent(slug)}`}>Back to product</Link>
+  </section></div></div>;
   return <Calendar key={query.data.product._id} productId={query.data.product._id} slug={slug} />;
 }
 
@@ -43,9 +66,11 @@ function Calendar({ productId, slug }: { productId: string; slug: string }) {
   const to = String(end && end > monthEnd ? end : start && start > monthEnd ? start : monthEnd);
   const fetchAvailability = useCallback((signal: AbortSignal) => bookingApi.availabilityRange(productId, from, to, signal), [productId, from, to]);
   const query = useBookingQuery(`${productId}:${from}:${to}`, fetchAvailability);
+  useRentalDayRefresh(query.reload);
   const data = query.data;
   const days = rentalDays(start, end);
-  const selectionError = data && start && end ? rangeError(start, end, data.today, data.blockedRanges) : null;
+  const selectionError = data?.product.availability === "maintenance" ? "This product is under maintenance and is not accepting new bookings."
+    : data && start && end ? rangeError(start, end, data.today, data.blockedRanges) : null;
   const canContinue = Boolean(data && days && !selectionError && !submitting && !query.loading && !query.error && !error?.bookingId);
   const monthLabel = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(monthDate);
   const cells = Array.from({ length: 42 }, (_, index) => addDays(month, index - monthDate.getUTCDay()));
@@ -87,7 +112,6 @@ function Calendar({ productId, slug }: { productId: string; slug: string }) {
 
   return <div className={styles.page}>
     <div className={styles.content}>
-      {/* <Link className={shared.back} href={`/explore/${encodeURIComponent(slug)}`}><ArrowLeft size={16} /> Product</Link> */}
       <h1 className={styles.pageTitle}>Select rental dates</h1>
       {data && <p className={styles.pageSubtitle}>{data.product.code} · {data.product.name}</p>}
       {error?.bookingId && <div ref={errorRef} className={styles.pendingNotice} role="alert">
@@ -119,7 +143,16 @@ function Calendar({ productId, slug }: { productId: string; slug: string }) {
             return <button key={date} type="button" disabled={!data || muted || past || blocked || submitting} className={`${styles.dayCell} ${className}`} aria-label={`${formatBookingDate(date)}${blocked ? ", unavailable" : past ? ", past" : ""}`} aria-pressed={selected} onClick={() => selectDate(date)}><span className={styles.dayNumber}>{Number(date.slice(-2))}</span></button>;
           })}
         </div>
-        {start && <button className={styles.clearBtn} disabled={submitting} onClick={clearDates}>Clear dates</button>}
+        {start && <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #eef0f2" }}>
+          <button
+            type="button"
+            style={{ ...clearDatesStyle, opacity: submitting ? 0.55 : 1, cursor: submitting ? "not-allowed" : "pointer" }}
+            disabled={submitting}
+            onClick={clearDates}
+          >
+            Clear dates
+          </button>
+        </div>}
       </div>
       {query.error && <div className={styles.errorBanner} role="alert">{query.error.message} <button onClick={query.reload}>Try again</button></div>}
       {!error?.bookingId && (error || selectionError) && <div ref={errorRef} className={styles.errorBanner} role="alert"><p>{error?.message || selectionError}</p>{error && !selectionError && <button type="button" className={styles.retryCheck} disabled={!canContinue} onClick={continueBooking}><RefreshCw size={16} aria-hidden="true" />Try again</button>}</div>}
@@ -128,7 +161,6 @@ function Calendar({ productId, slug }: { productId: string; slug: string }) {
         <span className={`${styles.legendPill} ${styles.legendBooked}`}>Booked</span>
         <span className={`${styles.legendPill} ${styles.legendSelected}`}>Selected</span>
       </div>
-      {/* <p className={shared.note}>Rental days include pickup and return. Approved bookings reserve an additional 3 days before and after. Pending requests do not reserve dates.</p> */}
       {start && <div className={styles.summaryCard} aria-live="polite"><span>{formatBookingDate(start)}{end && ` To ${formatBookingDate(end)}`}</span>{days > 0 && <strong>{days} {days === 1 ? "day" : "days"}</strong>}</div>}
     </div>
     <div className={styles.ctaBar}>

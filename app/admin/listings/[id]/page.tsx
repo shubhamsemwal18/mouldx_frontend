@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import styles from "./ListingReviewDetail.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { adminApi } from "@/app/lib/admin-api";
-import type { Media, Mould, Product, ProductStatus, User } from "@/app/lib/types";
+import type { Media, Mould, Product, ProductDetail, ProductStatus, User } from "@/app/lib/types";
 
 const STATUS_LABEL: Record<ProductStatus, string> = {
   draft: "DRAFT",
@@ -226,22 +226,32 @@ export default function ListingReviewDetailPage({
   const { id } = use(params);
   const router = useRouter();
 
-  const [product, setProduct] = useState<Product | null>(null);
-  const [moulds, setMoulds] = useState<Mould[]>([]);
+  const [detail, setDetail] = useState<ProductDetail | null>(null);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [savingAvailability, setSavingAvailability] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState("");
   const [loading, setLoading] = useState(true);
   const [remarks, setRemarks] = useState("");
   const [submitting, setSubmitting] = useState<null | "approve" | "reject">(null);
   const [error, setError] = useState("");
   const [activeMedia, setActiveMedia] = useState<MediaItem | null>(null);
 
+  const canonicalProduct = detail?.product ?? null;
+  const pendingUpdate = detail?.pendingUpdate;
+  const revision = canonicalProduct?.status === "approved" && pendingUpdate?.status === "in_review"
+    ? pendingUpdate
+    : null;
+  const product = revision && !showCurrent ? revision.product : canonicalProduct;
+  const moulds = (revision && !showCurrent ? revision.moulds : detail?.moulds) ?? [];
+
   const load = useCallback(async () => {
     setLoading(true);
 
     try {
       const data = await adminApi.getProduct(id);
-      setProduct(data.product);
-      setMoulds(data.moulds);
-      setRemarks(data.product.rejectionReason || "");
+      setDetail(data);
+      setShowCurrent(false);
+      setRemarks(data.pendingUpdate?.rejectionReason || data.product.rejectionReason || "");
       setError("");
     } catch (err) {
       setError(getApiErrorMessage(err, "Could not load the listing"));
@@ -258,7 +268,7 @@ export default function ListingReviewDetailPage({
   }, [load]);
 
   const review = async (status: "approved" | "rejected") => {
-    if (submitting || !product) return;
+    if (submitting || !canonicalProduct || (!revision && canonicalProduct.status !== "in_review")) return;
 
     if (status === "rejected" && !remarks.trim()) {
       setError("Please add remarks explaining the rejection.");
@@ -269,14 +279,29 @@ export default function ListingReviewDetailPage({
     setError("");
 
     try {
-      await adminApi.reviewProduct(product._id, {
+      await adminApi.reviewProduct(canonicalProduct._id, {
         status,
+        ...(revision ? { revisionId: revision._id } : {}),
         ...(status === "rejected" ? { reason: remarks.trim() } : {}),
       });
       router.push("/admin/listings");
     } catch (err) {
       setError(getApiErrorMessage(err, `Could not ${status === "approved" ? "approve" : "reject"} the listing`));
       setSubmitting(null);
+    }
+  };
+
+  const updateAvailability = async () => {
+    if (!canonicalProduct || canonicalProduct.status !== "approved" || savingAvailability) return;
+    setSavingAvailability(true);
+    setAvailabilityError("");
+    try {
+      setDetail(await adminApi.updateProductAvailability(canonicalProduct._id,
+        canonicalProduct.availability === "maintenance" ? "active" : "maintenance"));
+    } catch (err) {
+      setAvailabilityError(getApiErrorMessage(err, "Could not update availability"));
+    } finally {
+      setSavingAvailability(false);
     }
   };
 
@@ -288,7 +313,7 @@ export default function ListingReviewDetailPage({
     );
   }
 
-  if (!product) {
+  if (!product || !canonicalProduct || !detail) {
     return (
       <div className={styles.notFound}>
         <p className={styles.notFoundText}>{error || "Listing not found."}</p>
@@ -299,10 +324,26 @@ export default function ListingReviewDetailPage({
     );
   }
 
-  const owner = ownerOf(product);
+  const owner = ownerOf(canonicalProduct);
   const productMedia = collectProductMedia(product);
-  const isDecided = product.status === "approved" || product.status === "rejected";
-  const canReview = product.status === "in_review";
+  const isDecided = canonicalProduct.status === "approved" || canonicalProduct.status === "rejected";
+  const canReview = Boolean(revision) || canonicalProduct.status === "in_review";
+  const reviewMeta = revision ?? canonicalProduct;
+  const maintenance = canonicalProduct.availability === "maintenance";
+  const comparison = revision ? [
+    ["Name", canonicalProduct.name, revision.product.name],
+    ["Category", dash(canonicalProduct.category?.title), dash(revision.product.category?.title)],
+    ["Subcategory", dash(canonicalProduct.subCategory?.title), dash(revision.product.subCategory?.title)],
+    ["Rent / day", formatPrice(canonicalProduct.pricing?.perDayCharges), formatPrice(revision.product.pricing?.perDayCharges)],
+    ["Deposit", formatPrice(canonicalProduct.pricing?.securityDeposit), formatPrice(revision.product.pricing?.securityDeposit)],
+    ["Moulds", String(detail.moulds.length), String(revision.moulds.length)],
+    ["Dimensions", formatDimensions(canonicalProduct.dimensions), formatDimensions(revision.product.dimensions)],
+    ["Weight", dash(canonicalProduct.weight, " g"), dash(revision.product.weight, " g")],
+    ["Material", dash(canonicalProduct.material), dash(revision.product.material)],
+    ["Surface finish", dash(canonicalProduct.surfaceFinish), dash(revision.product.surfaceFinish)],
+    ["Location", canonicalProduct.location ? `${canonicalProduct.location.lat}, ${canonicalProduct.location.lng}` : "—", revision.product.location ? `${revision.product.location.lat}, ${revision.product.location.lng}` : "—"],
+    ["Product photos / videos", `${canonicalProduct.images?.length ?? 0} / ${canonicalProduct.videos?.length ?? 0}`, `${revision.product.images?.length ?? 0} / ${revision.product.videos?.length ?? 0}`],
+  ] : [];
 
   return (
     <div className={styles.page}>
@@ -312,13 +353,58 @@ export default function ListingReviewDetailPage({
           {product.code} · {product.name}
         </h1>
         <span className={styles.statusPill}>
-          {(product.resubmissionCount ?? 0) > 0 && product.status === "in_review"
+          {revision ? "UPDATE · PENDING REVIEW" : (product.resubmissionCount ?? 0) > 0 && product.status === "in_review"
             ? "RESUBMITTED"
             : STATUS_LABEL[product.status]}
         </span>
       </div>
 
       <style>{SECTION_CSS}</style>
+
+      {canonicalProduct.status === "approved" && (
+        <section className={`${styles.card} ${styles.availabilityCard}`} aria-label="Current listing availability">
+          <div>
+            <h2 className={styles.cardTitle}>Current listing: {maintenance ? "Maintenance" : "Live"}</h2>
+            <p className={styles.emptyNote}>
+              Visible in Explore and search. {maintenance ? "New bookings are paused." : "Open for booking."}
+              {maintenance && canonicalProduct.maintenanceByRole ? ` Maintenance set by ${canonicalProduct.maintenanceByRole}.` : ""}
+            </p>
+          </div>
+          <button type="button" className={styles.availabilityBtn} onClick={updateAvailability} disabled={savingAvailability || submitting !== null}>
+            {savingAvailability ? "Saving…" : maintenance ? "Enable bookings" : "Set maintenance"}
+          </button>
+          {availabilityError && <p className={styles.errorText} role="alert">{availabilityError}</p>}
+        </section>
+      )}
+
+      {pendingUpdate && !revision && (
+        <div className={styles.updateNotice}>
+          <strong>UPDATE · {STATUS_LABEL[pendingUpdate.status]}</strong>
+          <p>{pendingUpdate.status === "rejected" ? pendingUpdate.rejectionReason || "No rejection reason was provided." : "The host has saved an update draft. It has not been submitted for review."}</p>
+          <p>The current approved version is shown below.</p>
+        </div>
+      )}
+
+      {revision && (
+        <section className={styles.updateNotice} aria-label="Update comparison">
+          <h2 className={styles.cardTitle}>UPDATE · Proposed changes</h2>
+          <p>The approved version remains published until this update is approved. Approval and rejection below apply to this update.</p>
+          <div className={styles.comparisonWrap}>
+            <table className={styles.comparisonTable}>
+              <thead><tr><th>Field</th><th>Current approved version</th><th>Proposed version</th></tr></thead>
+              <tbody>{comparison.map(([label, current, proposed]) => (
+                <tr key={label} className={current !== proposed ? styles.changedRow : undefined}>
+                  <th scope="row">{label}</th><td>{current}</td><td>{proposed}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <p><strong>Showing {showCurrent ? "current approved version" : "proposed version"} below, including all media and mould specifications.</strong></p>
+          <button type="button" className={styles.availabilityBtn} onClick={() => { setShowCurrent((value) => !value); setActiveMedia(null); }}>
+            View {showCurrent ? "proposed" : "current approved"} version
+          </button>
+        </section>
+      )}
 
       {/* ---------- Grid layout ---------- */}
       <div className={styles.layout}>
@@ -327,7 +413,7 @@ export default function ListingReviewDetailPage({
           className={`${styles.card} ${styles.mediaArea}`}
           style={{ borderTop: `4px solid ${ACCENT.product.color}` }}
         >
-          <SectionBadge text="MAIN PRODUCT" tone="product" />
+          <SectionBadge text={revision ? showCurrent ? "CURRENT APPROVED PRODUCT" : "PROPOSED PRODUCT" : "MAIN PRODUCT"} tone="product" />
           <h2 className={styles.cardTitle} style={{ fontSize: 16 }}>
             {product.name}
             <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: "#9ca3af" }}>
@@ -475,7 +561,7 @@ export default function ListingReviewDetailPage({
             on desktop the grid area keeps it in the right column. */}
         <div className={styles.decisionArea} style={{ order: 5 }}>
           <div className={styles.decisionCard}>
-            <h2 className={styles.cardTitle}>Decision</h2>
+            <h2 className={styles.cardTitle}>{revision ? "Update decision" : "Decision"}</h2>
 
             {canReview ? (
               <>
@@ -493,18 +579,18 @@ export default function ListingReviewDetailPage({
                 <button
                   type="button"
                   onClick={() => review("approved")}
-                  disabled={submitting !== null}
+                  disabled={submitting !== null || savingAvailability}
                   className={`${styles.approveBtn} btn-primary`}
                 >
-                  {submitting === "approve" ? "Approving..." : "✓ Approve Listing"}
+                  {submitting === "approve" ? "Approving..." : revision ? "✓ Approve Update" : "✓ Approve Listing"}
                 </button>
                 <button
                   type="button"
                   onClick={() => review("rejected")}
-                  disabled={submitting !== null}
+                  disabled={submitting !== null || savingAvailability}
                   className={styles.rejectBtn}
                 >
-                  {submitting === "reject" ? "Rejecting..." : "✕ Reject with Remarks"}
+                  {submitting === "reject" ? "Rejecting..." : revision ? "✕ Reject Update with Remarks" : "✕ Reject with Remarks"}
                 </button>
               </>
             ) : (
@@ -516,13 +602,13 @@ export default function ListingReviewDetailPage({
             )}
 
             <div className={styles.reviewMeta}>
-              <Row label="Submitted" value={dash(product.submittedAt?.slice(0, 10))} />
-              <Row label="Resubmissions" value={String(product.resubmissionCount ?? 0)} />
-              {product.rejectionReason && (
-                <Row label="Last rejection" value={product.rejectionReason} />
+              <Row label={revision ? "Update submitted" : "Submitted"} value={dash(reviewMeta.submittedAt?.slice(0, 10))} />
+              {!revision && <Row label="Resubmissions" value={String(canonicalProduct.resubmissionCount ?? 0)} />}
+              {reviewMeta.rejectionReason && (
+                <Row label="Last rejection" value={reviewMeta.rejectionReason} />
               )}
-              {product.publishedAt && (
-                <Row label="Published" value={product.publishedAt.slice(0, 10)} isLast />
+              {canonicalProduct.publishedAt && (
+                <Row label="Published" value={canonicalProduct.publishedAt.slice(0, 10)} isLast />
               )}
             </div>
           </div>

@@ -48,9 +48,13 @@ export interface MouldInput {
  * `submit: false` saves a draft, where everything except `name` may be
  * incomplete. `submit: true` runs the strict server-side rules and sends the
  * listing for admin approval.
+ * On approved listings, these changes are saved as a pending update and the
+ * current approved product remains published until the update is approved.
  */
 export interface ProductWritePayload {
   name: string;
+  /** Expected pending revision, used to reject edits based on a stale draft. */
+  revisionId?: string | null;
   categoryId?: string | null;
   subCategoryId?: string | null;
   /** First id is the cover. At least one is required on submit. */
@@ -71,6 +75,7 @@ export interface ProductWritePayload {
 }
 
 export interface ProductListParams {
+  occupancy?: "available" | "rented" | "maintenance";
   status?: ProductStatus;
   availability?: ProductAvailability;
   search?: string;
@@ -116,13 +121,13 @@ export const productApi = {
   },
 
   /**
-   * Takes an approved listing offline for maintenance, or brings it back.
+   * Pauses or resumes booking for an approved, publicly visible listing.
    * Approval is untouched; the server rejects listings that are not approved.
    */
   updateAvailability(id: string, availability: ProductAvailability) {
     return apiClient
       .patch<ApiResponse<ProductDetail>>(`/owner/products/${id}/availability`, { availability })
-      .then((response) => response.data);
+      .then((response) => response.data.data);
   },
 
   remove(id: string) {

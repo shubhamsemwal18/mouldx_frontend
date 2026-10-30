@@ -6,20 +6,17 @@ import axios, {
 import {
   clearAuthSession,
   getAccessToken,
+  getAuthSessionVersion,
   notifySessionExpired,
   setAuthSession,
-  type AuthSession,
 } from "@/app/lib/auth-storage";
+import type { AuthPayload } from "@/app/lib/types";
 
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;
   data: T;
   details?: { path: string; message: string }[];
-}
-
-interface RefreshTokenPayload {
-  tokens: AuthSession;
 }
 
 interface RetryableRequestConfig extends InternalAxiosRequestConfig {
@@ -31,10 +28,11 @@ const API_BASE_URL =
 
 const refreshPath = "/auth/refresh-token";
 
-let refreshPromise: Promise<AuthSession> | null = null;
+let refreshPromise: Promise<AuthPayload> | null = null;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 20000,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -47,14 +45,26 @@ const setBearerHeader = (config: InternalAxiosRequestConfig, token: string) => {
   config.headers = headers;
 };
 
-const refreshAuthTokens = async () => {
+/** Serialize cookie-changing requests across same-origin tabs when supported. */
+export async function withSessionLock<T>(request: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return await navigator.locks.request("mouldx:session-cookie", request);
+  }
+  return request();
+}
+
+export const refreshSession = async () => {
   if (!refreshPromise) {
-    refreshPromise = apiClient
-      .post<ApiResponse<RefreshTokenPayload>>(refreshPath, {}, { skipAuthRefresh: true })
+    const version = getAuthSessionVersion();
+    refreshPromise = withSessionLock(() => {
+      if (version !== getAuthSessionVersion()) throw new axios.CanceledError("Session changed before refresh");
+      return apiClient.post<ApiResponse<AuthPayload>>(refreshPath, {}, { skipAuthRefresh: true });
+    })
       .then((response) => {
-        const tokens = response.data.data.tokens;
-        setAuthSession(tokens);
-        return tokens;
+        if (version !== getAuthSessionVersion()) throw new axios.CanceledError("Session changed during refresh");
+        const payload = response.data.data;
+        setAuthSession(payload.tokens);
+        return payload;
       })
       .finally(() => {
         refreshPromise = null;
@@ -96,12 +106,17 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true;
 
     try {
-      const tokens = await refreshAuthTokens();
-      setBearerHeader(originalRequest, tokens.accessToken);
+      const current = getAccessToken();
+      const sent = AxiosHeaders.from(originalRequest.headers).get("Authorization");
+      // A late 401 from the previous token need not rotate the cookie again.
+      const token = current && sent !== `Bearer ${current}` ? current : (await refreshSession()).tokens.accessToken;
+      setBearerHeader(originalRequest, token);
       return apiClient(originalRequest);
     } catch (refreshError) {
-      clearAuthSession();
-      notifySessionExpired();
+      if (axios.isAxiosError(refreshError) && [401, 403].includes(refreshError.response?.status || 0)) {
+        clearAuthSession();
+        notifySessionExpired();
+      }
       return Promise.reject(refreshError);
     }
   }

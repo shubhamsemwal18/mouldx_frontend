@@ -48,6 +48,7 @@ export const publicApi = {
     return apiClient
       .get<ApiResponse<CatalogueResponse>>("/products/published", {
         params,
+        headers: { "Cache-Control": "no-cache" },
         skipAuthRefresh: true,
       })
       .then((response) => response.data.data);
@@ -57,6 +58,7 @@ export const publicApi = {
     return apiClient
       .get<ApiResponse<CategorySectionsResponse>>("/products/sections", {
         params: { limit },
+        headers: { "Cache-Control": "no-cache" },
         skipAuthRefresh: true,
       })
       .then((response) => response.data.data);
@@ -90,10 +92,12 @@ export const publicApi = {
   },
 
   /** Accepts the slug (canonical), the MX- code, or the raw id. */
-  getProduct(slug: string) {
+  getProduct(slug: string, signal?: AbortSignal) {
     return apiClient
       .get<ApiResponse<PublicProductDetail>>(`/products/${encodeURIComponent(slug)}`, {
+        headers: { "Cache-Control": "no-cache" },
         skipAuthRefresh: true,
+        signal,
       })
       .then((response) => response.data.data);
   },
