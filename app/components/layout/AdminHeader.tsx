@@ -1,30 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLogout } from "@/app/lib/use-logout";
+import { useAdminNotifications } from "@/app/lib/admin-notification-context";
+import { formatNotificationTime } from "@/app/lib/admin-notification-api";
+import { getApiErrorMessage } from "@/app/lib/api";
 import styles from "./AdminHeader.module.css";
-
-interface ActivityItem {
-  text: string;
-  meta: string;
-  tone: "cyan" | "amber";
-}
-
-// TEMP dummy data — real activity-log API se aayega
-const RECENT_NOTIFICATIONS: ActivityItem[] = [
-  { text: "KYC approved — Sharma Industries", meta: "10:41 AM", tone: "cyan" },
-  { text: "Listing MX-000123 approved", meta: "10:12 AM", tone: "cyan" },
-  { text: "Damage claim BK-24102 settled", meta: "Yesterday, 5:02 PM", tone: "cyan" },
-  { text: "Booking BK-24611 flagged for manual check", meta: "Pending", tone: "amber" },
-];
 
 export default function AdminHeader() {
   const { handleLogout, loggingOut, logoutError } = useLogout("/login");
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
-  const pendingCount = RECENT_NOTIFICATIONS.filter((n) => n.tone === "amber").length;
+  const [actionError, setActionError] = useState("");
+  const { recent, unreadCount, loading, error, busy, refresh, markRead, markAllRead } = useAdminNotifications();
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") { setNotifOpen(false); setUserOpen(false); } };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
 
   return (
     <header className={styles.header}>
@@ -38,18 +33,21 @@ export default function AdminHeader() {
             onClick={() => {
               setNotifOpen((p) => !p);
               setUserOpen(false);
+              if (!notifOpen) void refresh();
             }}
             className={styles.iconBtn}
             aria-label="Notifications"
+            aria-expanded={notifOpen}
+            aria-controls="admin-notifications-menu"
           >
             🔔
-            {pendingCount > 0 && <span className={styles.badge}>{pendingCount}</span>}
+            {unreadCount > 0 && <span className={styles.badge} aria-label={`${unreadCount} unread notifications`}>{unreadCount > 99 ? "99+" : unreadCount}</span>}
           </button>
 
           {notifOpen && (
             <>
               <div className={styles.backdrop} onClick={() => setNotifOpen(false)} />
-              <div className={styles.notifDropdown}>
+              <div className={styles.notifDropdown} id="admin-notifications-menu">
                 <div className={styles.notifHeader}>
                   <span className={styles.notifTitle}>Notifications</span>
                   <Link
@@ -60,19 +58,31 @@ export default function AdminHeader() {
                     View all →
                   </Link>
                 </div>
-                {RECENT_NOTIFICATIONS.map((n, i) => (
-                  <div key={i} className={styles.notifRow}>
+                {loading && recent.length === 0 && <p className={styles.notifState} role="status">Loading notifications...</p>}
+                {!loading && !error && recent.length === 0 && <p className={styles.notifState}>No notifications yet.</p>}
+                {recent.map((n) => (
+                  <Link key={n._id} href={n.href} className={styles.notifRow} onClick={() => {
+                    setNotifOpen(false); setActionError("");
+                    if (!n.readAt && !busy) void markRead([n._id]).catch((err) => setActionError(getApiErrorMessage(err)));
+                  }}>
                     <span
                       className={`${styles.notifDot} ${
-                        n.tone === "amber" ? styles.dotAmber : styles.dotCyan
+                        n.readAt ? styles.dotRead : n.tone === "amber" ? styles.dotAmber : styles.dotCyan
                       }`}
                     />
                     <div>
-                      <p className={styles.notifText}>{n.text}</p>
-                      <p className={styles.notifMeta}>{n.meta}</p>
+                      <p className={styles.notifText}>{n.title}</p>
+                      <p className={styles.notifMeta}>{formatNotificationTime(n.createdAt)}</p>
                     </div>
-                  </div>
+                  </Link>
                 ))}
+                {(error || actionError) && <div className={styles.notifState}><p role="alert">{actionError || error}</p><button type="button" className={styles.notifViewAll} onClick={() => { setActionError(""); void refresh(); }}>Try again</button></div>}
+                <div className={styles.notifFooter}>
+                  <button type="button" className={styles.notifViewAll} disabled={busy || unreadCount === 0} onClick={() => {
+                    setActionError("");
+                    void markAllRead().catch((err) => setActionError(getApiErrorMessage(err)));
+                  }}>Mark all as read</button>
+                </div>
               </div>
             </>
           )}

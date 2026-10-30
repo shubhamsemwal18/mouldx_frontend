@@ -63,6 +63,8 @@
 }
 
 .text {
+  display: block;
+  text-decoration: none;
   font-size: 13.5px;
   font-weight: 700;
   color: #111827;
@@ -73,6 +75,43 @@
   margin-top: 2px;
   font-size: 11.5px;
   color: #9ca3af;
+}
+
+.text:hover { color: #2563eb; }
+.content { min-width: 0; overflow-wrap: anywhere; }
+.dotRead { background: #d1d5db; }
+.toolbar, .actions, .selection, .pagination { display: flex; align-items: center; gap: 10px; }
+.toolbar { margin-top: 18px; justify-content: space-between; flex-wrap: wrap; }
+.actions { flex-wrap: wrap; }
+.selection { color: #6b7280; font-size: 12px; cursor: pointer; }
+.checkbox { width: 15px; height: 15px; accent-color: #2563eb; flex-shrink: 0; margin: 2px 0 0; cursor: pointer; }
+.checkbox:disabled { cursor: default; }
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  color: #374151;
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.actionButton:hover { background: #f6f7fb; }
+.actionButton:disabled { opacity: 0.45; cursor: default; }
+.deleteButton { color: #dc2626; }
+.deleteButton:hover:not(:disabled) { background: #fef2f2; border-color: #fecaca; }
+.state { padding: 20px 0; color: #6b7280; font-size: 13px; margin: 0; }
+.error { color: #dc2626; font-size: 12px; margin: 12px 0; overflow-wrap: anywhere; }
+.feedback { color: #6b7280; font-size: 12px; margin: 12px 0; }
+.pagination { justify-content: space-between; flex-wrap: wrap; margin-top: 14px; color: #6b7280; font-size: 12px; }
+
+@media (max-width: 480px) {
+  .card { padding: 8px 12px; }
+  .row { gap: 9px; }
 }
 
 @media (min-width: 1024px) {

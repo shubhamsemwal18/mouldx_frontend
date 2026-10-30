@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import AdminHeader from "@/app/components/layout/AdminHeader";
 import { useAuth } from "@/app/lib/auth-context";
+import { AdminNotificationProvider } from "@/app/lib/admin-notification-context";
 import styles from "./AdminLayout.module.css";
 
 const NAV_SECTIONS = [
@@ -67,7 +68,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className={styles.shell}>
+    <AdminNotificationProvider key={user?._id}><div className={styles.shell}>
       {/* ---------- Mobile top bar ---------- */}
       <div className={styles.mobileBar}>
         <button
@@ -125,6 +126,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {!isSupportChat && <AdminHeader />}
         {children}
       </main>
-    </div>
+    </div></AdminNotificationProvider>
   );
 }
