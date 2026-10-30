@@ -23,7 +23,7 @@ const CLAIMS: DamageClaim[] = [
     id: "1",
     bookingId: "BK-24102",
     mouldCode: "MX-000077",
-    reportedBy: "Owner — Apex Poly",
+    reportedBy: "Host — Apex Poly",
     depositHeld: 20000,
     filedAgo: "1 day ago",
     filedDateISO: "2026-09-27",
@@ -33,7 +33,7 @@ const CLAIMS: DamageClaim[] = [
     id: "2",
     bookingId: "BK-23990",
     mouldCode: "MX-000212",
-    reportedBy: "Owner — Vector Molds",
+    reportedBy: "Host — Vector Molds",
     depositHeld: 18500,
     filedAgo: "2 days ago",
     filedDateISO: "2026-09-26",
@@ -151,7 +151,7 @@ export default function DamageClaimsPage() {
           </span>
           <input
             type="text"
-            placeholder="Search by booking ID, mould, owner..."
+            placeholder="Search by booking ID, mould, host..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className={styles.searchInput}

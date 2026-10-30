@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import styles from "./OwnerProfile.module.css";
+import { useLogout } from "@/app/lib/use-logout";
 
 const OWNER = {
   name: "Rohit Sharma",
@@ -30,6 +31,7 @@ const MORE_LINKS = [
 
 export default function OwnerProfilePage() {
   const [moreOpen, setMoreOpen] = useState(false);
+  const { handleLogout, loggingOut, logoutError } = useLogout();
 
   return (
     <div className={styles.page}>
@@ -142,12 +144,13 @@ export default function OwnerProfilePage() {
       </div>
 
       {/* ---------- Logout + Switch Profile ---------- */}
-      <button type="button" className={styles.logoutRow}>
-        Logout
+      <button type="button" className={styles.logoutRow} onClick={handleLogout} disabled={loggingOut}>
+        {loggingOut ? "Logging out..." : "Logout"}
       </button>
+      {logoutError && <p role="alert">{logoutError}</p>}
 
       <Link href="/switch-profile" className={styles.switchProfileBtn}>
-        Switch Profile — Owner ↔ Customer
+        Switch Profile — Host ↔ User
       </Link>
     </div>
   );

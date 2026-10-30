@@ -6,6 +6,8 @@ import Link from "next/link";
 import styles from "./MouldDetail.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { publicApi } from "@/app/lib/public-api";
+import { useAuth } from "@/app/lib/auth-context";
+import { isAdminUser } from "@/app/lib/auth-routing";
 import type { Dimensions, Media, Mould, PublicProductDetail } from "@/app/lib/types";
 
 const formatDimensions = (d?: Partial<Dimensions>) =>
@@ -35,6 +37,7 @@ export default function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: slug } = use(params);
+  const { user, loading: authLoading } = useAuth();
 
   const [detail, setDetail] = useState<PublicProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +47,7 @@ export default function ProductDetailPage({
   const [activeTab, setActiveTab] = useState(0);
   const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const recordedVisits = useRef(new Set<string>());
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +79,18 @@ export default function ProductDetailPage({
       window.clearTimeout(timer);
     };
   }, [slug]);
+
+  useEffect(() => {
+    const productSlug = detail?.product.slug;
+    if (!productSlug || recordedVisits.current.has(productSlug)) return;
+    const timer = window.setTimeout(() => {
+      const visitId = crypto.randomUUID();
+      recordedVisits.current.add(productSlug);
+      // Analytics must never block viewing or booking the product.
+      publicApi.recordVisit(productSlug, visitId).catch(() => {});
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [detail]);
 
   const selectTab = useCallback((index: number) => {
     setActiveTab(index);
@@ -266,14 +282,6 @@ export default function ProductDetailPage({
             <span className={styles.pricePeriod}> / day</span>
           </p>
         </div>
-        {product.pricing?.securityDeposit !== undefined && (
-          <div className={styles.depositRow}>
-            <span className={styles.depositBadge}>
-              {formatMoney(product.pricing.securityDeposit)} deposit
-            </span>
-          </div>
-        )}
-
         {/* ---------- Tabs: Product + one tab per component ---------- */}
         {hasComponents && (
           <div className={styles.tabsRow} role="tablist">
@@ -308,7 +316,7 @@ export default function ProductDetailPage({
                 value={formatMoney(product.pricing?.perDayCharges)}
               />
               <Row
-                label="Security Deposit Amount"
+                label="Security Deposit (MouldX payments only)"
                 value={formatMoney(product.pricing?.securityDeposit)}
                 isLast
               />
@@ -347,14 +355,14 @@ export default function ProductDetailPage({
         )}
       </div>
 
-      <div className={styles.ctaBar}>
+      {!authLoading && !isAdminUser(user) && <div className={styles.ctaBar}>
         <Link
           href={`/explore/${product.slug}/dates`}
           className={`${styles.ctaBtn} flex items-center justify-center no-underline btn-primary`}
         >
           Select Dates →
         </Link>
-      </div>
+      </div>}
     </div>
   );
 }

@@ -50,7 +50,7 @@ export default function ClaimResolvedPage({
           <span className={styles.approvedPill}>DEDUCTION APPROVED</span>
           <p className={styles.heroAmount}>₹{settlement.deduction.toLocaleString("en-IN")}</p>
           <p className={styles.heroSubtext}>
-            Remainder ₹{refund.toLocaleString("en-IN")} refunded to customer.
+            Remainder ₹{refund.toLocaleString("en-IN")} refunded to user.
           </p>
         </div>
 
@@ -86,7 +86,7 @@ export default function ClaimResolvedPage({
           <div className={styles.divider} />
 
           <div className={styles.breakdownRow}>
-            <span className={styles.breakdownLabelBold}>Refund to customer</span>
+            <span className={styles.breakdownLabelBold}>Refund to user</span>
             <span className={styles.breakdownValueGreen}>₹{refund.toLocaleString("en-IN")}</span>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default function ClaimResolvedPage({
           onClick={() => router.push(`/owner/bookings/${id}/rate`)}
           className={styles.ctaBtn}
         >
-          <span aria-hidden>★</span> Rate Customer
+          <span aria-hidden>★</span> Rate User
         </button>
       </div>
     </div>

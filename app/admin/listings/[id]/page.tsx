@@ -479,7 +479,7 @@ export default function ListingReviewDetailPage({
 
             {canReview ? (
               <>
-                <label className={styles.fieldLabel}>Remarks (sent to owner)</label>
+                <label className={styles.fieldLabel}>Remarks (sent to host)</label>
                 <textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
@@ -528,7 +528,7 @@ export default function ListingReviewDetailPage({
           </div>
 
           <div className={styles.card} style={{ marginTop: 14 }}>
-            <h2 className={styles.cardTitle}>Owner</h2>
+            <h2 className={styles.cardTitle}>Host</h2>
             <Row label="Name" value={dash(owner?.fullName)} />
             <Row label="Phone" value={dash(owner?.phone)} />
             <Row label="Email" value={dash(owner?.email)} />

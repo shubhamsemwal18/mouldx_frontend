@@ -143,8 +143,8 @@ export default function OwnersPage() {
       {/* ---------- Header ---------- */}
       <div className={styles.headerRow}>
         <div>
-          <h1 className={styles.title}>Owners</h1>
-          <p className={styles.subtitle}>Approved owners live on the platform.</p>
+          <h1 className={styles.title}>Hosts</h1>
+          <p className={styles.subtitle}>Approved hosts live on the platform.</p>
         </div>
         <span className={styles.countPill}>{owners.length} TOTAL</span>
       </div>
@@ -156,7 +156,7 @@ export default function OwnersPage() {
         </span>
         <input
           type="text"
-          placeholder="Search by owner name, firm, GST..."
+          placeholder="Search by host name, firm, GST..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className={styles.searchInput}
@@ -169,7 +169,7 @@ export default function OwnersPage() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Owner</th>
+                <th>Host</th>
                 <th>Firm</th>
                 <th>GST No.</th>
                 <th>Moulds</th>
@@ -205,7 +205,7 @@ export default function OwnersPage() {
                       type="button"
                       onClick={() => setConfirmDeleteId(owner.id)}
                       className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                      aria-label="Delete owner"
+                      aria-label="Delete host"
                     >
                       🗑
                     </button>
@@ -215,7 +215,7 @@ export default function OwnersPage() {
             </tbody>
           </table>
 
-          {filtered.length === 0 && <p className={styles.emptyText}>No owners match your search.</p>}
+          {filtered.length === 0 && <p className={styles.emptyText}>No hosts match your search.</p>}
         </div>
       </div>
 
@@ -249,7 +249,7 @@ export default function OwnersPage() {
                   type="button"
                   onClick={() => setConfirmDeleteId(owner.id)}
                   className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
-                  aria-label="Delete owner"
+                  aria-label="Delete host"
                 >
                   🗑
                 </button>
@@ -258,7 +258,7 @@ export default function OwnersPage() {
           </div>
         ))}
 
-        {filtered.length === 0 && <p className={styles.emptyText}>No owners match your search.</p>}
+        {filtered.length === 0 && <p className={styles.emptyText}>No hosts match your search.</p>}
       </div>
 
       {/* ---------- View details modal ---------- */}
@@ -348,7 +348,7 @@ export default function OwnersPage() {
                 }}
                 className={styles.modalDeleteBtn}
               >
-                🗑 Delete Owner
+                🗑 Delete Host
               </button>
               <button type="button" onClick={() => setViewOwner(null)} className={styles.modalCloseTextBtn}>
                 Close
@@ -386,7 +386,7 @@ export default function OwnersPage() {
         <div className={styles.confirmOverlay} onClick={() => setConfirmDeleteId(null)}>
           <div className={styles.confirmContent} onClick={(e) => e.stopPropagation()}>
             <div className={styles.confirmIcon}>⚠</div>
-            <h3 className={styles.confirmTitle}>Delete this owner?</h3>
+            <h3 className={styles.confirmTitle}>Delete this host?</h3>
             <p className={styles.confirmText}>
               This will permanently remove <strong>{ownerToDelete.name}</strong> ({ownerToDelete.firmName}) and
               all their {ownerToDelete.mouldsCount} listed moulds from the platform. This cannot be undone.

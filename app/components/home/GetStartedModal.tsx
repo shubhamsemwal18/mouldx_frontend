@@ -30,9 +30,7 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
   if (!open) return null;
 
   const chooseRole = (role: SignupRole) => {
-    // Two distinct things are remembered here:
-    //  - the signup intent, which decides where the user lands after OTP
-    //  - the active role, which is the profile they continue browsing as
+    // Remember intent only; mode controls and host access require server approval.
     setSelectedSignupRole(role);
     setActiveRole(role);
     onClose();
@@ -83,7 +81,7 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-bold text-gray-900 transition-colors group-hover:text-white">
-                  start as user
+                  Start as User
                 </span>
                 <span className="mt-0.5 block text-xs text-gray-500 transition-colors group-hover:text-blue-100">
                   Browse and rent moulds

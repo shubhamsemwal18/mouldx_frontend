@@ -124,8 +124,7 @@
 }
 
 .input,
-.textarea,
-.select {
+.textarea {
   width: 100%;
   background: #eef0f3;
   border: 1.5px solid transparent;
@@ -150,19 +149,9 @@
 }
 
 .input:focus,
-.textarea:focus,
-.select:focus {
+.textarea:focus {
   border-color: #2563eb;
   background: #ffffff;
-}
-
-.select {
-  appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%236b7280'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
-  padding-right: 32px;
-  cursor: pointer;
 }
 
 .inputError {
@@ -219,13 +208,14 @@
 /* ---------- Sticky CTA ---------- */
 .ctaBar {
   position: fixed;
-  bottom: 72px;
+  bottom: 0;
   left: 0;
   right: 0;
   background: #ffffff;
   border-top: 1px solid #f1f1f3;
   padding: 14px 20px;
-  z-index: 20;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 20; /* below BottomNav (z-index 50), above header */
 }
 
 .ctaBtn {

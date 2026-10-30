@@ -61,7 +61,7 @@ export default function DeclineBookingPage({
           </Link>
           <h1 className={styles.title}>Decline Booking</h1>
         </div>
-        <p className={styles.subtitle}>No customer payment has been made at this stage.</p>
+        <p className={styles.subtitle}>No user payment has been made at this stage.</p>
 
         {/* ---------- Heads up warning ---------- */}
         <div className={styles.warningCard}>
@@ -97,7 +97,7 @@ export default function DeclineBookingPage({
           <textarea
             value={remarks}
             onChange={(e) => setRemarks(e.target.value)}
-            placeholder="Optional explanation to the customer..."
+            placeholder="Optional explanation to the user..."
             rows={3}
             className={styles.textarea}
           />
@@ -110,7 +110,7 @@ export default function DeclineBookingPage({
             <span className={styles.refValue}>{booking.code}</span>
           </div>
           <div className={styles.refRow}>
-            <span className={styles.refLabel}>Customer</span>
+            <span className={styles.refLabel}>User</span>
             <span className={styles.refValue}>{booking.customer}</span>
           </div>
         </div>

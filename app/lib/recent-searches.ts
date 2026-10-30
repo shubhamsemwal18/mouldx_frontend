@@ -8,7 +8,7 @@ import { useCallback, useSyncExternalStore } from "react";
  */
 const RECENT_SEARCHES_KEY = "mouldx_recent_searches";
 const RECENT_SEARCHES_CHANGED_EVENT = "mouldx:recent-searches-changed";
-const MAX_RECENT = 8;
+const MAX_RECENT = 5;
 const MAX_TERM_LENGTH = 80;
 
 const EMPTY: string[] = [];
@@ -32,9 +32,10 @@ const read = (): string[] => {
     }
 
     const parsed: unknown = JSON.parse(raw);
-    snapshot = Array.isArray(parsed)
-      ? parsed.filter((t): t is string => typeof t === "string").slice(0, MAX_RECENT)
+    const terms = Array.isArray(parsed)
+      ? parsed.filter((term): term is string => typeof term === "string").map((term) => term.trim().slice(0, MAX_TERM_LENGTH)).filter(Boolean)
       : EMPTY;
+    snapshot = terms.filter((term, index) => terms.findIndex((other) => other.toLowerCase() === term.toLowerCase()) === index).slice(0, MAX_RECENT);
 
     return snapshot;
   } catch {

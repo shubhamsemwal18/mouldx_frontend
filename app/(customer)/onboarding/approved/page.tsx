@@ -1,17 +1,53 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/lib/auth-context";
+import { useActiveRole } from "@/app/lib/active-role";
 import styles from "./ProfileApproved.module.css";
 
-// TEMP dummy data — will come from the real admin approval API
-const APPROVAL = {
-  approvedAt: "15 Sep · 9:10 AM",
-  name: "Rohit Sharma",
-};
+export default function ProfileApprovedPage() {
+  const router = useRouter();
+  const { user, ownerProfileVerification, loading } = useAuth();
+  const { activeRole } = useActiveRole(user?.profileVerificationStatus === "approved" && Boolean(user.approvedRoles.includes("owner")));
+  const isHostMode = activeRole === "owner" && Boolean(user?.approvedRoles.includes("owner"));
+  const status = ownerProfileVerification?.status || user?.profileVerificationStatus;
+  const approvedAt = ownerProfileVerification?.reviewedAt
+    ? new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(ownerProfileVerification.reviewedAt))
+    : "Approved";
+  const firmName = ownerProfileVerification?.firmDetails?.name || "Your firm";
 
-export default function CustomerProfileApprovedPage() {
+  useEffect(() => {
+    if (loading) return;
+
+    if (status === "in_review") {
+      router.replace("/onboarding/review");
+      return;
+    }
+
+    if (status === "rejected") {
+      router.replace("/onboarding/rejected");
+      return;
+    }
+
+    if (status !== "approved") {
+      router.replace("/onboarding/profile");
+    }
+  }, [loading, router, status]);
+
+  if (loading || status !== "approved") {
+    return null;
+  }
+
   return (
     <div className={styles.page}>
+
       <div className={styles.content}>
         {/* ---------- Success icon ---------- */}
         <div className={styles.heroSection}>
@@ -45,9 +81,9 @@ export default function CustomerProfileApprovedPage() {
 
           <h1 className={styles.title}>Profile approved!</h1>
           <p className={styles.subtitle}>
-            Welcome, {APPROVAL.name} — your account is now verified on MouldX.
+            {firmName} is now verified on MouldX.
           </p>
-          <p className={styles.approvedMeta}>Approved · {APPROVAL.approvedAt}</p>
+          <p className={styles.approvedMeta}>Approved · {approvedAt}</p>
         </div>
 
         {/* ---------- What's next card ---------- */}
@@ -67,8 +103,16 @@ export default function CustomerProfileApprovedPage() {
           <div className={styles.nextRow}>
             <span className={`${styles.nextDot} ${styles.nextDotActive}`}>2</span>
             <div>
-              <p className={styles.nextTitle}>Browse and book moulds</p>
-              <p className={styles.nextMeta}>Explore verified listings near you</p>
+              <p className={styles.nextTitle}>{isHostMode ? "List your first mould" : "Find your next mould"}</p>
+              <p className={styles.nextMeta}>{isHostMode ? "Add your mould and product details" : "Browse available moulds"}</p>
+            </div>
+          </div>
+
+          <div className={styles.nextRow}>
+            <span className={styles.nextDot}>3</span>
+            <div>
+              <p className={styles.nextTitle}>{isHostMode ? "Submit your listing for approval" : "Request a booking"}</p>
+              <p className={styles.nextMeta}>{isHostMode ? "Approved listings appear in the catalogue" : "Select dates and send your request"}</p>
             </div>
           </div>
         </div>
@@ -76,8 +120,11 @@ export default function CustomerProfileApprovedPage() {
 
       {/* ---------- Sticky CTA ---------- */}
       <div className={styles.ctaBar}>
-        <Link href="/" className={`${styles.ctaBtn} btn-primary`}>
-          Go to Dashboard
+        <Link href={isHostMode ? "/owner/moulds/new/product" : "/"} className={`${styles.ctaBtn} btn-primary`}>
+          {isHostMode ? "+ List a Mould" : "Explore Moulds"}
+        </Link>
+        <Link href="/" className={styles.skipLink}>
+          Go to Home
         </Link>
       </div>
     </div>

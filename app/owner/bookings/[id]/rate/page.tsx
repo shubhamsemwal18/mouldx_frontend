@@ -63,7 +63,7 @@ export default function RateCustomerPage({
           <Link href={`/owner/bookings/${id}`} className={styles.backBtn} aria-label="Go back">
             ‹
           </Link>
-          <h1 className={styles.title}>Rate Customer</h1>
+          <h1 className={styles.title}>Rate User</h1>
         </div>
         <p className={styles.subtitle}>Your rating is part of the MouldX trust experience.</p>
 

@@ -8,7 +8,7 @@ import { FaFacebookF, FaInstagram, FaXTwitter, FaLinkedinIn } from "react-icons/
 import styles from "./Footer.module.css";
 
 
-const SHOW_FOOTER_ON = ["/", "/home", "/owner" , "/about", "/faqs", "/agreement", "/contact", "/privacy-policy", "/terms"];
+const SHOW_FOOTER_ON = ["/", "/home", "/about", "/faqs", "/agreement", "/contact", "/privacy-policy", "/terms"];
 
 const SERVICEABLE_AREAS = ["Delhi", "Haryana", "Uttar Pradesh", "Punjab", "Chandigarh", "Uttarakhand"];
 

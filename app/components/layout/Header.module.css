@@ -103,6 +103,11 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
+.dropdownItem:disabled { opacity: .6; cursor: wait; }
+.logoutError { max-width: 240px; margin: 8px; color: #fca5a5; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.adminLink { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 6px 10px; color: #2563eb; font-size: 13px; font-weight: 600; text-decoration: none; }
+.adminLink:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; border-radius: 8px; }
+
 .logoLink {
   display: flex;
   align-items: center;
@@ -112,4 +117,134 @@
 .logoImg {
   height: 28px;
   width: auto;
+}
+/* ---------- Active role ---------- */
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Each role sets its accent; the badge and toast both read from it. */
+.roleCustomer {
+  --role-accent: #2563eb;
+  --role-tint: #eff6ff;
+  --role-border: #bfdbfe;
+}
+
+.roleOwner {
+  --role-accent: #7c3aed;
+  --role-tint: #f5f3ff;
+  --role-border: #ddd6fe;
+}
+
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--role-border);
+  border-radius: 9999px;
+  background: var(--role-tint);
+  color: var(--role-accent);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* ---------- Role switch toast ---------- */
+.roleToast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1300;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 4px solid var(--role-accent);
+  border-radius: 12px;
+  background: #111827;
+  color: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  /* One animation covers fade-in, hold and fade-out; matches ROLE_TOAST_DURATION_MS. */
+  animation: roleToastLife 3s ease forwards;
+  pointer-events: none;
+}
+
+.roleToastIcon {
+  display: flex;
+  flex-shrink: 0;
+  color: #22c55e;
+}
+
+.roleToastBody {
+  min-width: 0;
+}
+
+.roleToastTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.roleToastMessage {
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+@keyframes roleToastLife {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  10%,
+  88% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 640px) {
+  .headerActions {
+    gap: 12px;
+  }
+
+  .roleToast {
+    /* Clear the fixed bottom nav (~80px) on small screens. */
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roleToast {
+    animation-name: roleToastFade;
+  }
+
+  @keyframes roleToastFade {
+    0%,
+    100% {
+      opacity: 0;
+    }
+    10%,
+    88% {
+      opacity: 1;
+    }
+  }
 }

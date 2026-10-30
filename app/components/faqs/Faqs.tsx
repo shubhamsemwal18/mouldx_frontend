@@ -34,7 +34,7 @@ const FAQS: Faq[] = [
   { id: "p2", category: "Pricing", q: "Are there any hidden charges?", a: "No. Rent, deposit, and delivery charges are shown before you confirm. Any extra cost is explained upfront." },
   { id: "p3", category: "Pricing", q: "Is a security deposit required?", a: "A refundable security deposit may be required for some moulds. It is returned after the mould passes inspection on return." },
   { id: "p4", category: "Pricing", q: "Which payment methods are accepted?", a: "We accept UPI, net banking, cards and bank transfer. A GST invoice is provided for every booking." },
-  { id: "p5", category: "Pricing", q: "Do you offer discounts for long rentals?", a: "Yes. Longer rental periods and repeat customers can get special pricing. Contact our team for a custom quote." },
+  { id: "p5", category: "Pricing", q: "Do you offer discounts for long rentals?", a: "Yes. Longer rental periods and repeat users can get special pricing. Contact our team for a custom quote." },
 
   // Delivery
   { id: "d1", category: "Delivery", q: "How is the mould delivered?", a: "We arrange safe transport to your factory. Moulds are packed and handled by trained staff to avoid any damage." },

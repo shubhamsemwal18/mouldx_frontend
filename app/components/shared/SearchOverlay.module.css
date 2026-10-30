@@ -8,6 +8,7 @@
   color: #111827;
   /* Nothing inside the sheet may push it wider than the screen. */
   overflow-x: hidden;
+  height: 100dvh;
 }
 
 /* ---------- Top bar ---------- */
@@ -165,7 +166,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 16px 16px 40px;
+  padding: 16px 16px max(40px, env(safe-area-inset-bottom));
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
@@ -176,7 +177,7 @@
   margin: 0 0 10px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: #6b7280;
 }
@@ -217,90 +218,10 @@
   color: #9ca3af;
 }
 
-/* ---------- Card ---------- */
-.card {
-  position: relative; /* anchors the heart button */
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-/* Link wrapper that makes the whole card clickable */
-.cardLink {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  color: inherit;
-  text-decoration: none;
-}
-
-.imageWrap {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 18px;
-  overflow: hidden;
-  background: #f1f2f4;
-}
-
-.image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 40px;
-  color: #9ca3af;
-  background: linear-gradient(135deg, #e5e7eb, #f3f4f6);
-}
-
-.heart {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  z-index: 1;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.name {
-  margin: 8px 2px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.meta {
-  margin: 2px 2px 0;
-  font-size: 13px;
-  color: #6b7280;
-}
-
-.sub {
-  margin: 2px 2px 0;
-  font-size: 11px;
-  color: #9ca3af;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.errorNotice { margin: 0 0 20px; padding: 12px; border: 1px solid #dce6f5; border-radius: 8px; background: #f8faff; color: #475569; font-size: 13px; }
+.errorNotice p { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+.errorNotice button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 8px; padding: 8px 12px; border: 1px solid #2563eb; border-radius: 8px; background: #2563eb; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.errorNotice button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 
 /* ================= Responsive breakpoints ================= */
 
@@ -314,13 +235,6 @@
     gap: 16px 8px;
   }
 
-  .name {
-    font-size: 13px;
-  }
-
-  .meta {
-    font-size: 12px;
-  }
 }
 
 /* Tablets (640px and up) */
@@ -339,21 +253,6 @@
     gap: 24px 16px;
   }
 
-  .imageWrap {
-    border-radius: 22px;
-  }
-
-  .name {
-    font-size: 15px;
-  }
-
-  .meta {
-    font-size: 14px;
-  }
-
-  .sub {
-    font-size: 12px;
-  }
 }
 
 /* Small laptops / desktops (1024px and up) */
@@ -367,9 +266,6 @@
     gap: 28px 20px;
   }
 
-  .name {
-    font-size: 16px;
-  }
 }
 /* ---------- Recent searches ---------- */
 
@@ -386,7 +282,7 @@
   padding: 0;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: #2563eb;
   cursor: pointer;

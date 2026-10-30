@@ -4,6 +4,43 @@
   padding-bottom: 130px;
 }
 
+/* ---------- Header ---------- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f1f3;
+  z-index: 10;
+}
+
+.iconBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #111827;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.brand {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.brandAccent {
+  color: #2563eb;
+}
+
 /* ---------- Content ---------- */
 .content {
   padding: 20px;
@@ -110,14 +147,18 @@
 
 /* ---------- Sticky actions ---------- */
 .ctaBar {
- position: fixed;
-  bottom: 72px;
+  position: fixed;
+  bottom: 0;
   left: 0;
   right: 0;
   background: #ffffff;
   border-top: 1px solid #f1f1f3;
   padding: 14px 20px;
-  z-index: 20;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20; /* stay above BottomNav so both remain visible together */
 }
 
 .resubmitBtn {

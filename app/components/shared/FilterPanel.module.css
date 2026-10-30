@@ -1,7 +1,7 @@
 .filterPanel {
   margin-top: 12px;
   background: #f6f7f9;
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 14px 0 14px 14px;
   display: flex;
   flex-direction: column;
@@ -23,7 +23,7 @@
   font-weight: 700;
   color: #6b7280;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
 }
 
 .clearFilters {
@@ -66,8 +66,14 @@
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
-  min-height: 36px;
+  min-height: 44px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.optionStatus { margin: 0; padding-right: 14px; color: #64748b; font-size: 12px; }
+.chip:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 
 .chipActive {
   background: #2563eb;

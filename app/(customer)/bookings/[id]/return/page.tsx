@@ -101,7 +101,7 @@ export default function ReturnPage({
           disabled={!canSubmit}
           onClick={handleSubmit}
         >
-          Submit for Owner Inspection
+          Submit for Host Inspection
         </button>
       </div>
     </div>

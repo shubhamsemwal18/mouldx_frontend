@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useLogout } from "@/app/lib/use-logout";
 import { useAuth } from "@/app/lib/auth-context";
 import type { ProfileVerificationStatus, UserRole } from "@/app/lib/types";
 import styles from "./Profile.module.css";
@@ -34,10 +34,18 @@ const getInitials = (name?: string) =>
     .slice(0, 2)
     .toUpperCase();
 
+// Display names for the API role values, which stay "customer" / "owner".
+const ROLE_LABELS: Record<Exclude<UserRole, "admin">, string> = {
+  customer: "User",
+  owner: "Host",
+};
+
 const formatRoles = (roles: UserRole[] = []) => {
-  const visibleRoles = roles.filter((role) => role !== "admin");
-  if (!visibleRoles.length) return "Customer";
-  return visibleRoles.map((role) => role[0].toUpperCase() + role.slice(1)).join(", ");
+  const visibleRoles = roles.filter(
+    (role): role is Exclude<UserRole, "admin"> => role !== "admin",
+  );
+  if (!visibleRoles.length) return ROLE_LABELS.customer;
+  return visibleRoles.map((role) => ROLE_LABELS[role]).join(", ");
 };
 
 const formatDate = (date?: string) => {
@@ -51,25 +59,14 @@ const formatDate = (date?: string) => {
 
 export default function CustomerProfilePage() {
   const [moreOpen, setMoreOpen] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const { user, ownerProfileVerification, logout } = useAuth();
-  const router = useRouter();
+  const { user, ownerProfileVerification } = useAuth();
+  const { handleLogout, loggingOut, logoutError } = useLogout();
   const status = ownerProfileVerification?.status || user?.profileVerificationStatus || "pending";
   const firmDetails = ownerProfileVerification?.firmDetails;
   const personalDetails = ownerProfileVerification?.personalDetails;
   const payoutDetails = ownerProfileVerification?.payoutDetails;
   const displayName = user?.fullName || "MouldX User";
   const roleLabel = formatRoles(user?.approvedRoles);
-
-  const handleLogout = async () => {
-    try {
-      setLoggingOut(true);
-      await logout();
-      router.replace("/");
-    } finally {
-      setLoggingOut(false);
-    }
-  };
 
   return (
     <div className={styles.page}>
@@ -99,7 +96,7 @@ export default function CustomerProfilePage() {
             <p className={styles.statsValue}>{STATUS_LABELS[status]}</p>
           </div>
           {status === "rejected" ? (
-            <Link href="/owner/onboarding/rejected" className={styles.statsCta}>
+            <Link href="/onboarding/rejected" className={styles.statsCta}>
               View remarks <span aria-hidden>→</span>
             </Link>
           ) : (
@@ -192,8 +189,9 @@ export default function CustomerProfilePage() {
         {loggingOut ? "Logging out..." : "Logout"}
       </button>
 
+      {logoutError && <p role="alert">{logoutError}</p>}
       <Link href="/switch-profile" className={styles.switchProfileBtn}>
-        Switch Profile — Customer ↔ Owner
+        Switch Profile — User ↔ Host
       </Link>
     </div>
   );

@@ -8,6 +8,7 @@ import { authApi } from "@/app/lib/auth-api";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { setPendingAuth } from "@/app/lib/pending-auth";
 import { getSelectedSignupRole } from "@/app/lib/role-selection";
+import { getSafeNextPath } from "@/app/lib/auth-routing";
 
 const REGEX = {
   fullName: /^[a-zA-Z\s.'-]{2,60}$/,
@@ -72,7 +73,8 @@ export default function SignupPage() {
         email: email.trim() || undefined,
       });
       setPendingAuth({ flow: "signup", identifier: phone.trim(), role: getSelectedSignupRole() });
-      router.push("/verify-otp");
+      const next = getSafeNextPath();
+      router.push(next ? `/verify-otp?next=${encodeURIComponent(next)}` : "/verify-otp");
     } catch (error) {
       setServerError(getApiErrorMessage(error, "Could not start signup"));
     } finally {

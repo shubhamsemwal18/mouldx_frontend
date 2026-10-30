@@ -13,7 +13,7 @@ export interface PublishedCategory {
  * The public endpoint returns root categories, or the children of `parentSlug`.
  */
 export const categoryApi = {
-  listPublished(params?: { parentSlug?: string; search?: string; page?: number; limit?: number }) {
+  listPublished(params?: { parentSlug?: string; showAll?: boolean; search?: string; page?: number; limit?: number }) {
     return apiClient
       .get<ApiResponse<{ categories: PublishedCategory[]; pagination: Pagination }>>(
         "/categories/published",

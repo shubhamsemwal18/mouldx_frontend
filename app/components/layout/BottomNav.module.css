@@ -4,6 +4,8 @@
   left: 0;
   right: 0;
   z-index: 50;
+  height: var(--customer-bottom-nav-height);
+  box-sizing: border-box;
   display: flex;
   justify-content: space-around;
   align-items: center;

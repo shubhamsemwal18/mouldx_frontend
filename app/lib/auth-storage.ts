@@ -21,7 +21,7 @@ export function setAuthSession(session: AuthSession) {
 export function clearAuthSession() {
   inMemoryAccessToken = null;
   if (typeof window !== "undefined") {
-    window.localStorage.removeItem(AUTH_SESSION_HINT_KEY);
+    try { window.localStorage.removeItem(AUTH_SESSION_HINT_KEY); } catch { /* Storage may be blocked. */ }
   }
 }
 

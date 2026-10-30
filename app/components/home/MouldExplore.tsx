@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { RefreshCw, WifiOff } from "lucide-react";
 import styles from "./MouldExplore.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { publicApi } from "@/app/lib/public-api";
@@ -13,8 +13,8 @@ import {
   type CatalogueFilters,
 } from "@/app/lib/catalogue-filters";
 import FilterPanel from "../shared/FilterPanel";
+import CatalogueCard from "../shared/CatalogueCard";
 import type {
-  CatalogueFilterOptions,
   CategorySection,
   PublicProductCard,
 } from "@/app/lib/types";
@@ -30,60 +30,10 @@ const friendlyError = (err: unknown, fallback: string) => {
     : message;
 };
 
-const formatPrice = (value?: number) =>
-  value === undefined ? "Price on request" : `₹${value.toLocaleString("en-IN")}/day`;
-
-/* ---------- Listing card ---------- */
-
-function ListingCard({
-  product,
-  variant,
-}: {
-  product: PublicProductCard;
-  variant: "row" | "grid";
-}) {
-  const [imgError, setImgError] = useState(false);
-  const imageUrl = product.image?.url;
-
-  return (
-    <article className={`${styles.card} ${variant === "grid" ? styles.cardGrid : styles.cardRow}`}>
-      <Link href={`/explore/${product.slug}`} className={styles.cardLink}>
-        <div className={styles.imageWrap}>
-          {imageUrl && !imgError ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={imageUrl}
-              alt={product.name}
-              className={styles.image}
-              loading="lazy"
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <div className={styles.placeholder} aria-hidden>
-              ▽
-            </div>
-          )}
-        </div>
-
-        <h3 className={styles.name}>{product.name}</h3>
-        <p className={styles.meta}>{formatPrice(product.pricing?.perDayCharges)}</p>
-        <p className={styles.sub}>
-          {[
-            product.category?.title,
-            product.mouldTypes?.length ? product.mouldTypes.join(" · ") : null,
-            product.code,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-      </Link>
-    </article>
-  );
-}
-
 /* ---------- Page section ---------- */
 
 interface MouldExploreProps {
+  enabled?: boolean;
   search?: string;
   onSearchChange?: (value: string) => void;
   /** Lets the page's search bar open and close the filter panel. */
@@ -95,6 +45,7 @@ interface MouldExploreProps {
 }
 
 export default function MouldExplore({
+  enabled = true,
   search: searchProp,
   onSearchChange,
   filterOpen,
@@ -117,22 +68,23 @@ export default function MouldExplore({
   const setFilters = onFiltersChange ?? setLocalFilters;
 
   const [sections, setSections] = useState<CategorySection[]>([]);
-  const [filterOptions, setFilterOptions] = useState<CatalogueFilterOptions | null>(null);
   const [products, setProducts] = useState<PublicProductCard[]>([]);
   const [page, setPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
   const [matching, setMatching] = useState(0);
   const [totalPublished, setTotalPublished] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
-  const [sectionsFailed, setSectionsFailed] = useState(false);
+  const [sectionsError, setSectionsError] = useState("");
+  const [sectionsLoading, setSectionsLoading] = useState(true);
   // Bumped by "Try again" to re-run both loaders.
   const [reloadKey, setReloadKey] = useState(0);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   // Guards against the observer firing repeatedly for the same page.
   const loadingMoreRef = useRef(false);
+  const requestVersion = useRef(0);
 
   const activeFilterCount = countActiveFilters(filters);
   const hasQuery = debouncedSearch.length > 0;
@@ -153,6 +105,10 @@ export default function MouldExplore({
   // Identity of the query a load-more was started for, so a page that lands
   // after the visitor searched again is discarded instead of appended.
   const queryParamsRef = useRef(queryParams);
+  const resultQueryRef = useRef<typeof queryParams | null>(null);
+  const [resultQuery, setResultQuery] = useState<typeof queryParams | null>(null);
+  const currentProducts = resultQuery === queryParams ? products : [];
+  const resultsLoading = loading || resultQuery !== queryParams;
 
   // Debounce typing so every keystroke does not hit the API.
   useEffect(() => {
@@ -163,20 +119,24 @@ export default function MouldExplore({
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  // Static-ish data: the category rows and the filter options.
+  // Ranked home sections also provide the headline total.
   useEffect(() => {
     let cancelled = false;
 
     const timer = window.setTimeout(() => {
-      Promise.all([publicApi.listSections(10), publicApi.listFilterOptions()])
-        .then(([loadedSections, options]) => {
+      setSectionsLoading(true);
+      publicApi.listSections(10)
+        .then(({ sections: loadedSections, stats }) => {
           if (cancelled) return;
           setSections(loadedSections);
-          setFilterOptions(options);
-          setSectionsFailed(false);
+          setTotalPublished(stats.totalPublished);
+          setSectionsError("");
         })
-        .catch(() => {
-          if (!cancelled) setSectionsFailed(true);
+        .catch((err) => {
+          if (!cancelled) setSectionsError(friendlyError(err, "Could not load listings"));
+        })
+        .finally(() => {
+          if (!cancelled) setSectionsLoading(false);
         });
     }, 0);
 
@@ -188,17 +148,24 @@ export default function MouldExplore({
 
   // First page for the current query. Filters and search reset to page 1.
   useEffect(() => {
+    const version = ++requestVersion.current;
+    loadingMoreRef.current = false;
+    resultQueryRef.current = null;
+    if (isBrowsing || !enabled) return;
     let cancelled = false;
 
     const timer = window.setTimeout(() => {
       setLoading(true);
-      setError("");
+      setLoadingMore(false);
 
       publicApi
         .listProducts({ ...queryParams, page: 1 })
         .then((data) => {
           if (cancelled) return;
+          setError("");
           setProducts(data.products);
+          resultQueryRef.current = queryParams;
+          setResultQuery(queryParams);
           setPage(1);
           setHasNextPage(data.pagination.hasNextPage);
           setMatching(data.stats.matching);
@@ -208,6 +175,8 @@ export default function MouldExplore({
           if (cancelled) return;
           setError(friendlyError(err, "Could not load listings"));
           setProducts([]);
+          resultQueryRef.current = queryParams;
+          setResultQuery(queryParams);
           setHasNextPage(false);
           setMatching(0);
         })
@@ -218,28 +187,30 @@ export default function MouldExplore({
 
     return () => {
       cancelled = true;
+      if (requestVersion.current === version) requestVersion.current += 1;
       window.clearTimeout(timer);
     };
-  }, [queryParams, reloadKey]);
+  }, [queryParams, reloadKey, isBrowsing, enabled]);
 
   useEffect(() => {
     queryParamsRef.current = queryParams;
   }, [queryParams]);
 
   const loadMore = useCallback(() => {
-    if (loadingMoreRef.current || !hasNextPage) return;
+    if (!enabled || loading || resultQueryRef.current !== queryParams || isBrowsing || loadingMoreRef.current || !hasNextPage) return;
 
     loadingMoreRef.current = true;
     setLoadingMore(true);
 
     const nextPage = page + 1;
     const requestedFor = queryParams;
+    const version = requestVersion.current;
 
     publicApi
       .listProducts({ ...queryParams, page: nextPage })
       .then((data) => {
         // The visitor searched or filtered while this page was loading.
-        if (queryParamsRef.current !== requestedFor) return;
+        if (requestVersion.current !== version || queryParamsRef.current !== requestedFor) return;
 
         // De-duplicate: offset paging can repeat an item if a listing is
         // published while the visitor is scrolling.
@@ -251,15 +222,16 @@ export default function MouldExplore({
         setHasNextPage(data.pagination.hasNextPage);
       })
       .catch((err) => {
-        if (queryParamsRef.current !== requestedFor) return;
+        if (requestVersion.current !== version || queryParamsRef.current !== requestedFor) return;
         setError(friendlyError(err, "Could not load more listings"));
         setHasNextPage(false);
       })
       .finally(() => {
+        if (requestVersion.current !== version) return;
         loadingMoreRef.current = false;
         setLoadingMore(false);
       });
-  }, [hasNextPage, page, queryParams]);
+  }, [hasNextPage, page, queryParams, loading, isBrowsing, enabled]);
 
   // Infinite scroll: fetch the next page as the sentinel comes into view.
   useEffect(() => {
@@ -282,13 +254,9 @@ export default function MouldExplore({
     setSearch("");
   };
 
-  const categoryChips = useMemo(
-    () => sections.map((section) => ({ slug: section.category.slug, title: section.category.title })),
-    [sections]
-  );
-
   const subtitle = (() => {
-    if (loading && totalPublished === null) return "Loading listings…";
+    if (!isBrowsing && resultsLoading) return "Searching listings…";
+    if ((isBrowsing ? sectionsLoading : loading) && totalPublished === null) return "Loading listings…";
     // The count never arrived (offline or API error) — do not render "null".
     if (totalPublished === null) return "Browse available moulds";
     if (hasQuery || activeFilterCount > 0) {
@@ -299,6 +267,8 @@ export default function MouldExplore({
     if (totalPublished === 0) return "No listings published yet";
     return `${totalPublished} verified ${totalPublished === 1 ? "listing" : "listings"}`;
   })();
+  const catalogueError = isBrowsing ? sectionsError : resultQuery === queryParams ? error : "";
+  const retrying = isBrowsing ? sectionsLoading : loading;
 
   return (
     <section id="mould-explore" className={styles.section}>
@@ -309,16 +279,22 @@ export default function MouldExplore({
         <FilterPanel
           value={filters}
           onChange={setFilters}
-          categories={categoryChips}
-          mouldTypes={filterOptions?.mouldTypes ?? []}
+          showAll={true}
         />
       )}
 
-      {error && (
+      {catalogueError && (
         <div className={styles.errorBox} role="alert">
-          <p className={styles.emptyText}>{error}</p>
-          <button type="button" onClick={() => setReloadKey((k) => k + 1)} className={styles.clearFilters}>
-            Try again
+          <div className={styles.errorContent}>
+            <span className={styles.errorIcon} aria-hidden="true"><WifiOff size={21} strokeWidth={1.7} /></span>
+            <div className={styles.errorCopy}>
+              <h3>Moulds are temporarily unavailable</h3>
+              <p>{catalogueError}</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setReloadKey((k) => k + 1)} className={styles.retryButton} disabled={retrying}>
+            <RefreshCw size={16} className={retrying ? styles.retrySpinner : undefined} aria-hidden="true" />
+            {retrying ? "Retrying..." : "Try again"}
           </button>
         </div>
       )}
@@ -333,7 +309,7 @@ export default function MouldExplore({
                   type="button"
                   className={styles.rowArrow}
                   onClick={() => {
-                    setFilters({ ...filters, categorySlug: section.category.slug });
+                    setFilters({ ...filters, categorySlug: section.category.slug, subCategorySlug: "" });
                     setIsFilterOpen(false);
                   }}
                   aria-label={`See all ${section.category.title} listings`}
@@ -343,33 +319,31 @@ export default function MouldExplore({
               </div>
               <div className={styles.row}>
                 {section.products.map((product) => (
-                  <ListingCard key={product._id} product={product} variant="row" />
+                  <CatalogueCard key={product._id} product={product} className={styles.cardRow} />
                 ))}
               </div>
             </div>
           ))}
 
-          {!loading && sections.length === 0 && (
+          {!sectionsLoading && sections.length === 0 && !catalogueError && (
             <p className={styles.emptyText}>
-              {sectionsFailed
-                ? "We couldn't load listings just now. Please check your connection and try again."
-                : "No listings are published yet. Approved listings appear here automatically."}
+              No listings are published yet. Approved listings appear here automatically.
             </p>
           )}
         </div>
       ) : (
         <>
           <div className={styles.grid}>
-            {products.map((product) => (
-              <ListingCard key={product._id} product={product} variant="grid" />
+            {currentProducts.map((product) => (
+              <CatalogueCard key={product._id} product={product} />
             ))}
           </div>
 
-          {loading && products.length === 0 && (
+          {resultsLoading && currentProducts.length === 0 && (
             <p className={styles.emptyText}>Searching…</p>
           )}
 
-          {!loading && products.length === 0 && !error && (
+          {!resultsLoading && currentProducts.length === 0 && !error && (
             <div>
               <p className={styles.emptyText}>No listings match your search.</p>
               <button type="button" onClick={clearAll} className={styles.clearFilters}>
@@ -383,11 +357,11 @@ export default function MouldExplore({
 
           {loadingMore && <p className={styles.emptyText}>Loading more…</p>}
 
-          {!hasNextPage && products.length > 0 && (
+          {!resultsLoading && !hasNextPage && currentProducts.length > 0 && !error && (
             <p className={styles.emptyText}>
-              {matching === products.length
+              {matching === currentProducts.length
                 ? "That's everything."
-                : `Showing all ${products.length} results.`}
+                : `Showing all ${currentProducts.length} results.`}
             </p>
           )}
         </>

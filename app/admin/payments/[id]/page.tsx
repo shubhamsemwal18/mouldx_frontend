@@ -80,7 +80,7 @@ const TRANSACTIONS: Record<string, TransactionDetail> = {
     customer: "Anjali Deshpande",
     owner: "Apex Poly",
     method: "N/A",
-    notes: "Customer disputes the deduction amount — claims damage was pre-existing.",
+    notes: "User disputes the deduction amount — claims damage was pre-existing.",
   },
 };
 
@@ -148,8 +148,8 @@ export default function PaymentDetailPage({
           {/* Parties */}
           <div className={styles.card}>
             <h2 className={styles.cardTitle}>Parties</h2>
-            <Row label="Customer" value={txn.customer} />
-            <Row label="Owner" value={txn.owner} isLast />
+            <Row label="User" value={txn.customer} />
+            <Row label="Host" value={txn.owner} isLast />
           </div>
 
           {/* Notes, if any */}

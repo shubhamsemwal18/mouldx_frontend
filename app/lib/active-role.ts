@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 
 /**
@@ -42,6 +42,21 @@ export function setActiveRole(role: ActiveRole) {
   window.dispatchEvent(new CustomEvent(ACTIVE_ROLE_CHANGED_EVENT, { detail: role }));
 }
 
+/**
+ * Picks the starting mode for a signed-in user who has none stored (logout
+ * clears it): approved owners start on the host dashboard. An explicit choice
+ * already stored, e.g. from the Get Started modal, is kept.
+ */
+export function initActiveRoleFor(approvedRoles: readonly string[] = [], status?: string) {
+  if (status !== "approved" || approvedRoles.includes("admin")) return;
+  if (getActiveRole() === "owner" && !approvedRoles.includes("owner")) {
+    setActiveRole("customer");
+    return;
+  }
+  if (getActiveRole() !== null) return;
+  if (approvedRoles.includes("owner")) setActiveRole("owner");
+}
+
 export function clearActiveRole() {
   if (typeof window === "undefined") return;
 
@@ -72,41 +87,19 @@ const subscribe = (onChange: () => void) => {
 /** Server render has no storage, so it always starts on the default role. */
 const getServerSnapshot = (): ActiveRole | null => null;
 
-export function useActiveRole() {
+export function useActiveRole(canUseOwnerArea = false) {
   const pathname = usePathname();
   const stored = useSyncExternalStore(subscribe, getActiveRole, getServerSnapshot);
 
   // Being inside the owner area means acting as an owner, whatever was stored
   // last — this keeps the header honest after a deep link or a redirect.
-  const inOwnerArea = Boolean(pathname?.startsWith("/owner"));
+  const inOwnerArea = canUseOwnerArea && Boolean((pathname === "/owner" || pathname?.startsWith("/owner/")) && !pathname?.startsWith("/owner/onboarding"));
   const activeRole: ActiveRole = inOwnerArea ? "owner" : stored ?? "customer";
 
-  // An explicit switch navigates, so there is a window where the role has
-  // already changed but the route has not caught up yet. This marks that
-  // window so the route-sync below cannot overwrite the user's choice.
-  const pendingRole = useRef<ActiveRole | null>(null);
-
-  // Persist what the route implies, so a deep link or a post-login redirect
-  // into the owner area is remembered like an explicit switch would be.
-  // Deferred to a macrotask so the store update does not run synchronously
-  // inside the effect.
-  useEffect(() => {
-    if (pendingRole.current) {
-      const settled = pendingRole.current === "owner" ? inOwnerArea : !inOwnerArea;
-      if (settled) pendingRole.current = null;
-      return;
-    }
-
-    if (!inOwnerArea || stored === "owner") return;
-
-    const timer = window.setTimeout(() => setActiveRole("owner"), 0);
-    return () => window.clearTimeout(timer);
-  }, [inOwnerArea, stored]);
-
   const switchRole = useCallback((role: ActiveRole) => {
-    pendingRole.current = role;
+    if (role === "owner" && !canUseOwnerArea) return;
     setActiveRole(role);
-  }, []);
+  }, [canUseOwnerArea]);
 
   return { activeRole, switchRole, isStored: stored !== null };
 }

@@ -93,7 +93,7 @@ export default function ActiveBookingPage({
         {/* ---------- Info card ---------- */}
         <div className={styles.card}>
           <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>Customer</span>
+            <span className={styles.infoLabel}>User</span>
             <span className={styles.infoValue}>{booking.customer}</span>
           </div>
           <div className={styles.infoRow}>
@@ -137,7 +137,7 @@ export default function ActiveBookingPage({
           disabled={submitting}
           className={styles.ctaBtn}
         >
-          {submitting ? "Updating…" : "Customer Returned Mould"}
+          {submitting ? "Updating…" : "User Returned Mould"}
         </button>
       </div>
     </div>
