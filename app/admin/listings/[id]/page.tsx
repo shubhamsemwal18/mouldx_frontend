@@ -49,6 +49,37 @@ const collectMouldMedia = (mould: Mould, index: number): MediaItem[] => {
   ];
 };
 
+/** Common prefix/suffix hata kar sirf badla hua beech ka hissa nikalta hai. */
+const diffParts = (before: string, after: string) => {
+  let start = 0;
+  while (start < before.length && start < after.length && before[start] === after[start]) start++;
+
+  let endB = before.length;
+  let endA = after.length;
+  while (endB > start && endA > start && before[endB - 1] === after[endA - 1]) {
+    endB--;
+    endA--;
+  }
+
+  return {
+    before: [before.slice(0, start), before.slice(start, endB), before.slice(endB)],
+    after: [after.slice(0, start), after.slice(start, endA), after.slice(endA)],
+  };
+};
+
+function DiffValue({ parts, tone }: { parts: string[]; tone: "old" | "new" }) {
+  const [head, changed, tail] = parts;
+  return (
+    <>
+      {head}
+      {changed && (
+        <mark className={tone === "old" ? styles.cmpMarkOld : styles.cmpMarkNew}>{changed}</mark>
+      )}
+      {tail}
+    </>
+  );
+}
+
 /* Layout rules that only this page needs. Kept here (not in the CSS module)
    so the product / component sections stay self-contained in this file. */
 const SECTION_CSS = `
@@ -228,6 +259,7 @@ export default function ListingReviewDetailPage({
 
   const [detail, setDetail] = useState<ProductDetail | null>(null);
   const [showCurrent, setShowCurrent] = useState(false);
+  const [onlyChanged, setOnlyChanged] = useState(false); // UI-only: comparison filter
   const [savingAvailability, setSavingAvailability] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -345,6 +377,12 @@ export default function ListingReviewDetailPage({
     ["Product photos / videos", `${canonicalProduct.images?.length ?? 0} / ${canonicalProduct.videos?.length ?? 0}`, `${revision.product.images?.length ?? 0} / ${revision.product.videos?.length ?? 0}`],
   ] : [];
 
+  const changedCount = comparison.filter(([, current, proposed]) => current !== proposed).length;
+  const unchangedCount = comparison.length - changedCount;
+  const visibleComparison = onlyChanged
+    ? comparison.filter(([, current, proposed]) => current !== proposed)
+    : comparison;
+
   return (
     <div className={styles.page}>
       {canonicalProduct.status === "approved" && !revision ? (
@@ -391,23 +429,104 @@ export default function ListingReviewDetailPage({
       )}
 
       {revision && (
-        <section className={styles.updateNotice} aria-label="Update comparison">
-          <h2 className={styles.cardTitle}>UPDATE · Proposed changes</h2>
-          <p>The approved version remains published until this update is approved. Approval and rejection below apply to this update.</p>
-          <div className={styles.comparisonWrap}>
-            <table className={styles.comparisonTable}>
-              <thead><tr><th>Field</th><th>Current approved version</th><th>Proposed version</th></tr></thead>
-              <tbody>{comparison.map(([label, current, proposed]) => (
-                <tr key={label} className={current !== proposed ? styles.changedRow : undefined}>
-                  <th scope="row">{label}</th><td>{current}</td><td>{proposed}</td>
-                </tr>
-              ))}</tbody>
-            </table>
+        <section className={styles.cmpCard} aria-label="Update comparison">
+          <div className={styles.cmpHeader}>
+            <h2 className={styles.cmpTitle}>UPDATE · Proposed changes</h2>
+            <span className={styles.cmpPill}>PENDING REVIEW</span>
           </div>
-          <p><strong>Showing {showCurrent ? "current approved version" : "proposed version"} below, including all media and mould specifications.</strong></p>
-          <button type="button" className={styles.availabilityBtn} onClick={() => { setShowCurrent((value) => !value); setActiveMedia(null); }}>
-            View {showCurrent ? "proposed" : "current approved"} version
-          </button>
+          <p className={styles.cmpHint}>
+            The approved version remains published until this update is approved. Approval and rejection below apply to this update.
+          </p>
+
+          <div className={styles.cmpSummary}>
+            <div className={styles.cmpChips}>
+              <span className={`${styles.cmpChip} ${styles.cmpChipChanged}`}>
+                ● {changedCount} {changedCount === 1 ? "field changed" : "fields changed"}
+              </span>
+              <span className={`${styles.cmpChip} ${styles.cmpChipSame}`}>{unchangedCount} unchanged</span>
+            </div>
+            <div className={styles.cmpToggle} role="group" aria-label="Filter fields">
+              <button
+                type="button"
+                className={`${styles.cmpToggleBtn} ${!onlyChanged ? styles.cmpToggleBtnActive : ""}`}
+                onClick={() => setOnlyChanged(false)}
+                aria-pressed={!onlyChanged}
+              >
+                All fields
+              </button>
+              <button
+                type="button"
+                className={`${styles.cmpToggleBtn} ${onlyChanged ? styles.cmpToggleBtnActive : ""}`}
+                onClick={() => setOnlyChanged(true)}
+                aria-pressed={onlyChanged}
+              >
+                Only changes
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.cmpGrid} role="table" aria-label="Before versus after values">
+            <div className={styles.cmpHead} role="row">
+              <div className={styles.cmpHeadCell} role="columnheader">Field</div>
+              <div className={`${styles.cmpHeadCell} ${styles.cmpHeadBefore}`} role="columnheader">
+                − Before · Current approved
+              </div>
+              <div className={`${styles.cmpHeadCell} ${styles.cmpHeadGap}`} aria-hidden />
+              <div className={`${styles.cmpHeadCell} ${styles.cmpHeadAfter}`} role="columnheader">
+                + After · Proposed
+              </div>
+            </div>
+
+            {visibleComparison.length === 0 && (
+              <div className={styles.cmpEmpty}>No fields were changed in this update.</div>
+            )}
+
+            {visibleComparison.map(([label, current, proposed]) => {
+              const changed = current !== proposed;
+
+              if (!changed) {
+                return (
+                  <div key={label} role="row" className={`${styles.cmpRow} ${styles.cmpRowSame}`}>
+                    <div className={styles.cmpField} role="rowheader">{label}</div>
+                    <div role="cell" className={styles.cmpCellSame}>
+                      <span>{current}</span>
+                      <span className={styles.cmpSameTag}>No change</span>
+                    </div>
+                  </div>
+                );
+              }
+
+              const parts = diffParts(String(current), String(proposed));
+              return (
+                <div key={label} role="row" className={styles.cmpRow}>
+                  <div className={styles.cmpField} role="rowheader">
+                    {label}
+                    <span className={styles.cmpBadge}>CHANGED</span>
+                  </div>
+                  <div role="cell" data-label="Before" className={`${styles.cmpCell} ${styles.cmpCellOld}`}>
+                    <DiffValue parts={parts.before} tone="old" />
+                  </div>
+                  <div className={styles.cmpArrow} aria-hidden>→</div>
+                  <div role="cell" data-label="After" className={`${styles.cmpCell} ${styles.cmpCellNew}`}>
+                    <DiffValue parts={parts.after} tone="new" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className={styles.cmpFooter}>
+            <p className={styles.cmpFooterText}>
+              Showing {showCurrent ? "current approved version" : "proposed version"} below, including all media and mould specifications.
+            </p>
+            <button
+              type="button"
+              className={styles.availabilityBtn}
+              onClick={() => { setShowCurrent((value) => !value); setActiveMedia(null); }}
+            >
+              View {showCurrent ? "proposed" : "current approved"} version
+            </button>
+          </div>
         </section>
       )}
 
