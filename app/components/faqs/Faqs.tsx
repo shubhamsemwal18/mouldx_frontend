@@ -59,7 +59,7 @@ export default function Faqs() {
   const visible = useMemo(() => {
     const q = query.toLowerCase().trim();
     return FAQS.filter((f) => {
-      // Search karte waqt saari categories mein dhundhega
+    
       if (q) return `${f.q} ${f.a}`.toLowerCase().includes(q);
       return category === "All" || f.category === category;
     });

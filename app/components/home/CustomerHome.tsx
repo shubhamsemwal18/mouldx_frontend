@@ -3,18 +3,19 @@
 import { useCallback, useState } from "react";
 import Image from "next/image";
 import MouldExplore from "./MouldExplore";
+import Testimonials from "./Testimonials";
 import GetStartedModal from "./GetStartedModal";
 import SearchBar from "../shared/SearchBar";
 import SearchOverlay from "../shared/SearchOverlay";
 import styles from "./CustomerHome.module.css";
 import mouldchair from "@/public/images/mould-and-chair.webp";
 import { useAuth } from "@/app/lib/auth-context";
-import { useCatalogueCategories } from "@/app/lib/use-catalogue-categories";
 import {
   DEFAULT_FILTERS,
   countActiveFilters,
   type CatalogueFilters,
 } from "@/app/lib/catalogue-filters";
+import HomeFaqs from "./HomeFaqs";
 
 export default function CustomerHome() {
   const { user, loading } = useAuth();
@@ -24,8 +25,6 @@ export default function CustomerHome() {
   // Shared by the hero bar, the search sheet and the results section below,
   // so a search made anywhere filters the listings on this page.
   const [search, setSearch] = useState("");
-  const { categories } = useCatalogueCategories(true);
-  const categoryNames = categories.map((category) => category.title);
   // The filter panel lives in the listings section; the sticky bar toggles it.
   const [filterOpen, setFilterOpen] = useState(false);
   // Shared like `search`, so filters picked in the sheet also apply below.
@@ -61,7 +60,6 @@ export default function CustomerHome() {
             value={search}
             onChange={setSearch}
             onOpen={openSearch}
-            suggestions={categoryNames}
             onFilterToggle={toggleFilters}
             filterOpen={filterOpen}
             activeFilterCount={activeFilterCount}
@@ -80,9 +78,9 @@ export default function CustomerHome() {
         <div className={styles.heroOverlay} />
 
         <div className={styles.content}>
-          <p className={styles.eyebrow}>
-            {user ? `Hi ${user.fullName}, welcome to MouldX` : "Precision Engineered"}
-          </p>
+          {user && (
+            <p className={styles.eyebrow}>Hi {user.fullName}, welcome to MouldX</p>
+          )}
 
           <h1 className={styles.heading}>
             <span className={styles.headingAccent}>Turning Moulds</span>
@@ -93,14 +91,13 @@ export default function CustomerHome() {
           {!loading && !user && (
             <div className={styles.ctaRow}>
               <button type="button" onClick={() => setModalOpen(true)} className="btn-primary">
-                Get Started <span aria-hidden>→</span>
+                Get Started
               </button>
             </div>
           )}
         </div>
       </section>
 
-      
       <MouldExplore
         enabled={!searchOpen}
         search={search}
@@ -110,6 +107,10 @@ export default function CustomerHome() {
         filters={filters}
         onFiltersChange={setFilters}
       />
+
+      <Testimonials />
+
+      <HomeFaqs />
 
       <GetStartedModal open={modalOpen} onClose={() => setModalOpen(false)} />
 

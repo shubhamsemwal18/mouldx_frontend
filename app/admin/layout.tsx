@@ -41,6 +41,8 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { label: "Support", href: "/admin/support", icon: "💬" },
       { label: "Users", href: "/admin/users", icon: "◎" },
       { label: "Reviews", href: "/admin/reviews", icon: "★" },
+      { label: "Testimonials", href: "/admin/testimonials", icon: "❝" },
+      { label: "FAQs", href: "/admin/faqs", icon: "?" },
     ],
   },
 ];
