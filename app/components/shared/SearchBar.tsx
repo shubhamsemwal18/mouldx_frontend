@@ -1,20 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Search, X } from "lucide-react";
 import FilterIcon from "./FilterIcon";
 import styles from "./SearchBar.module.css";
-
-const FALLBACK_SUGGESTIONS = ["chair mould", "table mould", "stool mould"];
 
 interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
   /** Opens the full-screen search sheet; `voice` starts dictation with it. */
   onOpen: (options?: { voice?: boolean }) => void;
-  /** Real category names, so the rotating placeholder reflects the catalogue. */
-  suggestions?: string[];
   /** Toggles the listing filters. The filter button is hidden without it. */
   onFilterToggle?: () => void;
   filterOpen?: boolean;
@@ -25,25 +19,10 @@ export default function SearchBar({
   value,
   onChange,
   onOpen,
-  suggestions,
   onFilterToggle,
   filterOpen = false,
   activeFilterCount = 0,
 }: SearchBarProps) {
-  const [index, setIndex] = useState(0);
-  const rotating =
-    suggestions && suggestions.length > 0
-      ? suggestions.map((s) => `${s.toLowerCase()} mould`)
-      : FALLBACK_SUGGESTIONS;
-
-  // rotating placeholder
-  useEffect(() => {
-    const id = setInterval(() => {
-      setIndex((i) => (i + 1) % rotating.length);
-    }, 2500);
-    return () => clearInterval(id);
-  }, [rotating.length]);
-
   return (
     <div className={styles.wrap} role="search">
       <div
@@ -66,19 +45,7 @@ export default function SearchBar({
             <span className={styles.valueText}>{value}</span>
           ) : (
             <span className={styles.placeholder} aria-hidden>
-              Search&nbsp;
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={index}
-                  initial={{ y: 12, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -12, opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className={styles.placeholderWord}
-                >
-                  &ldquo;{rotating[index % rotating.length]}&rdquo;
-                </motion.span>
-              </AnimatePresence>
+              Search moulds
             </span>
           )}
         </div>

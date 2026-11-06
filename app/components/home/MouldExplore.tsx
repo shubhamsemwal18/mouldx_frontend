@@ -280,6 +280,8 @@ export default function MouldExplore({
           value={filters}
           onChange={setFilters}
           showAll={true}
+          onClearAll={clearAll}
+          extraActive={search.trim().length > 0}
         />
       )}
 
@@ -346,9 +348,12 @@ export default function MouldExplore({
           {!resultsLoading && currentProducts.length === 0 && !error && (
             <div>
               <p className={styles.emptyText}>No listings match your search.</p>
-              <button type="button" onClick={clearAll} className={styles.clearFilters}>
-                Clear search &amp; filters
-              </button>
+              {/* The open filter panel has its own clear button; avoid showing two. */}
+              {!isFilterOpen && (
+                <button type="button" onClick={clearAll} className={styles.clearFilters}>
+                  Clear search &amp; filters
+                </button>
+              )}
             </div>
           )}
 
