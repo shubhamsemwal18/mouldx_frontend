@@ -12,12 +12,15 @@ import { getPostAuthPath } from "@/app/lib/auth-routing";
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 28;
 
+type OtpCredential = Credential & { code?: string };
+
 export default function VerifyOtpPage() {
   const router = useRouter();
   const { setAuthPayload } = useAuth();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [timeLeft, setTimeLeft] = useState(RESEND_SECONDS);
   const [serverError, setServerError] = useState("");
+  const [otpError, setOtpError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -27,6 +30,34 @@ export default function VerifyOtpPage() {
     return () => clearInterval(timer);
   }, [timeLeft]);
 
+  // Chrome on Android: read the code from an incoming SMS (Web OTP API).
+  useEffect(() => {
+    if (typeof window === "undefined" || !("OTPCredential" in window)) return;
+    const controller = new AbortController();
+
+    navigator.credentials
+      .get({
+        otp: { transport: ["sms"] },
+        signal: controller.signal,
+      } as CredentialRequestOptions & { otp: { transport: string[] } })
+      .then((credential) => {
+        const code = ((credential as OtpCredential | null)?.code || "")
+          .replace(/\D/g, "")
+          .slice(0, OTP_LENGTH);
+        if (!code) return;
+        const next = Array(OTP_LENGTH).fill("");
+        code.split("").forEach((char, i) => (next[i] = char));
+        setOtp(next);
+        setOtpError(false);
+        inputRefs.current[Math.min(code.length, OTP_LENGTH - 1)]?.focus();
+      })
+      .catch(() => {
+        /* aborted or not available: manual entry still works */
+      });
+
+    return () => controller.abort();
+  }, []);
+
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60).toString().padStart(2, "0");
     const s = (secs % 60).toString().padStart(2, "0");
@@ -34,7 +65,22 @@ export default function VerifyOtpPage() {
   };
 
   const handleChange = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, "").slice(-1);
+    setOtpError(false);
+    const digits = value.replace(/\D/g, "");
+
+    // Autofill (iOS / Android keyboard) can drop the whole code into one box.
+    if (digits.length > 1) {
+      const next = [...otp];
+      digits
+        .slice(0, OTP_LENGTH - index)
+        .split("")
+        .forEach((char, i) => (next[index + i] = char));
+      setOtp(next);
+      inputRefs.current[Math.min(index + digits.length, OTP_LENGTH - 1)]?.focus();
+      return;
+    }
+
+    const digit = digits.slice(-1);
     const next = [...otp];
     next[index] = digit;
     setOtp(next);
@@ -57,6 +103,7 @@ export default function VerifyOtpPage() {
     const next = Array(OTP_LENGTH).fill("");
     pasted.split("").forEach((char, i) => (next[i] = char));
     setOtp(next);
+    setOtpError(false);
     inputRefs.current[Math.min(pasted.length, OTP_LENGTH - 1)]?.focus();
   };
 
@@ -70,6 +117,7 @@ export default function VerifyOtpPage() {
 
     try {
       setServerError("");
+      setOtpError(false);
       setTimeLeft(RESEND_SECONDS);
       if (pending.flow === "signup") {
         await authApi.resendSignupOtp(pending.identifier);
@@ -83,38 +131,39 @@ export default function VerifyOtpPage() {
 
   const isComplete = otp.every((d) => d !== "");
 
-const handleVerify = async () => {
-  if (!isComplete) return;
-  const pending = getPendingAuth();
-  if (!pending) {
-    setServerError("OTP session expired. Please start again.");
-    router.replace("/signup");
-    return;
-  }
+  const handleVerify = async () => {
+    if (!isComplete) return;
+    const pending = getPendingAuth();
+    if (!pending) {
+      setServerError("OTP session expired. Please start again.");
+      router.replace("/signup");
+      return;
+    }
 
-  try {
-    setSubmitting(true);
-    setServerError("");
-    const code = otp.join("");
-    const payload =
-      pending.flow === "signup"
-        ? await authApi.verifySignupOtp({ phone: pending.identifier, otp: code })
-        : await authApi.verifyLoginOtp({ identifier: pending.identifier, otp: code });
+    try {
+      setSubmitting(true);
+      setServerError("");
+      setOtpError(false);
+      const code = otp.join("");
+      const payload =
+        pending.flow === "signup"
+          ? await authApi.verifySignupOtp({ phone: pending.identifier, otp: code })
+          : await authApi.verifyLoginOtp({ identifier: pending.identifier, otp: code });
 
       setAuthPayload(payload);
       clearPendingAuth();
       const landing = getPostAuthPath(payload);
       router.replace(landing);
-  } catch (error) {
-    setServerError(getApiErrorMessage(error, "OTP verification failed"));
-  } finally {
-    setSubmitting(false);
-  }
-};
+    } catch (error) {
+      setOtpError(true);
+      setServerError(getApiErrorMessage(error, "OTP verification failed"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className={styles.page}>
-     
       <h1 className={styles.title}>Verify OTP</h1>
       <p className={styles.subtitle}>
         Enter the 6-digit code sent to your registered phone.
@@ -134,12 +183,13 @@ const handleVerify = async () => {
               }}
               type="text"
               aria-label={`OTP digit ${i + 1}`}
+              aria-invalid={otpError}
               inputMode="numeric"
-              maxLength={1}
+              autoComplete="one-time-code"
               value={digit}
               onChange={(e) => handleChange(i, e.target.value)}
               onKeyDown={(e) => handleKeyDown(i, e)}
-              className={`${styles.otpBox} ${digit ? styles.otpBoxFilled : ""}`}
+              className={`${styles.otpBox} ${digit ? styles.otpBoxFilled : ""} ${otpError ? styles.otpBoxError : ""}`}
             />
           ))}
         </div>
@@ -152,7 +202,14 @@ const handleVerify = async () => {
         >
           {submitting ? "Verifying..." : "Verify & Continue"}
         </button>
-        {serverError && <p className={styles.resendText}>{serverError}</p>}
+        {serverError && (
+          <p
+            className={`${styles.resendText} ${otpError ? styles.errorText : ""}`}
+            role="alert"
+          >
+            {serverError}
+          </p>
+        )}
 
         <p className={styles.resendText}>
           {timeLeft > 0 ? (
@@ -164,7 +221,6 @@ const handleVerify = async () => {
           )}
         </p>
       </div>
-
     </div>
   );
 }

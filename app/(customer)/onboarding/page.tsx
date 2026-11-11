@@ -10,7 +10,7 @@ import styles from "./Onboarding.module.css";
 
 const STEPS = [
   { icon: UserRound, title: "Personal and firm details", description: "Complete your profile details." },
-  { icon: FileText, title: "Verification documents", description: "Submit your KYC documents." },
+  { icon: FileText, title: "Verify Documents", description: "Submit your KYC documents." },
   { icon: ClipboardCheck, title: "Admin review", description: "Your account is verified after approval." },
 ];
 

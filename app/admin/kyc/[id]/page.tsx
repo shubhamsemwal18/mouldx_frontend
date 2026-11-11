@@ -230,12 +230,13 @@ export default function KycReviewDetailPage({
               <Row label="Name" value={ownerUser?.fullName || "-"} />
               <Row label="Phone No." value={ownerUser?.phone || "-"} />
               <Row label="Email ID – POC" value={ownerUser?.email || "-"} />
-              <Row label="PAN" value={kyc.personalDetails?.panNumber || "-"} isLast />
+              
             </div>
 
             <div className={styles.card}>
               <h2 className={styles.cardTitle}>Firm Details</h2>
               <Row label="Email ID" value={kyc.firmDetails?.email || "-"} />
+              <Row label="PAN" value={kyc.personalDetails?.panNumber || "-"} isLast />
               <Row label="Firm Name" value={kyc.firmDetails?.name || "-"} />
               <Row label="Address" value={kyc.firmDetails?.address || "-"} />
               <Row label="GST No." value={kyc.firmDetails?.gstNumber || "-"} isLast />

@@ -108,6 +108,23 @@
   background: #ffffff;
 }
 
+/* Wrong OTP: red outline (same pattern as the listing form errors) */
+.otpBoxError,
+.otpBoxError:focus {
+  border-color: #dc2626;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.otpBoxError:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.resendText.errorText {
+  color: #dc2626;
+  font-weight: 600;
+}
+
 /* ---------- Verify button ---------- */
 .verifyBtn {
   margin-top: 20px;

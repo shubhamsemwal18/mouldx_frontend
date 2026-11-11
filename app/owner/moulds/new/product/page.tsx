@@ -599,8 +599,8 @@ function MouldFields({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
-        <SelectField label="Hot Runner / Cold Runner" value={m.runnerType} options={toOptions(RUNNER_TYPES)} onChange={(v) => set({ runnerType: v })} />
-        <SelectField label="Changeable Brand Logo" value={m.changeableLogo} options={toOptions(YES_NO)} onChange={(v) => set({ changeableLogo: v })} />
+        <SelectField label="Hot/Cold Runner" value={m.runnerType} options={toOptions(RUNNER_TYPES)} onChange={(v) => set({ runnerType: v })} />
+        <SelectField label="Changeable Logo" value={m.changeableLogo} options={toOptions(YES_NO)} onChange={(v) => set({ changeableLogo: v })} />
       </div>
     </>
   );
@@ -1137,7 +1137,7 @@ export default function ProductDetailsPage() {
     <div className={styles.page}>
       <div className={styles.content}>
         <h1 className="text-[26px] font-extrabold text-gray-900">{isUpdate ? "Update Product" : "Product Details"}</h1>
-        {isUpdate ? <p className={styles.updateNotice}>Changes are saved separately. The published details and booking prices stay unchanged until admin approval.</p> : <p className="mt-1 text-sm text-gray-400">Add the product, its components &amp; moulds.</p>}
+        {isUpdate ? <p className={styles.updateNotice}>Changes are saved separately. The published details and booking prices stay unchanged until admin approval.</p> : <p className="mt-1 text-sm text-black">Add the product, its components &amp; moulds.</p>}
         {(listingStatus === "rejected" || revisionStatus === "rejected") && (
           <div className={styles.rejectedCard}>
             <span className={styles.rejectedPill}>CHANGES REQUESTED</span>
@@ -1195,7 +1195,7 @@ export default function ProductDetailsPage() {
               />
 
               <div className="mt-3">
-                <Field ctx={ctx} id="p.weight" label="Weight (g)" value={product.weight} mode="dec" placeholder="3.2" onChange={(v) => setP({ weight: v })} />
+                <Field ctx={ctx} id="p.weight" label="Weight (GMS)" value={product.weight} mode="dec" placeholder="3.2" onChange={(v) => setP({ weight: v })} />
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3">
@@ -1325,7 +1325,7 @@ export default function ProductDetailsPage() {
                     />
 
                     <div className="mt-3 grid grid-cols-2 gap-3">
-                      <Field ctx={ctx} id={`${cBase}.weight`} label="Weight (g)" value={c.weight} mode="dec" placeholder="3.2" onChange={(v) => setComp(i, { weight: v })} />
+                      <Field ctx={ctx} id={`${cBase}.weight`} label="Weight (GMS)" value={c.weight} mode="dec" placeholder="3.2" onChange={(v) => setComp(i, { weight: v })} />
                       <Field ctx={ctx} id={`${cBase}.surfaceFinish`} label="Surface Finish" value={c.surfaceFinish} placeholder="Matte" onChange={(v) => setComp(i, { surfaceFinish: v })} />
                     </div>
 

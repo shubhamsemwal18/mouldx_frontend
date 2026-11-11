@@ -453,9 +453,9 @@ function MouldRows({ mould }: { mould: Mould }) {
         label="Recommended Machine Tonnage"
         value={dash(mould.recommendedMachineTonnage, " T")}
       />
-      <Row label="Hot Runner / Cold Runner" value={dash(mould.runnerType)} />
+      <Row label="Hot/Cold Runner" value={dash(mould.runnerType)} />
       <Row
-        label="Changeable Brand Logo"
+        label="Changeable Logo"
         value={mould.changeableBrandLogo ? "Yes" : "No"}
         isLast
       />
