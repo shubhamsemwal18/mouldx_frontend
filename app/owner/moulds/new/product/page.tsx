@@ -1247,13 +1247,13 @@ export default function ProductDetailsPage() {
                 ))}
               </select>
               {countError && <p className={styles.errorText}>{countError}</p>}
-              <p className={styles.helperText}>
+              {/* <p className={styles.helperText}>
                 {!hasSelection
                   ? "Select how many components / moulds are involved. The forms will appear below."
                   : multiple
                   ? `Fill details for all ${count} components below (example: Pen → Cap, Body, Bottom, Top).`
                   : "Single mould. Fill the mould details below."}
-              </p>
+              </p> */}
             </div>
           </>
         )}

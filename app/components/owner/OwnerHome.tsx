@@ -112,7 +112,7 @@ export default function OwnerHome() {
               </Link>
             </div>
             <section className={styles.card}>
-              <div className={styles.utilizationHeader}>
+              {/* <div className={styles.utilizationHeader}>
                 <h2 className={styles.cardTitle}>Mould Utilization</h2>
                 <span className={styles.utilizationPercent}>
                   {data.utilization.percentage}%
@@ -130,7 +130,7 @@ export default function OwnerHome() {
                   className={styles.progressFill}
                   style={{ width: `${data.utilization.percentage}%` }}
                 />
-              </div>
+              </div> */}
               <div className={styles.statsGrid}>
                 {(
                   [

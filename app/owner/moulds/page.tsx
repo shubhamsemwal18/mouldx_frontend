@@ -25,6 +25,7 @@ import {
   isAdminMaintenance,
   type ListingDisplayStatus,
 } from "./listing-status";
+import SearchBar from "@/app/components/common/SearchBar";
 
 type StatusFilter = "ALL" | ListingDisplayStatus | "approved" | "available" | "rented";
 
@@ -657,30 +658,12 @@ export default function MyMouldsPage() {
       <div className={styles.content}>
         <h1 className={styles.title}>My Moulds</h1>
 
-        <div className={styles.searchRow}>
-          <div className={styles.searchWrap}>
-            <span className={styles.searchIcon} aria-hidden>
-              🔍
-            </span>
-            <input
-              type="text"
-              placeholder="Search by name or code"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={styles.searchInput}
-              aria-label="Search listings"
-            />
-            {search && (
-              <button
-                type="button"
-                className={styles.clearSearchBtn}
-                onClick={() => setSearch("")}
-                aria-label="Clear search"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+                <SearchBar
+          value={search}
+          onChange={setSearch}
+          ariaLabel="Search listings"
+          placeholder="Search by name or code"
+        >
           <button
             type="button"
             className={`${styles.filterBtn} ${
@@ -697,7 +680,7 @@ export default function MyMouldsPage() {
               <span className={styles.filterCount}>{activeFilterCount}</span>
             )}
           </button>
-        </div>
+        </SearchBar>
 
         {isFilterOpen && (
           <div className={styles.filterPanel}>
