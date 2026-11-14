@@ -57,6 +57,12 @@ const num = (value: string): number | undefined => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+/** The first item in a gallery is the cover, so marking a cover moves it to the front. */
+const moveToFront = (items: MediaItem[], index: number): MediaItem[] =>
+  index <= 0 || index >= items.length
+    ? items
+    : [items[index], ...items.filter((_, i) => i !== index)];
+
 interface Coords {
   lat: number;
   lng: number;
@@ -160,6 +166,10 @@ const emptyMould = (): MouldState => ({
 const req = (v: string, re: RegExp, msg: string) =>
   v.trim() === "" ? "Required" : !re.test(v.trim()) ? msg : "";
 const dec = (v: string) => req(v, REGEX.posDec, "Numeric value only");
+const decPositive = (v: string) => {
+  const error = dec(v);
+  return error || (Number(v) > 0 ? "" : "Must be greater than 0");
+};
 const int = (v: string) => req(v, REGEX.posInt, "Whole number only");
 
 function validateAll(
@@ -183,10 +193,10 @@ function validateAll(
     add("p.subCategory", "Required");
   }
   add("p.images", product.images.length > 0 ? "" : "At least one image is required");
-  add("p.length", dec(product.length));
-  add("p.breadth", dec(product.breadth));
-  add("p.height", dec(product.height));
-  add("p.weight", dec(product.weight));
+  add("p.length", decPositive(product.length));
+  add("p.breadth", decPositive(product.breadth));
+  add("p.height", decPositive(product.height));
+  add("p.weight", decPositive(product.weight));
   add("p.material", req(product.material, REGEX.text, "Enter a valid material"));
   add("p.surfaceFinish", req(product.surfaceFinish, REGEX.text, "Enter a valid surface finish"));
   add("p.perDayCharges", dec(product.perDayCharges));
@@ -201,10 +211,10 @@ function validateAll(
       const k = `c.${i}`;
       add(`${k}.name`, req(c.name, REGEX.name, "2–80 characters, letters/numbers only"));
 
-      add(`${k}.length`, dec(c.length));
-      add(`${k}.breadth`, dec(c.breadth));
-      add(`${k}.height`, dec(c.height));
-      add(`${k}.weight`, dec(c.weight));
+      add(`${k}.length`, decPositive(c.length));
+      add(`${k}.breadth`, decPositive(c.breadth));
+      add(`${k}.height`, decPositive(c.height));
+      add(`${k}.weight`, decPositive(c.weight));
       add(`${k}.surfaceFinish`, req(c.surfaceFinish, REGEX.text, "Enter a valid surface finish"));
     });
   }
@@ -214,10 +224,11 @@ function validateAll(
       const k = `m.${i}`;
       add(`${k}.mouldNameOrId`, req(m.mouldNameOrId, REGEX.mouldNameOrId, "3–80 characters, letters/numbers only"));
       add(`${k}.year`, req(m.year, REGEX.year, "Enter a valid year (e.g. 2022)"));
-      add(`${k}.length`, dec(m.length));
-      add(`${k}.breadth`, dec(m.breadth));
-      add(`${k}.height`, dec(m.height));
-      add(`${k}.weight`, dec(m.weight));
+      add(`${k}.images`, m.images.length > 0 ? "" : "At least one image is required");
+      add(`${k}.length`, decPositive(m.length));
+      add(`${k}.breadth`, decPositive(m.breadth));
+      add(`${k}.height`, decPositive(m.height));
+      add(`${k}.weight`, decPositive(m.weight));
       add(`${k}.cavities`, int(m.cavities));
       add(`${k}.cycleTime`, int(m.cycleTime));
       add(`${k}.tonnage`, dec(m.tonnage));
@@ -255,6 +266,7 @@ function Field({
   mode = "text",
   placeholder,
   maxLength,
+  required = false,
 }: {
   ctx: Ctx;
   id: string;
@@ -264,11 +276,15 @@ function Field({
   mode?: Mode;
   placeholder?: string;
   maxLength?: number;
+  required?: boolean;
 }) {
   const error = ctx.touched[id] ? ctx.errors[id] : "";
   return (
     <div>
-      <label htmlFor={`listing-${id}`} className={styles.fieldLabel}>{label}</label>
+      <label htmlFor={`listing-${id}`} className={styles.fieldLabel}>
+        {label}
+        {required && <span className={styles.requiredMark} aria-hidden> *</span>}
+      </label>
       <input
         id={`listing-${id}`}
         type="text"
@@ -339,6 +355,8 @@ function MediaGallery({
   error,
   onAdd,
   onRemove,
+  onMakeCover,
+  required = false,
 }: {
   label: string;
   accept: string;
@@ -348,6 +366,8 @@ function MediaGallery({
   error?: string;
   onAdd: (files: File[]) => void;
   onRemove: (index: number) => void;
+  onMakeCover?: (index: number) => void;
+  required?: boolean;
 }) {
   const [rejected, setRejected] = useState<string[]>([]);
   const remaining = max - items.length;
@@ -355,7 +375,8 @@ function MediaGallery({
   return (
     <div className={styles.galleryBlock}>
       <label className={styles.fieldLabel}>
-        {label}{" "}
+        {label}
+        {required && <span className={styles.requiredMark} aria-hidden> *</span>}{" "}
         <span className={styles.galleryCount}>
           {items.length}/{max}
         </span>
@@ -381,6 +402,17 @@ function MediaGallery({
             >
               ✕
             </button>
+
+            {kind === "image" && index > 0 && onMakeCover && (
+              <button
+                type="button"
+                className={styles.galleryMakeCover}
+                onClick={() => onMakeCover(index)}
+                aria-label={`Set ${label} ${index + 1} as cover`}
+              >
+                Set cover
+              </button>
+            )}
 
             {index === 0 && kind === "image" && <span className={styles.galleryCover}>Cover</span>}
           </div>
@@ -433,6 +465,7 @@ function MediaGallery({
       <p className={styles.galleryHint}>
         {kind === "image" ? "JPG, PNG or WebP" : "MP4 or MOV"} · up to{" "}
         {formatBytes(MAX_UPLOAD_BYTES)} each
+        {kind === "image" && items.length > 1 ? " · tap “Set cover” to choose the main image" : ""}
       </p>
     </div>
   );
@@ -445,6 +478,7 @@ function MediaSection({
   videos,
   onAddImages,
   onRemoveImage,
+  onMakeCoverImage,
   onAddVideos,
   onRemoveVideo,
 }: {
@@ -454,6 +488,7 @@ function MediaSection({
   videos: MediaItem[];
   onAddImages: (files: File[]) => void;
   onRemoveImage: (index: number) => void;
+  onMakeCoverImage: (index: number) => void;
   onAddVideos: (files: File[]) => void;
   onRemoveVideo: (index: number) => void;
 }) {
@@ -464,6 +499,7 @@ function MediaSection({
     <div className="mt-3">
       <MediaGallery
         label="Images"
+        required
         accept="image/*"
         kind="image"
         items={images}
@@ -474,6 +510,7 @@ function MediaSection({
           ctx.touch(imagesKey);
         }}
         onRemove={onRemoveImage}
+        onMakeCover={onMakeCoverImage}
       />
 
       <MediaGallery
@@ -503,9 +540,9 @@ function DimensionsRow({
   return (
     <div className="mt-3">
       <div className="grid grid-cols-3 gap-3">
-        <Field ctx={ctx} id={`${base}.length`} label="Length (mm)" value={values.length} mode="dec" placeholder="420" onChange={(v) => onChange("length", v)} />
-        <Field ctx={ctx} id={`${base}.breadth`} label="Breadth (mm)" value={values.breadth} mode="dec" placeholder="310" onChange={(v) => onChange("breadth", v)} />
-        <Field ctx={ctx} id={`${base}.height`} label="Height (mm)" value={values.height} mode="dec" placeholder="280" onChange={(v) => onChange("height", v)} />
+        <Field ctx={ctx} id={`${base}.length`} label="Length (mm)" required value={values.length} mode="dec" placeholder="420" onChange={(v) => onChange("length", v)} />
+        <Field ctx={ctx} id={`${base}.breadth`} label="Breadth (mm)" required value={values.breadth} mode="dec" placeholder="310" onChange={(v) => onChange("breadth", v)} />
+        <Field ctx={ctx} id={`${base}.height`} label="Height (mm)" required value={values.height} mode="dec" placeholder="280" onChange={(v) => onChange("height", v)} />
       </div>
     </div>
   );
@@ -552,6 +589,7 @@ function MouldFields({
   set,
   onAddImages,
   onRemoveImage,
+  onMakeCoverImage,
   onAddVideos,
   onRemoveVideo,
 }: {
@@ -561,6 +599,7 @@ function MouldFields({
   set: (patch: Partial<MouldState>) => void;
   onAddImages: (files: File[]) => void;
   onRemoveImage: (index: number) => void;
+  onMakeCoverImage: (index: number) => void;
   onAddVideos: (files: File[]) => void;
   onRemoveVideo: (index: number) => void;
 }) {
@@ -575,6 +614,7 @@ function MouldFields({
         videos={m.videos}
         onAddImages={onAddImages}
         onRemoveImage={onRemoveImage}
+        onMakeCoverImage={onMakeCoverImage}
         onAddVideos={onAddVideos}
         onRemoveVideo={onRemoveVideo}
       />
@@ -592,7 +632,7 @@ function MouldFields({
       />
 
       <div className="mt-3 grid grid-cols-2 gap-3">
-        <Field ctx={ctx} id={`${base}.weight`} label="Weight (kg)" value={m.weight} mode="dec" placeholder="185" onChange={(v) => set({ weight: v })} />
+        <Field ctx={ctx} id={`${base}.weight`} label="Weight (kg)" required value={m.weight} mode="dec" placeholder="185" onChange={(v) => set({ weight: v })} />
         <Field ctx={ctx} id={`${base}.cavities`} label="No. of Cavities / Core" value={m.cavities} mode="int" placeholder="4" onChange={(v) => set({ cavities: v })} />
         <Field ctx={ctx} id={`${base}.cycleTime`} label="Expected Cycle Time (virgin material) (s)" value={m.cycleTime} mode="int" placeholder="28" onChange={(v) => set({ cycleTime: v })} />
         <Field ctx={ctx} id={`${base}.tonnage`} label="Recommended Machine Tonnage (T)" value={m.tonnage} mode="dec" placeholder="220" onChange={(v) => set({ tonnage: v })} />
@@ -878,6 +918,9 @@ export default function ProductDetailsPage() {
     setP({ [key]: product[key].filter((_, i) => i !== index) } as Partial<ProductState>);
   };
 
+  const makeProductCover = (index: number) =>
+    setProduct((prev) => ({ ...prev, images: moveToFront(prev.images, index) }));
+
   const addMouldMedia = (mouldIndex: number, key: "images" | "videos", files: File[]) => {
     setMoulds((prev) =>
       prev.map((mould, i) =>
@@ -896,6 +939,13 @@ export default function ProductDetailsPage() {
       )
     );
   };
+
+  const makeMouldCover = (mouldIndex: number, index: number) =>
+    setMoulds((prev) =>
+      prev.map((mould, i) =>
+        i === mouldIndex ? { ...mould, images: moveToFront(mould.images, index) } : mould
+      )
+    );
 
   const isOpen = (i: number) => open[i] ?? i === 0;
   const toggle = (i: number) => setOpen((prev) => ({ ...prev, [i]: !isOpen(i) }));
@@ -1151,7 +1201,7 @@ export default function ProductDetailsPage() {
             <div className={styles.card}>
               <h2 className={styles.cardTitle}>Product Details</h2>
 
-              <Field ctx={ctx} id="p.productName" label="Product Name" value={product.productName} placeholder="28mm PET Bottle Cap" onChange={(v) => setP({ productName: v })} />
+              <Field ctx={ctx} id="p.productName" label="Product Name" required value={product.productName} placeholder="28mm PET Bottle Cap" onChange={(v) => setP({ productName: v })} />
 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <SelectField
@@ -1183,6 +1233,7 @@ export default function ProductDetailsPage() {
                 videos={product.videos}
                 onAddImages={(files) => addProductMedia("images", files)}
                 onRemoveImage={(i) => removeProductMedia("images", i)}
+                onMakeCoverImage={makeProductCover}
                 onAddVideos={(files) => addProductMedia("videos", files)}
                 onRemoveVideo={(i) => removeProductMedia("videos", i)}
               />
@@ -1195,12 +1246,12 @@ export default function ProductDetailsPage() {
               />
 
               <div className="mt-3">
-                <Field ctx={ctx} id="p.weight" label="Weight (GMS)" value={product.weight} mode="dec" placeholder="3.2" onChange={(v) => setP({ weight: v })} />
+                <Field ctx={ctx} id="p.weight" label="Weight (GMS)" required value={product.weight} mode="dec" placeholder="3.2" onChange={(v) => setP({ weight: v })} />
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <Field ctx={ctx} id="p.material" label="Material" value={product.material} placeholder="HDPE" onChange={(v) => setP({ material: v })} />
-                <Field ctx={ctx} id="p.surfaceFinish" label="Surface Finish" value={product.surfaceFinish} placeholder="Matte" onChange={(v) => setP({ surfaceFinish: v })} />
+                <Field ctx={ctx} id="p.material" label="Material" required value={product.material} placeholder="HDPE" onChange={(v) => setP({ material: v })} />
+                <Field ctx={ctx} id="p.surfaceFinish" label="Surface Finish" required value={product.surfaceFinish} placeholder="Matte" onChange={(v) => setP({ surfaceFinish: v })} />
               </div>
 
               <div className="mt-3">
@@ -1290,6 +1341,7 @@ export default function ProductDetailsPage() {
                   set={(patch) => setMould(0, patch)}
                   onAddImages={(files) => addMouldMedia(0, "images", files)}
                   onRemoveImage={(i) => removeMouldMedia(0, "images", i)}
+                  onMakeCoverImage={(i) => makeMouldCover(0, i)}
                   onAddVideos={(files) => addMouldMedia(0, "videos", files)}
                   onRemoveVideo={(i) => removeMouldMedia(0, "videos", i)}
                 />
@@ -1325,8 +1377,8 @@ export default function ProductDetailsPage() {
                     />
 
                     <div className="mt-3 grid grid-cols-2 gap-3">
-                      <Field ctx={ctx} id={`${cBase}.weight`} label="Weight (GMS)" value={c.weight} mode="dec" placeholder="3.2" onChange={(v) => setComp(i, { weight: v })} />
-                      <Field ctx={ctx} id={`${cBase}.surfaceFinish`} label="Surface Finish" value={c.surfaceFinish} placeholder="Matte" onChange={(v) => setComp(i, { surfaceFinish: v })} />
+                      <Field ctx={ctx} id={`${cBase}.weight`} label="Weight (GMS)" required value={c.weight} mode="dec" placeholder="3.2" onChange={(v) => setComp(i, { weight: v })} />
+                      <Field ctx={ctx} id={`${cBase}.surfaceFinish`} label="Surface Finish" required value={c.surfaceFinish} placeholder="Matte" onChange={(v) => setComp(i, { surfaceFinish: v })} />
                     </div>
 
                     <div className={styles.divider} />
@@ -1339,6 +1391,7 @@ export default function ProductDetailsPage() {
                         set={(patch) => setMould(i, patch)}
                         onAddImages={(files) => addMouldMedia(i, "images", files)}
                         onRemoveImage={(idx) => removeMouldMedia(i, "images", idx)}
+                        onMakeCoverImage={(idx) => makeMouldCover(i, idx)}
                         onAddVideos={(files) => addMouldMedia(i, "videos", files)}
                         onRemoveVideo={(idx) => removeMouldMedia(i, "videos", idx)}
                       />

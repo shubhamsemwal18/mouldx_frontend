@@ -151,11 +151,6 @@ export default function BookingList({ view }: { view: BookingView }) {
       : isAdmin
         ? FILTERS
         : [...FILTERS, COMPLETED_FILTER];
-  const resetFilters = () => {
-    setStatus(view === "host" ? "upcoming" : "");
-    setSearchInput("");
-    setSearch("");
-  };
 
   return (
     <div
@@ -260,11 +255,6 @@ export default function BookingList({ view }: { view: BookingView }) {
                 ? "Try another status or search."
                 : "Your booking requests will appear here."}
           </p>
-          {(search || status) && (
-            <button className={styles.button} onClick={resetFilters}>
-              Clear filters
-            </button>
-          )}
           {view === "customer" && (
             <Link
               className={`${styles.button} ${styles.primary}`}
