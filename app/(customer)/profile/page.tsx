@@ -144,13 +144,14 @@ export default function ProfilePage() {
             ["Name", user.fullName],
             ["Phone No.", phone],
             ["Email ID", user.email],
-            ["PAN", personal?.panNumber],
+           
           ]}
         />
       </Section>
       <Section title="Firm Details">
         <Fields
           items={[
+             ["PAN", personal?.panNumber],
             ["Firm", firm?.name],
             ["GSTIN", firm?.gstNumber],
             ["Email", firm?.email],
@@ -182,8 +183,8 @@ export default function ProfilePage() {
           aria-controls="profile-documents"
         >
           {documentsOpen
-            ? "Hide verification documents"
-            : "View verification documents"}
+            ? "Hide Verificy Documents"
+            : "View Verificy Documents"}
         </button>
         {documentsOpen && (
           <div id="profile-documents" className={styles.documents}>

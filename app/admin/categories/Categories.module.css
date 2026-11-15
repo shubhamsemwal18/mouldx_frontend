@@ -1,5 +1,5 @@
 /* =========================================================
-   Admin Categories – redesigned (same class names, no logic change)
+   Admin Categories – compact table layout
    ========================================================= */
 
 .page {
@@ -318,8 +318,6 @@ select.input {
 /* ---------- Buttons ---------- */
 .primaryBtn,
 .newBtn,
-.secondaryBtn,
-.dangerBtn,
 .pageBtn,
 .iconBtn {
   border: none;
@@ -330,10 +328,9 @@ select.input {
 
 .primaryBtn:focus-visible,
 .newBtn:focus-visible,
-.secondaryBtn:focus-visible,
-.dangerBtn:focus-visible,
 .pageBtn:focus-visible,
 .iconBtn:focus-visible,
+.iconAction:focus-visible,
 .statusBtn:focus-visible {
   outline: 2px solid var(--c-primary);
   outline-offset: 2px;
@@ -474,105 +471,171 @@ select.input {
 }
 
 .emptyText {
+  margin: 0;
   padding: 36px 14px;
   background: #f8fafc;
-  border: 1.5px dashed #d5dcea;
+  border-radius: 0;
   color: #64748b;
   text-align: center;
 }
 
-/* ---------- Category cards ---------- */
-.categoryList {
+/* ---------- Table ---------- */
+.table {
   margin-top: 14px;
-  display: grid;
-  gap: 10px;
-}
-
-.categoryCard {
-  display: grid;
-  grid-template-columns: 46px minmax(0, 1fr);
-  gap: 14px;
   border: 1px solid var(--c-border);
-  border-radius: 16px;
-  padding: 14px;
+  border-radius: 14px;
+  overflow: hidden;
   background: var(--c-surface);
-  transition: border-color 0.15s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.categoryCard:hover {
-  border-color: #cfd8ea;
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+.tableHead,
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.4fr) 108px 92px;
+  grid-template-areas: "main meta status actions";
+  align-items: center;
+  column-gap: 14px;
+}
+
+.tableHead {
+  padding: 10px 16px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--c-border);
+  color: #64748b;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.headRight {
+  text-align: right;
+}
+
+.row {
+  padding: 11px 16px;
+  border-top: 1px solid var(--c-border-soft);
+  background: var(--c-surface);
+  transition: background 0.15s ease;
+}
+
+.tableHead + .row {
+  border-top: none;
+}
+
+.row:hover {
+  background: #f8faff;
+}
+
+.rowEditing,
+.rowEditing:hover {
+  background: var(--c-primary-soft);
+  box-shadow: inset 3px 0 0 var(--c-primary);
+}
+
+.cellMain {
+  grid-area: main;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .categoryIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 13px;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #dbeafe, #eff4ff);
   color: var(--c-primary);
 }
 
-/* Draft cards get a muted icon (progressive enhancement) */
-.categoryCard:has(.draft) .categoryIcon {
-  background: #f1f4f9;
-  color: #64748b;
+.categoryIconSub {
+  background: #f3effe;
+  color: #7c3aed;
 }
 
 .categoryBody {
   min-width: 0;
 }
 
-.categoryTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.categoryTop > div {
-  min-width: 0;
-}
-
 .categoryTitle {
   margin: 0;
   color: var(--c-text);
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 800;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.1px;
+  line-height: 1.35;
   overflow-wrap: anywhere;
-}
-
-.categoryMeta {
-  margin: 4px 0 0;
-  color: var(--c-muted);
-  font-size: 11.5px;
-  font-weight: 700;
 }
 
 .description {
-  margin: 8px 0 0;
-  color: #475569;
-  font-size: 12.5px;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cellMeta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.typeBadge {
+  flex-shrink: 0;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.typeRoot {
+  background: var(--c-primary-soft);
+  color: var(--c-primary);
+}
+
+.typeSub {
+  background: #f3effe;
+  color: #7c3aed;
+}
+
+.metaText {
+  min-width: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cellStatus {
+  grid-area: status;
 }
 
 .statusPill {
-  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   border-radius: 999px;
-  padding: 5px 11px 5px 9px;
+  padding: 4px 10px 4px 8px;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.3px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .statusPill::before {
@@ -593,44 +656,49 @@ select.input {
   color: #64748b;
 }
 
-.cardActions {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--c-border);
+.cellActions {
+  grid-area: actions;
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
-.secondaryBtn,
-.dangerBtn {
+.iconAction {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  width: 36px;
+  height: 36px;
+  border: none;
   border-radius: 10px;
-  padding: 8px 13px;
-  font-size: 11.5px;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
-}
-
-.secondaryBtn {
   background: var(--c-primary-soft);
   color: var(--c-primary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.secondaryBtn:hover {
+.iconAction:hover {
   background: var(--c-primary);
   color: #ffffff;
 }
 
-.dangerBtn {
+.iconActionDanger {
   background: var(--c-danger-soft);
   color: var(--c-danger);
 }
 
-.dangerBtn:hover {
+.iconActionDanger:hover {
   background: var(--c-danger);
   color: #ffffff;
+}
+
+/* Labels are only shown on mobile */
+.actionText {
+  display: none;
 }
 
 /* ---------- Pagination ---------- */
@@ -681,6 +749,38 @@ select.input {
    Responsive
    ========================================================= */
 
+/* Mobile: each row becomes a stacked card */
+@media (max-width: 759px) {
+  .tableHead {
+    display: none;
+  }
+
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "main status"
+      "meta meta"
+      "actions actions";
+    row-gap: 10px;
+    padding: 14px;
+  }
+
+  .cellActions {
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  .iconAction {
+    flex: 1;
+    width: auto;
+    height: 40px;
+  }
+
+  .actionText {
+    display: inline;
+  }
+}
+
 /* Small phones */
 @media (max-width: 480px) {
   .formCard,
@@ -699,27 +799,6 @@ select.input {
   .newBtn {
     width: 100%;
     justify-content: center;
-  }
-
-  .categoryCard {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-  }
-
-  .categoryIcon {
-    width: 40px;
-    height: 40px;
-  }
-
-  .categoryTop {
-    flex-wrap: wrap;
-  }
-
-  .cardActions .secondaryBtn,
-  .cardActions .dangerBtn {
-    flex: 1;
-    justify-content: center;
-    min-height: 40px;
   }
 
   .pagination {
@@ -770,14 +849,13 @@ select.input {
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   .statCard,
-  .categoryCard,
+  .row,
   .primaryBtn,
   .newBtn {
     transition: none;
   }
 
   .statCard:hover:not(:disabled),
-  .categoryCard:hover,
   .primaryBtn:hover:not(:disabled),
   .newBtn:hover {
     transform: none;

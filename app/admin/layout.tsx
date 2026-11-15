@@ -24,6 +24,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
     label: "Approvals",
     items: [
       { label: "KYC", href: "/admin/kyc", icon: "🪪", badge: "kyc" },
+      { label: "Listings", href: "/admin/listings", icon: "▦", badge: "listings" },
       { label: "Bookings", href: "/admin/bookings", icon: "☰", badge: "bookings" },
     ],
   },
@@ -31,7 +32,7 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
     label: "Product",
     items: [
       { label: "Categories", href: "/admin/categories", icon: "▣" },
-      { label: "Listings", href: "/admin/listings", icon: "▦", badge: "listings" },
+      
       { label: "Active Listings", href: "/admin/active-listings", icon: "▤" },
     ],
   },
@@ -41,6 +42,8 @@ const NAV_SECTIONS: { label: string | null; items: NavItem[] }[] = [
       { label: "Support", href: "/admin/support", icon: "💬" },
       { label: "Users", href: "/admin/users", icon: "◎" },
       { label: "Reviews", href: "/admin/reviews", icon: "★" },
+      { label: "Testimonials", href: "/admin/testimonials", icon: "❝" },
+      { label: "FAQs", href: "/admin/faqs", icon: "?" },
     ],
   },
 ];

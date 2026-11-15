@@ -116,7 +116,7 @@ export default function GetStartedModal({ open, onClose }: GetStartedModalProps)
             </button>
           </div>
 
-          <p className="mt-5 text-center text-[11px] text-gray-400">
+          <p className="mt-5 text-center text-[11px] text-black">
             You can switch between roles anytime from your profile
           </p>
         </div>

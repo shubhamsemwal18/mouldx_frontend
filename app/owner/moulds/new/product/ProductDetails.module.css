@@ -724,3 +724,31 @@
   line-height: 1.5;
   color: #ef4444;
 }
+
+/* Paste at the END of ProductDetails.module.css */
+
+.galleryMakeCover {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  padding: 3px 7px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(17, 24, 39, 0.75);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.galleryMakeCover:hover {
+  background: rgba(37, 99, 235, 0.95);
+}
+
+.requiredMark {
+  color: #ef4444;
+  font-weight: 800;
+}

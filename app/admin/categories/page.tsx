@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Edit3, FolderTree, Plus, Search, Trash2, X } from "lucide-react";
+import { CornerDownRight, Edit3, FolderTree, Plus, Search, Trash2, X } from "lucide-react";
 import { adminApi, type AdminCategoryStats } from "@/app/lib/admin-api";
 import { getApiErrorMessage } from "@/app/lib/api";
 import type { Category } from "@/app/lib/types";
@@ -320,52 +320,87 @@ export default function AdminCategoriesPage() {
           {error && <p className={styles.errorText}>{error}</p>}
           {success && <p className={styles.successText}>{success}</p>}
 
-          <div className={styles.categoryList}>
+          <div className={styles.table}>
+            <div className={styles.tableHead} aria-hidden="true">
+              <span>Category</span>
+              <span>Type</span>
+              <span>Status</span>
+              <span className={styles.headRight}>Actions</span>
+            </div>
+
             {loading ? (
               <p className={styles.emptyText}>Loading categories...</p>
             ) : categories.length ? (
-              categories.map((category) => (
-                <article key={category._id} className={styles.categoryCard}>
-                  <div className={styles.categoryIcon} aria-hidden>
-                    <FolderTree size={18} />
-                  </div>
-                  <div className={styles.categoryBody}>
-                    <div className={styles.categoryTop}>
-                      <div>
-                        <h3 className={styles.categoryTitle}>{category.title}</h3>
-                        <p className={styles.categoryMeta}>
-                          {getParentTitle(category)}
-                          {category.childCount ? ` · ${category.childCount} subcategories` : ""}
-                        </p>
+              categories.map((category) => {
+                const isSub = Boolean(category.parent);
+                const childCount = category.childCount || 0;
+
+                return (
+                  <article
+                    key={category._id}
+                    className={`${styles.row} ${form.id === category._id ? styles.rowEditing : ""}`}
+                  >
+                    <div className={styles.cellMain}>
+                      <div
+                        className={`${styles.categoryIcon} ${isSub ? styles.categoryIconSub : ""}`}
+                        aria-hidden
+                      >
+                        {isSub ? <CornerDownRight size={16} /> : <FolderTree size={16} />}
                       </div>
+                      <div className={styles.categoryBody}>
+                        <h3 className={styles.categoryTitle}>{category.title}</h3>
+                        {category.description && (
+                          <p className={styles.description}>{category.description}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={styles.cellMeta}>
+                      <span className={`${styles.typeBadge} ${isSub ? styles.typeSub : styles.typeRoot}`}>
+                        {isSub ? "Sub" : "Root"}
+                      </span>
+                      {isSub ? (
+                        <span className={styles.metaText} title={getParentTitle(category)}>
+                          in {getParentTitle(category)}
+                        </span>
+                      ) : (
+                        <span className={styles.metaText}>
+                          {childCount} {childCount === 1 ? "subcategory" : "subcategories"}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className={styles.cellStatus}>
                       <span className={`${styles.statusPill} ${category.isActive ? styles.published : styles.draft}`}>
                         {category.isActive ? "Published" : "Draft"}
                       </span>
                     </div>
-                    {category.description && (
-                      <p className={styles.description}>{category.description}</p>
-                    )}
-                    <div className={styles.cardActions}>
+
+                    <div className={styles.cellActions}>
                       <button
                         type="button"
-                        className={styles.secondaryBtn}
+                        className={styles.iconAction}
                         onClick={() => setForm(toFormState(category))}
+                        aria-label={`Edit ${category.title}`}
+                        title="Edit"
                       >
                         <Edit3 size={14} />
-                        Edit
+                        <span className={styles.actionText}>Edit</span>
                       </button>
                       <button
                         type="button"
-                        className={styles.dangerBtn}
+                        className={`${styles.iconAction} ${styles.iconActionDanger}`}
                         onClick={() => handleDelete(category)}
+                        aria-label={`Delete ${category.title}`}
+                        title="Delete"
                       >
                         <Trash2 size={14} />
-                        Delete
+                        <span className={styles.actionText}>Delete</span>
                       </button>
                     </div>
-                  </div>
-                </article>
-              ))
+                  </article>
+                );
+              })
             ) : (
               <p className={styles.emptyText}>No categories found.</p>
             )}

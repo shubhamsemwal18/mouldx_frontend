@@ -321,7 +321,7 @@ export default function ProfileCreationPage() {
     <div className={styles.page}>
       <div className={styles.content}>
         <h1 className="text-[26px] font-extrabold text-gray-900">Profile Creation</h1>
-        <p className="mt-1 text-sm text-gray-400">Your personal, firm and verification details.</p>
+        <p className="mt-1 text-sm text-black">Your personal, firm and verification details.</p>
         {/* ---------- Personal Details ---------- */}
         <div className={styles.card}>
           <h2 className={styles.cardTitle}>Personal Details</h2>

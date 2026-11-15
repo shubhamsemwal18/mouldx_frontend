@@ -246,7 +246,7 @@ export default function SearchOverlay({
                 type="text"
                 value={query}
                 onChange={(e) => onQueryChange(e.target.value)}
-                placeholder="Search product, mould or component..."
+                placeholder="Search  Moulds"
                 className={styles.input}
                 autoComplete="off"
                 enterKeyHint="search"

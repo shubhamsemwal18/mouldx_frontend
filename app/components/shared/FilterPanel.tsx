@@ -2,10 +2,10 @@
 
 import styles from "./FilterPanel.module.css";
 import {
+  DEFAULT_FILTERS,
   PRICE_RANGES,
   SORT_LABELS,
   clearFilterValues,
-  countActiveFilters,
   type CatalogueFilters,
 } from "@/app/lib/catalogue-filters";
 import { useCatalogueCategories } from "@/app/lib/use-catalogue-categories";
@@ -17,6 +17,10 @@ interface FilterPanelProps {
   /** Wrap chips onto new lines instead of scrolling each row sideways. */
   wrapChips?: boolean;
   className?: string;
+  /** Clears filters and anything else the page owns (e.g. the search text). */
+  onClearAll?: () => void;
+  /** Extra reason to show the clear button (e.g. a search term is typed). */
+  extraActive?: boolean;
 }
 
 export default function FilterPanel({
@@ -25,44 +29,64 @@ export default function FilterPanel({
   showAll = true,
   wrapChips = false,
   className,
+  onClearAll,
+  extraActive = false,
 }: FilterPanelProps) {
   const { categorySlug, subCategorySlug, priceLabel, sort } = value;
   const roots = useCatalogueCategories(showAll);
   const children = useCatalogueCategories(showAll, categorySlug, Boolean(categorySlug));
   const set = (patch: Partial<CatalogueFilters>) => onChange({ ...value, ...patch });
   const chipClass = (active: boolean) => `${styles.chip} ${active ? styles.chipActive : ""}`;
-  const activeFilterCount = countActiveFilters(value);
+
+  // Compare with the defaults directly, so price/sort changes always count.
+  const differsFromDefault = (Object.keys(DEFAULT_FILTERS) as (keyof CatalogueFilters)[]).some(
+    (key) => value[key] !== DEFAULT_FILTERS[key]
+  );
+  const hasChanges = differsFromDefault || extraActive;
+
+  const handleClear = () => {
+    if (onClearAll) onClearAll();
+    else onChange(clearFilterValues(value));
+  };
 
   return (
     <div
       className={`${styles.filterPanel} ${wrapChips ? styles.wrapChips : ""} ${className ?? ""}`}
     >
-        <div className={styles.filterGroup}>
-          <p className={styles.filterLabel}>Category</p>
-          <div className={styles.chipsRow}>
+      <div className={styles.filterGroup}>
+        <p className={styles.filterLabel}>Category</p>
+        <div className={styles.chipsRow}>
+          <button
+            type="button"
+            onClick={() => set({ categorySlug: "", subCategorySlug: "" })}
+            className={chipClass(categorySlug === "")}
+            aria-pressed={categorySlug === ""}
+          >
+            All
+          </button>
+          {roots.categories.map((category) => (
             <button
+              key={category.slug}
               type="button"
-              onClick={() => set({ categorySlug: "", subCategorySlug: "" })}
-              className={chipClass(categorySlug === "")}
-              aria-pressed={categorySlug === ""}
+              onClick={() => set({ categorySlug: category.slug, subCategorySlug: "" })}
+              className={chipClass(categorySlug === category.slug)}
+              aria-pressed={categorySlug === category.slug}
             >
-              All
+              {category.title}
             </button>
-            {roots.categories.map((category) => (
-              <button
-                key={category.slug}
-                type="button"
-                onClick={() => set({ categorySlug: category.slug, subCategorySlug: "" })}
-                className={chipClass(categorySlug === category.slug)}
-                aria-pressed={categorySlug === category.slug}
-              >
-                {category.title}
-              </button>
-            ))}
-          </div>
-          {roots.loading && <p className={styles.optionStatus} role="status">Loading categories...</p>}
-          {roots.error && <button type="button" className={styles.clearFilters} onClick={roots.retry}>Retry loading categories</button>}
+          ))}
         </div>
+        {roots.loading && (
+          <p className={styles.optionStatus} role="status">
+            Loading categories...
+          </p>
+        )}
+        {roots.error && (
+          <button type="button" className={styles.clearFilters} onClick={roots.retry}>
+            Retry loading categories
+          </button>
+        )}
+      </div>
 
       {categorySlug && (
         <div className={styles.filterGroup}>
@@ -88,9 +112,19 @@ export default function FilterPanel({
               </button>
             ))}
           </div>
-          {children.loading && <p className={styles.optionStatus} role="status">Loading subcategories...</p>}
-          {children.error && <button type="button" className={styles.clearFilters} onClick={children.retry}>Retry loading subcategories</button>}
-          {!children.loading && !children.error && children.categories.length === 0 && <p className={styles.optionStatus}>No subcategories available.</p>}
+          {children.loading && (
+            <p className={styles.optionStatus} role="status">
+              Loading subcategories...
+            </p>
+          )}
+          {children.error && (
+            <button type="button" className={styles.clearFilters} onClick={children.retry}>
+              Retry loading subcategories
+            </button>
+          )}
+          {!children.loading && !children.error && children.categories.length === 0 && (
+            <p className={styles.optionStatus}>No subcategories available.</p>
+          )}
         </div>
       )}
 
@@ -128,12 +162,8 @@ export default function FilterPanel({
         </div>
       </div>
 
-      {activeFilterCount > 0 && (
-        <button
-          type="button"
-          onClick={() => onChange(clearFilterValues(value))}
-          className={styles.clearFilters}
-        >
+      {hasChanges && (
+        <button type="button" onClick={handleClear} className={styles.clearFilters}>
           Clear all filters
         </button>
       )}

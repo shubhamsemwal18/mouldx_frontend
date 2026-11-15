@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CheckCircle2, FileText, Wrench } from "lucide-react";
 import styles from "./MyMoulds.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
@@ -25,6 +26,7 @@ import {
   isAdminMaintenance,
   type ListingDisplayStatus,
 } from "./listing-status";
+import SearchBar from "@/app/components/common/SearchBar";
 
 type StatusFilter = "ALL" | ListingDisplayStatus | "approved" | "available" | "rented";
 
@@ -49,6 +51,13 @@ const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "draft", label: "Draft" },
   { value: "rejected", label: "Rejected" },
 ];
+
+// Top tabs. They reuse the existing "live", "maintenance" and "draft" filters.
+const TABS = [
+  { key: "live", label: "Live", icon: CheckCircle2 },
+  { key: "maintenance", label: "Maintenance", icon: Wrench },
+  { key: "draft", label: "Draft", icon: FileText },
+] as const;
 
 /** Each filter maps to the approval status plus, for approved ones, availability. */
 const FILTER_PARAMS: Record<StatusFilter, Pick<ProductListParams, "status" | "availability" | "occupancy">> = {
@@ -330,6 +339,44 @@ function ListingImage({ src, alt }: { src?: string | null; alt: string }) {
   );
 }
 
+/* ---------- Status toggle icon ---------- */
+
+const StatusIcon = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    style={{ verticalAlign: "middle" }}
+  >
+    <rect x="1" y="6" width="22" height="12" rx="6" />
+    <circle cx="16" cy="12" r="3" fill="currentColor" />
+  </svg>
+);
+const TrashIcon = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+  </svg>
+);
 /* ---------- Listing card ---------- */
 
 function ListingCard({
@@ -429,7 +476,7 @@ function ListingCard({
           className={styles.actionBtn}
           onClick={() => onEditStatus(listing._id)}
         >
-          <span aria-hidden>🔧</span> Status
+          <StatusIcon /> Status
         </button>
         {canEditListing(listing) ? (
           <Link
@@ -446,15 +493,15 @@ function ListingCard({
       </div>
 
       {listing.status === "draft" && (
-        <button
-          type="button"
-          className={styles.deleteLink}
-          onClick={() => onDelete(listing._id)}
-          disabled={deleting}
-        >
-          <span aria-hidden>🗑</span> {deleting ? "Deleting..." : "Delete draft"}
-        </button>
-      )}
+  <button
+    type="button"
+    className={styles.deleteLink}
+    onClick={() => onDelete(listing._id)}
+    disabled={deleting}
+  >
+    <TrashIcon /> {deleting ? "Deleting..." : "Delete draft"}
+  </button>
+)}
     </div>
   );
 }
@@ -639,6 +686,13 @@ export default function MyMouldsPage() {
     rejected: stats?.rejected ?? 0,
   };
 
+  // Numbers shown on the top tabs.
+  const tabCounts: Record<(typeof TABS)[number]["key"], number | undefined> = {
+    live: counts.live,
+    maintenance: stats?.maintenance,
+    draft: stats?.draft,
+  };
+
   const statusListing = statusListingId
     ? listings.find((listing) => listing._id === statusListingId) ?? null
     : null;
@@ -657,30 +711,38 @@ export default function MyMouldsPage() {
       <div className={styles.content}>
         <h1 className={styles.title}>My Moulds</h1>
 
-        <div className={styles.searchRow}>
-          <div className={styles.searchWrap}>
-            <span className={styles.searchIcon} aria-hidden>
-              🔍
-            </span>
-            <input
-              type="text"
-              placeholder="Search by name or code"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={styles.searchInput}
-              aria-label="Search listings"
-            />
-            {search && (
+        <div
+          className={styles.tabs}
+          role="group"
+          aria-label="Filter listings by status"
+        >
+          {TABS.map(({ key, label, icon: Icon }) => {
+            const active = statusFilter === key;
+            return (
               <button
+                key={key}
                 type="button"
-                className={styles.clearSearchBtn}
-                onClick={() => setSearch("")}
-                aria-label="Clear search"
+                className={`${styles.tab} ${styles[`tab_${key}`]} ${active ? styles.tabActive : ""}`}
+                aria-label={`${label} listings`}
+                aria-pressed={active}
+                onClick={() => handleStatusFilterChange(active ? "ALL" : key)}
               >
-                ✕
+                <span className={styles.tabIcon}>
+                  <Icon size={18} />
+                </span>
+                <strong>{tabCounts[key] ?? "-"}</strong>
+                <span>{label}</span>
               </button>
-            )}
-          </div>
+            );
+          })}
+        </div>
+
+                <SearchBar
+          value={search}
+          onChange={setSearch}
+          ariaLabel="Search listings"
+          placeholder="Search by name or code"
+        >
           <button
             type="button"
             className={`${styles.filterBtn} ${
@@ -697,7 +759,7 @@ export default function MyMouldsPage() {
               <span className={styles.filterCount}>{activeFilterCount}</span>
             )}
           </button>
-        </div>
+        </SearchBar>
 
         {isFilterOpen && (
           <div className={styles.filterPanel}>

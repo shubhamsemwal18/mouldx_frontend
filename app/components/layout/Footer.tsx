@@ -10,7 +10,7 @@ import styles from "./Footer.module.css";
 
 const SHOW_FOOTER_ON = ["/", "/home", "/about", "/faqs", "/agreement", "/contact", "/privacy-policy", "/terms"];
 
-const SERVICEABLE_AREAS = ["Delhi", "Haryana", "Uttar Pradesh", "Punjab", "Chandigarh", "Uttarakhand"];
+// const SERVICEABLE_AREAS = ["Delhi", "Haryana", "Uttar Pradesh", "Punjab", "Chandigarh", "Uttarakhand"];
 
 const QUICK_LINKS = [
   { label: "FAQs", href: "/faqs" },
@@ -20,8 +20,9 @@ const QUICK_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { label: "Facebook", href: "#", icon: FaFacebookF },
+  // { label: "Facebook", href: "#", icon: FaFacebookF },
   { label: "Instagram", href: "#", icon: FaInstagram },
+   { label: "LinkedIn", href: "#", icon: FaLinkedinIn },
  
 ];
 
@@ -67,7 +68,7 @@ export default function Footer() {
           </div>
 
           {/* Serviceable areas */}
-          <div className={styles.col}>
+          {/* <div className={styles.col}>
             <h3 className={styles.colTitle}>Serviceable Areas</h3>
             <ul className={styles.linkList}>
               {SERVICEABLE_AREAS.map((area) => (
@@ -76,7 +77,7 @@ export default function Footer() {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
 
           {/* Quick links */}
           <div className={styles.col}>

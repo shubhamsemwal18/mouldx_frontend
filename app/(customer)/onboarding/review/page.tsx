@@ -76,7 +76,7 @@ export default function ProfileReviewPage() {
         <div className={styles.statusCard}>
           <span className={styles.statusPill}>UNDER REVIEW</span>
           <h2 className={styles.statusHeading}>Approval pending</h2>
-          <p className={styles.statusRemark}>Remarks, if any, sent to POC &amp; company email.</p>
+          <p className={styles.statusRemark}>Remarks, if any, will be sent to POC & &amp; Firm Email</p>
         </div>
 
         {/* ---------- Progress timeline ---------- */}

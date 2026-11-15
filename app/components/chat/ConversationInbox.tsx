@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { MessageCircle, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { MessageCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/app/lib/auth-context";
 import { chatTimestamp } from "@/app/lib/chat-format";
 import { formatBookingDate } from "@/app/lib/booking-dates";
+import SearchBar from "@/app/components/common/SearchBar";
 import { useConversationInbox } from "./useConversationInbox";
 import type { ConversationFilters } from "@/app/lib/chat-types";
 import styles from "./Chat.module.css";
@@ -73,17 +74,12 @@ export default function ConversationInbox({
         </button>
       </div>
       {admin ? (
-        <div className={styles.searchRow}>
-          <div className={styles.search}>
-            <Search size={18} />
-            <input
-              aria-label="Search conversations"
-              placeholder="Search name, product or booking"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              maxLength={100}
-            />
-          </div>
+        <SearchBar
+          value={input}
+          onChange={setInput}
+          ariaLabel="Search conversations"
+          placeholder="Search name, product or booking"
+        >
           <select
             className={styles.filterSelect}
             aria-label="Conversation filter"
@@ -96,19 +92,15 @@ export default function ConversationInbox({
               </option>
             ))}
           </select>
-        </div>
+        </SearchBar>
       ) : (
         <>
-          <div className={styles.search}>
-            <Search size={18} />
-            <input
-              aria-label="Search conversations"
-              placeholder="Search product or booking"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              maxLength={100}
-            />
-          </div>
+          <SearchBar
+            value={input}
+            onChange={setInput}
+            ariaLabel="Search conversations"
+            placeholder="Search product or booking"
+          />
           <div
             className={styles.tabs}
             role="group"
