@@ -19,7 +19,6 @@ const REGEX = {
   name: /^[a-zA-Z0-9\s.,'\-()]{2,80}$/,
   mouldNameOrId: /^[a-zA-Z0-9\s.,'\-·]{3,80}$/,
   text: /^[a-zA-Z0-9\s.,'\-\/]{2,60}$/,
-  year: /^(19|20)\d{2}$/,
   posInt: /^[1-9]\d*$/,
   posDec: /^\d+(\.\d{1,2})?$/,
 };
@@ -108,7 +107,6 @@ interface MouldState {
   videos: MediaItem[];
   mouldNameOrId: string;
   mouldType: string;
-  year: string;
   length: string;
   breadth: string;
   height: string;
@@ -151,7 +149,6 @@ const emptyMould = (): MouldState => ({
   videos: [],
   mouldNameOrId: "",
   mouldType: MOULD_TYPES[0],
-  year: "",
   length: "",
   breadth: "",
   height: "",
@@ -223,7 +220,6 @@ function validateAll(
     moulds.slice(0, count).forEach((m, i) => {
       const k = `m.${i}`;
       add(`${k}.mouldNameOrId`, req(m.mouldNameOrId, REGEX.mouldNameOrId, "3–80 characters, letters/numbers only"));
-      add(`${k}.year`, req(m.year, REGEX.year, "Enter a valid year (e.g. 2022)"));
       add(`${k}.images`, m.images.length > 0 ? "" : "At least one image is required");
       add(`${k}.length`, decPositive(m.length));
       add(`${k}.breadth`, decPositive(m.breadth));
@@ -420,7 +416,7 @@ function MediaGallery({
 
         {remaining > 0 && (
           <label className={`${styles.galleryAdd} ${error ? styles.mediaBoxError : ""}`}>
-            <span className={styles.mediaPlus}>{kind === "image" ? "📷" : "+"}</span>
+            <span className={styles.mediaPlus}>{kind === "image" ? "📷" : "🎥"}</span>
             <span className={styles.mediaLabel}>Add</span>
             <input
               type="file"
@@ -538,13 +534,17 @@ function DimensionsRow({
   onChange: (key: "length" | "breadth" | "height", v: string) => void;
 }) {
   return (
-    <div className="mt-3">
-      <div className="grid grid-cols-3 gap-3">
+    <>
+      <div className="mt-3">
         <Field ctx={ctx} id={`${base}.length`} label="Length (mm)" required value={values.length} mode="dec" placeholder="420" onChange={(v) => onChange("length", v)} />
+      </div>
+      <div className="mt-3">
         <Field ctx={ctx} id={`${base}.breadth`} label="Breadth (mm)" required value={values.breadth} mode="dec" placeholder="310" onChange={(v) => onChange("breadth", v)} />
+      </div>
+      <div className="mt-3">
         <Field ctx={ctx} id={`${base}.height`} label="Height (mm)" required value={values.height} mode="dec" placeholder="280" onChange={(v) => onChange("height", v)} />
       </div>
-    </div>
+    </>
   );
 }
 
@@ -619,9 +619,8 @@ function MouldFields({
         onRemoveVideo={onRemoveVideo}
       />
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3">
         <SelectField label="Mould Type" value={m.mouldType} options={toOptions(MOULD_TYPES)} onChange={(v) => set({ mouldType: v })} />
-        <Field ctx={ctx} id={`${base}.year`} label="Year of Manufacturing" value={m.year} mode="int" maxLength={4} placeholder="2022" onChange={(v) => set({ year: v })} />
       </div>
 
       <DimensionsRow
@@ -631,11 +630,15 @@ function MouldFields({
         onChange={(k, v) => set({ [k]: v } as Partial<MouldState>)}
       />
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-3">
         <Field ctx={ctx} id={`${base}.weight`} label="Weight (kg)" required value={m.weight} mode="dec" placeholder="185" onChange={(v) => set({ weight: v })} />
-        <Field ctx={ctx} id={`${base}.cavities`} label="No. of Cavities / Core" value={m.cavities} mode="int" placeholder="4" onChange={(v) => set({ cavities: v })} />
-        <Field ctx={ctx} id={`${base}.cycleTime`} label="Expected Cycle Time (virgin material) (s)" value={m.cycleTime} mode="int" placeholder="28" onChange={(v) => set({ cycleTime: v })} />
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
+       
+        <Field ctx={ctx} id={`${base}.cycleTime`} label="Expected cycle time (SEC) " value={m.cycleTime} mode="int" placeholder="28" onChange={(v) => set({ cycleTime: v })} />
         <Field ctx={ctx} id={`${base}.tonnage`} label="Recommended Machine Tonnage (T)" value={m.tonnage} mode="dec" placeholder="220" onChange={(v) => set({ tonnage: v })} />
+           <Field ctx={ctx} id={`${base}.cavities`} label="No. of Cavities / Core" value={m.cavities} mode="int" placeholder="4" onChange={(v) => set({ cavities: v })} />
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
@@ -815,7 +818,6 @@ export default function ProductDetailsPage() {
               videos: toStoredMedia(stored.videos),
               mouldNameOrId: stored.mouldNameOrId || "",
               mouldType: stored.mouldType || MOULD_TYPES[0],
-              year: str(stored.yearOfManufacturing),
               length: str(stored.dimensions?.length),
               breadth: str(stored.dimensions?.breadth),
               height: str(stored.dimensions?.height),
@@ -1034,7 +1036,6 @@ export default function ProductDetailsPage() {
       mouldPayload.push({
         mouldNameOrId: mould.mouldNameOrId.trim() || undefined,
         mouldType: mould.mouldType as MouldType,
-        yearOfManufacturing: num(mould.year),
         dimensions: {
           length: num(mould.length),
           breadth: num(mould.breadth),
@@ -1376,8 +1377,11 @@ export default function ProductDetailsPage() {
                       onChange={(k, v) => setComp(i, { [k]: v } as Partial<ComponentState>)}
                     />
 
-                    <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="mt-3">
                       <Field ctx={ctx} id={`${cBase}.weight`} label="Weight (GMS)" required value={c.weight} mode="dec" placeholder="3.2" onChange={(v) => setComp(i, { weight: v })} />
+                    </div>
+
+                    <div className="mt-3">
                       <Field ctx={ctx} id={`${cBase}.surfaceFinish`} label="Surface Finish" required value={c.surfaceFinish} placeholder="Matte" onChange={(v) => setComp(i, { surfaceFinish: v })} />
                     </div>
 

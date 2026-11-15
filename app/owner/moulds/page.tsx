@@ -331,6 +331,44 @@ function ListingImage({ src, alt }: { src?: string | null; alt: string }) {
   );
 }
 
+/* ---------- Status toggle icon ---------- */
+
+const StatusIcon = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    style={{ verticalAlign: "middle" }}
+  >
+    <rect x="1" y="6" width="22" height="12" rx="6" />
+    <circle cx="16" cy="12" r="3" fill="currentColor" />
+  </svg>
+);
+const TrashIcon = () => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+  </svg>
+);
 /* ---------- Listing card ---------- */
 
 function ListingCard({
@@ -430,7 +468,7 @@ function ListingCard({
           className={styles.actionBtn}
           onClick={() => onEditStatus(listing._id)}
         >
-          <span aria-hidden>🔧</span> Status
+          <StatusIcon /> Status
         </button>
         {canEditListing(listing) ? (
           <Link
@@ -447,15 +485,15 @@ function ListingCard({
       </div>
 
       {listing.status === "draft" && (
-        <button
-          type="button"
-          className={styles.deleteLink}
-          onClick={() => onDelete(listing._id)}
-          disabled={deleting}
-        >
-          <span aria-hidden>🗑</span> {deleting ? "Deleting..." : "Delete draft"}
-        </button>
-      )}
+  <button
+    type="button"
+    className={styles.deleteLink}
+    onClick={() => onDelete(listing._id)}
+    disabled={deleting}
+  >
+    <TrashIcon /> {deleting ? "Deleting..." : "Delete draft"}
+  </button>
+)}
     </div>
   );
 }
