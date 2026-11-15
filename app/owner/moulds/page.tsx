@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CheckCircle2, FileText, Wrench } from "lucide-react";
 import styles from "./MyMoulds.module.css";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
@@ -50,6 +51,13 @@ const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "draft", label: "Draft" },
   { value: "rejected", label: "Rejected" },
 ];
+
+// Top tabs. They reuse the existing "live", "maintenance" and "draft" filters.
+const TABS = [
+  { key: "live", label: "Live", icon: CheckCircle2 },
+  { key: "maintenance", label: "Maintenance", icon: Wrench },
+  { key: "draft", label: "Draft", icon: FileText },
+] as const;
 
 /** Each filter maps to the approval status plus, for approved ones, availability. */
 const FILTER_PARAMS: Record<StatusFilter, Pick<ProductListParams, "status" | "availability" | "occupancy">> = {
@@ -678,6 +686,13 @@ export default function MyMouldsPage() {
     rejected: stats?.rejected ?? 0,
   };
 
+  // Numbers shown on the top tabs.
+  const tabCounts: Record<(typeof TABS)[number]["key"], number | undefined> = {
+    live: counts.live,
+    maintenance: stats?.maintenance,
+    draft: stats?.draft,
+  };
+
   const statusListing = statusListingId
     ? listings.find((listing) => listing._id === statusListingId) ?? null
     : null;
@@ -695,6 +710,32 @@ export default function MyMouldsPage() {
     <div className={styles.page}>
       <div className={styles.content}>
         <h1 className={styles.title}>My Moulds</h1>
+
+        <div
+          className={styles.tabs}
+          role="group"
+          aria-label="Filter listings by status"
+        >
+          {TABS.map(({ key, label, icon: Icon }) => {
+            const active = statusFilter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`${styles.tab} ${styles[`tab_${key}`]} ${active ? styles.tabActive : ""}`}
+                aria-label={`${label} listings`}
+                aria-pressed={active}
+                onClick={() => handleStatusFilterChange(active ? "ALL" : key)}
+              >
+                <span className={styles.tabIcon}>
+                  <Icon size={18} />
+                </span>
+                <strong>{tabCounts[key] ?? "-"}</strong>
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
 
                 <SearchBar
           value={search}
