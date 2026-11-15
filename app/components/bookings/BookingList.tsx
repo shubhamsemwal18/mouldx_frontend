@@ -172,15 +172,6 @@ export default function BookingList({ view }: { view: BookingView }) {
               {stats.pending} pending
             </span>
           )}
-          <button
-            onClick={query.reload}
-            disabled={query.loading}
-            className={styles.iconButton}
-            aria-label="Refresh bookings"
-            title="Refresh bookings"
-          >
-            <RefreshCw size={18} />
-          </button>
         </div>
       </div>
       <div

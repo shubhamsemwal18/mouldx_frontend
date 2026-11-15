@@ -116,41 +116,40 @@
 
 /* =====================================================================
    FILTER PILLS
+   "All reviews" on the first row, 5 4 3 2 1 evenly spaced below it
 ===================================================================== */
 .filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin-top: 18px;
   padding: 2px 0;
 }
 
 .filters button {
-  flex: 0 0 auto;
+  min-width: 0;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: #fff;
   color: var(--text-soft);
-  padding: 0 16px;
+  padding: 0 4px;
   min-height: 40px;
   font: inherit;
   font-size: 13px;
   font-weight: 650;
   line-height: 1;
+  white-space: nowrap;
+  text-align: center;
   cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .filters button:hover { background: var(--primary-soft); border-color: var(--primary-border); color: var(--primary-hover); }
 
+/* "All reviews" takes the full first row */
 .filters button:first-child {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  padding: 0;
-  color: var(--muted);
+  grid-column: 1 / -1;
+  padding: 0 16px;
 }
 
 .filters button[aria-pressed="true"],
@@ -414,9 +413,9 @@
 /* =====================================================================
    RESPONSIVE
 ===================================================================== */
-/* Phones: pills wrap into even rows instead of scrolling sideways */
+/* Phones */
 @media (max-width: 639px) {
-  .filters button:not(:first-child) { flex: 1 1 auto; padding: 0 12px; min-height: 38px; }
+  .filters button { min-height: 38px; }
   .actions .button { flex: 1 1 auto; }
 }
 

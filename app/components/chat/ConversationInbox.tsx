@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { MessageCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { MessageCircle, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/app/lib/auth-context";
 import { chatTimestamp } from "@/app/lib/chat-format";
 import { formatBookingDate } from "@/app/lib/booking-dates";
@@ -63,15 +63,6 @@ export default function ConversationInbox({
     <div className={`${styles.inbox} ${admin ? styles.adminInbox : ""}`}>
       <div className={styles.inboxHeading}>
         <h1>{admin ? "Support" : "Inbox"}</h1>
-        <button
-          className={styles.iconButton}
-          onClick={query.refresh}
-          disabled={query.loading}
-          aria-label="Refresh inbox"
-          title="Refresh inbox"
-        >
-          <RefreshCw size={18} />
-        </button>
       </div>
       {admin ? (
         <SearchBar
