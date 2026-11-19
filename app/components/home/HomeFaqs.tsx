@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { faqsApi, type Faq } from "@/app/lib/faqs-api";
+import LinkifiedText from "@/app/components/shared/LinkifiedText";
 import styles from "./HomeFaqs.module.css";
 
 interface HomeFaqsProps {
@@ -96,7 +97,9 @@ export default function HomeFaqs({
                   className={styles.panel}
                 >
                   <div className={styles.panelInner}>
-                    <p className={styles.answer}>{faq.answer}</p>
+                    <p className={styles.answer}>
+                      <LinkifiedText text={faq.answer} linkClassName={styles.answerLink} />
+                    </p>
                   </div>
                 </div>
               </div>
