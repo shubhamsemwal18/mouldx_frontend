@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import styles from "./TestimonialsAdmin.module.css";
+import { getApiErrorMessage } from "@/app/lib/api";
 import {
   testimonialsAdminApi,
   type AdminTestimonial,
   type TestimonialInput,
-} from "@/app/lib/testimonials-admin-api";
+} from "@/app/lib/testimonials-api";
 
 const EMPTY_FORM: TestimonialInput = {
   name: "",
@@ -34,9 +35,6 @@ const validate = (form: TestimonialInput): FormErrors => {
   return errors;
 };
 
-const errorMessage = (err: unknown, fallback: string) =>
-  err instanceof Error && err.message ? err.message : fallback;
-
 export default function TestimonialsAdmin() {
   const [items, setItems] = useState<AdminTestimonial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,21 +54,30 @@ export default function TestimonialsAdmin() {
   const formRef = useRef<HTMLFormElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError("");
-    try {
-      setItems(await testimonialsAdminApi.list());
-    } catch (err) {
-      setLoadError(errorMessage(err, "Could not load testimonials."));
-    } finally {
-      setLoading(false);
-    }
+  const load = useCallback((signal?: AbortSignal) => {
+    testimonialsAdminApi.list(signal)
+      .then((testimonials) => {
+        if (!signal?.aborted) setItems(testimonials);
+      })
+      .catch((err) => {
+        if (!signal?.aborted) setLoadError(getApiErrorMessage(err, "Could not load testimonials."));
+      })
+      .finally(() => {
+        if (!signal?.aborted) setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
-    load();
+    const controller = new AbortController();
+    load(controller.signal);
+    return () => controller.abort();
   }, [load]);
+
+  const retryLoad = () => {
+    setLoading(true);
+    setLoadError("");
+    load();
+  };
 
   // Auto-hide the success message.
   useEffect(() => {
@@ -120,6 +127,7 @@ export default function TestimonialsAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading || saving || deleting) return;
     const found = validate(form);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
@@ -146,14 +154,14 @@ export default function TestimonialsAdmin() {
       }
       resetForm();
     } catch (err) {
-      setFormError(errorMessage(err, "Could not save the testimonial."));
+      setFormError(getApiErrorMessage(err, "Could not save the testimonial."));
     } finally {
       setSaving(false);
     }
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || saving || deleting) return;
     setDeleting(true);
     setDeleteError("");
     try {
@@ -163,7 +171,7 @@ export default function TestimonialsAdmin() {
       setDeleteTarget(null);
       setNotice("Testimonial deleted.");
     } catch (err) {
-      setDeleteError(errorMessage(err, "Could not delete the testimonial."));
+      setDeleteError(getApiErrorMessage(err, "Could not delete the testimonial."));
     } finally {
       setDeleting(false);
     }
@@ -197,7 +205,7 @@ export default function TestimonialsAdmin() {
               {editingId ? "Edit testimonial" : "Add testimonial"}
             </h2>
             {editingId && (
-              <button type="button" className={styles.linkBtn} onClick={resetForm}>
+              <button type="button" className={styles.linkBtn} onClick={resetForm} disabled={saving || deleting}>
                 <X size={14} aria-hidden /> Cancel edit
               </button>
             )}
@@ -328,7 +336,7 @@ export default function TestimonialsAdmin() {
           )}
 
           <div className={styles.actions}>
-            <button type="submit" className={styles.primaryBtn} disabled={saving}>
+            <button type="submit" className={styles.primaryBtn} disabled={loading || saving || deleting}>
               {!editingId && !saving && <Plus size={16} aria-hidden />}
               {saving ? "Saving..." : editingId ? "Update testimonial" : "Add testimonial"}
             </button>
@@ -337,7 +345,7 @@ export default function TestimonialsAdmin() {
                 type="button"
                 className={styles.secondaryBtn}
                 onClick={resetForm}
-                disabled={saving}
+                disabled={saving || deleting}
               >
                 Cancel
               </button>
@@ -358,7 +366,7 @@ export default function TestimonialsAdmin() {
           {!loading && loadError && (
             <div className={styles.errorBox} role="alert">
               <p>{loadError}</p>
-              <button type="button" className={styles.secondaryBtn} onClick={load}>
+              <button type="button" className={styles.secondaryBtn} onClick={retryLoad}>
                 Try again
               </button>
             </div>
@@ -416,6 +424,7 @@ export default function TestimonialsAdmin() {
                       type="button"
                       className={styles.editBtn}
                       onClick={() => startEdit(item)}
+                      disabled={saving || deleting}
                       aria-label={`Edit testimonial from ${item.name}`}
                     >
                       <Pencil size={15} aria-hidden /> Edit
@@ -423,6 +432,7 @@ export default function TestimonialsAdmin() {
                     <button
                       type="button"
                       className={styles.deleteBtn}
+                      disabled={saving || deleting}
                       onClick={() => {
                         setDeleteError("");
                         setDeleteTarget(item);

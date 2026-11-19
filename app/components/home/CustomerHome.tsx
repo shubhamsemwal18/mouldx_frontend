@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import MouldExplore from "./MouldExplore";
 import Testimonials from "./Testimonials";
@@ -10,6 +10,7 @@ import SearchOverlay from "../shared/SearchOverlay";
 import styles from "./CustomerHome.module.css";
 import mouldchair from "@/public/images/mould-and-chair.webp";
 import { useAuth } from "@/app/lib/auth-context";
+import { listPublishedTestimonials, type Testimonial } from "@/app/lib/testimonials-api";
 import {
   DEFAULT_FILTERS,
   countActiveFilters,
@@ -22,6 +23,7 @@ export default function CustomerHome() {
   const [modalOpen, setModalOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [autoVoice, setAutoVoice] = useState(false);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   // Shared by the hero bar, the search sheet and the results section below,
   // so a search made anywhere filters the listings on this page.
   const [search, setSearch] = useState("");
@@ -30,6 +32,16 @@ export default function CustomerHome() {
   // Shared like `search`, so filters picked in the sheet also apply below.
   const [filters, setFilters] = useState<CatalogueFilters>(DEFAULT_FILTERS);
   const activeFilterCount = countActiveFilters(filters);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    listPublishedTestimonials(controller.signal).then((items) => {
+      if (!controller.signal.aborted) setTestimonials(items);
+    }).catch(() => {
+      // A failed testimonial request should not block the rest of the home page.
+    });
+    return () => controller.abort();
+  }, []);
 
   const openSearch = (options?: { voice?: boolean }) => {
     setAutoVoice(Boolean(options?.voice));
@@ -108,7 +120,7 @@ export default function CustomerHome() {
         onFiltersChange={setFilters}
       />
 
-      <Testimonials />
+      {testimonials.length > 0 && <Testimonials testimonials={testimonials} />}
 
       <HomeFaqs />
 

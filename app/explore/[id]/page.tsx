@@ -158,6 +158,9 @@ export default function ProductDetailPage({
     ? [
         { label: "Tonnage", value: dash(specSource.recommendedMachineTonnage, "T") },
         { label: "Cavities", value: dash(specSource.cavities) },
+        ...(typeof specSource.coolingLines === "number"
+          ? [{ label: "Cooling lines", value: dash(specSource.coolingLines) }]
+          : []),
         { label: "Cycle", value: dash(specSource.expectedCycleTime, "s") },
       ]
     : [];
@@ -445,6 +448,7 @@ function MouldRows({ mould }: { mould: Mould }) {
       <Row label="Dimensions (L × B × H)" value={formatDimensions(mould.dimensions)} />
       <Row label="Weight" value={dash(mould.weight, " kg")} />
       <Row label="No. of Cavities / Core" value={dash(mould.cavities)} />
+      <Row label="No. of cooling lines" value={dash(mould.coolingLines)} />
       <Row
         label="Expected Cycle Time (virgin material)"
         value={dash(mould.expectedCycleTime, " s")}

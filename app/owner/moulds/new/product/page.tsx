@@ -112,6 +112,7 @@ interface MouldState {
   height: string;
   weight: string;
   cavities: string;
+  coolingLines: string;
   cycleTime: string;
   tonnage: string;
   runnerType: string;
@@ -154,6 +155,7 @@ const emptyMould = (): MouldState => ({
   height: "",
   weight: "",
   cavities: "",
+  coolingLines: "",
   cycleTime: "",
   tonnage: "",
   runnerType: RUNNER_TYPES[0],
@@ -168,6 +170,11 @@ const decPositive = (v: string) => {
   return error || (Number(v) > 0 ? "" : "Must be greater than 0");
 };
 const int = (v: string) => req(v, REGEX.posInt, "Whole number only");
+const optionalCountError = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed || (/^\d+$/.test(trimmed) && Number.isSafeInteger(Number(trimmed)))) return "";
+  return "Enter a whole number of 0 or more.";
+};
 
 function validateAll(
   product: ProductState,
@@ -226,6 +233,7 @@ function validateAll(
       add(`${k}.height`, decPositive(m.height));
       add(`${k}.weight`, decPositive(m.weight));
       add(`${k}.cavities`, int(m.cavities));
+      add(`${k}.coolingLines`, optionalCountError(m.coolingLines));
       add(`${k}.cycleTime`, int(m.cycleTime));
       add(`${k}.tonnage`, dec(m.tonnage));
     });
@@ -260,6 +268,7 @@ function Field({
   value,
   onChange,
   mode = "text",
+  inputMode,
   placeholder,
   maxLength,
   required = false,
@@ -270,6 +279,7 @@ function Field({
   value: string;
   onChange: (v: string) => void;
   mode?: Mode;
+  inputMode?: React.ComponentProps<"input">["inputMode"];
   placeholder?: string;
   maxLength?: number;
   required?: boolean;
@@ -284,7 +294,7 @@ function Field({
       <input
         id={`listing-${id}`}
         type="text"
-        inputMode={mode === "text" ? undefined : mode === "int" ? "numeric" : "decimal"}
+        inputMode={inputMode ?? (mode === "text" ? undefined : mode === "int" ? "numeric" : "decimal")}
         value={value}
         maxLength={maxLength}
         aria-invalid={Boolean(error)}
@@ -635,10 +645,10 @@ function MouldFields({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
-       
         <Field ctx={ctx} id={`${base}.cycleTime`} label="Expected cycle time (SEC) " value={m.cycleTime} mode="int" placeholder="28" onChange={(v) => set({ cycleTime: v })} />
         <Field ctx={ctx} id={`${base}.tonnage`} label="Recommended Machine Tonnage (T)" value={m.tonnage} mode="dec" placeholder="220" onChange={(v) => set({ tonnage: v })} />
-           <Field ctx={ctx} id={`${base}.cavities`} label="No. of Cavities / Core" value={m.cavities} mode="int" placeholder="4" onChange={(v) => set({ cavities: v })} />
+        <Field ctx={ctx} id={`${base}.cavities`} label="No. of Cavities / Core" value={m.cavities} mode="int" placeholder="4" onChange={(v) => set({ cavities: v })} />
+        <Field ctx={ctx} id={`${base}.coolingLines`} label="No. of cooling lines" value={m.coolingLines} inputMode="numeric" placeholder="6" onChange={(v) => set({ coolingLines: v })} />
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
@@ -823,6 +833,7 @@ export default function ProductDetailsPage() {
               height: str(stored.dimensions?.height),
               weight: str(stored.weight),
               cavities: str(stored.cavities),
+              coolingLines: str(stored.coolingLines),
               cycleTime: str(stored.expectedCycleTime),
               tonnage: str(stored.recommendedMachineTonnage),
               runnerType: stored.runnerType || RUNNER_TYPES[0],
@@ -1043,6 +1054,7 @@ export default function ProductDetailsPage() {
         },
         weight: num(mould.weight),
         cavities: num(mould.cavities),
+        coolingLines: num(mould.coolingLines) ?? null,
         expectedCycleTime: num(mould.cycleTime),
         recommendedMachineTonnage: num(mould.tonnage),
         runnerType: mould.runnerType as RunnerType,
@@ -1100,16 +1112,17 @@ export default function ProductDetailsPage() {
     setServerError("");
     setServerDetails([]);
 
-    if (mode === "submit") {
-      setTouched(Object.fromEntries(Object.keys(errors).map((k) => [k, true])));
-      if (Object.keys(errors).length > 0) {
-        if (count > 0) {
-          setOpen(Object.fromEntries(Array.from({ length: count }, (_, i) => [i, true])));
-        }
-        if (Object.keys(errors).some(isStepOneKey)) goToStep(1);
-        return;
+    const errorKeys = Object.keys(errors).filter((key) => mode === "submit" || key.endsWith(".coolingLines"));
+    if (errorKeys.length > 0) {
+      setTouched((previous) => ({ ...previous, ...Object.fromEntries(errorKeys.map((key) => [key, true])) }));
+      if (count > 0) {
+        setOpen(Object.fromEntries(Array.from({ length: count }, (_, i) => [i, true])));
       }
-    } else if (!product.productName.trim()) {
+      if (errorKeys.some(isStepOneKey)) goToStep(1);
+      else if (step === 1) goToStep(2);
+      return;
+    }
+    if (mode === "draft" && !product.productName.trim()) {
       setTouched((prev) => ({ ...prev, "p.productName": true }));
       setServerError("Add a product name before saving a draft.");
       return;

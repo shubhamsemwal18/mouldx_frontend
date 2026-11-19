@@ -667,6 +667,7 @@ export default function ListingReviewDetailPage({
                   <Row label="Dimensions" value={formatDimensions(mould.dimensions)} />
                   <Row label="Weight" value={dash(mould.weight, " kg")} />
                   <Row label="Cavities / Core" value={dash(mould.cavities)} />
+                  <Row label="No. of cooling lines" value={dash(mould.coolingLines)} />
                   <Row label="Cycle Time" value={dash(mould.expectedCycleTime, " s")} />
                   <Row label="Machine Tonnage" value={dash(mould.recommendedMachineTonnage, " T")} />
                   <Row label="Runner Type" value={dash(mould.runnerType)} />

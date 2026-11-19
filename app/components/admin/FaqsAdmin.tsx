@@ -1,22 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import styles from "./FaqsAdmin.module.css";
+import { getApiErrorMessage } from "@/app/lib/api";
 import {
-  PLACEMENT_OPTIONS,
-  appearsOn,
+  FAQ_CATEGORIES,
+  FAQ_SEARCH_MAX_LENGTH,
   faqsAdminApi,
-  placementLabel,
   type AdminFaq,
+  type AdminFaqPage,
+  type AdminFaqView,
+  type FaqCategory,
   type FaqInput,
-} from "@/app/lib/faqs-admin-api";
+} from "@/app/lib/faqs-api";
 
 const EMPTY_FORM: FaqInput = {
   question: "",
   answer: "",
-  placement: "home",
+  category: "General",
   published: true,
+  showOnHome: true,
 };
 
 const QUESTION_MIN = 5;
@@ -25,9 +29,7 @@ const ANSWER_MIN = 10;
 const ANSWER_MAX = 600;
 
 type FormErrors = Partial<Record<keyof FaqInput, string>>;
-type Filter = "all" | "home" | "faq-page";
-
-const FILTERS: { value: Filter; label: string }[] = [
+const FILTERS: { value: AdminFaqView; label: string }[] = [
   { value: "all", label: "All" },
   { value: "home", label: "Home page" },
   { value: "faq-page", label: "FAQ page" },
@@ -44,16 +46,12 @@ const validate = (form: FaqInput): FormErrors => {
   return errors;
 };
 
-const errorMessage = (err: unknown, fallback: string) =>
-  err instanceof Error && err.message ? err.message : fallback;
-
-const countFor = (items: AdminFaq[], filter: Filter) =>
-  filter === "all" ? items.length : items.filter((i) => appearsOn(i.placement, filter)).length;
+type ListResult = { key: string } & ({ data: AdminFaqPage; error?: never } | { error: string; data?: never });
 
 export default function FaqsAdmin() {
-  const [items, setItems] = useState<AdminFaq[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const [result, setResult] = useState<ListResult>();
+  const [page, setPage] = useState(1);
+  const [revision, setRevision] = useState(0);
 
   const [form, setForm] = useState<FaqInput>(EMPTY_FORM);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -62,7 +60,7 @@ export default function FaqsAdmin() {
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<AdminFaqView>("all");
   const [search, setSearch] = useState("");
 
   const [deleteTarget, setDeleteTarget] = useState<AdminFaq | null>(null);
@@ -72,21 +70,40 @@ export default function FaqsAdmin() {
   const formRef = useRef<HTMLFormElement>(null);
   const questionRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError("");
-    try {
-      setItems(await faqsAdminApi.list());
-    } catch (err) {
-      setLoadError(errorMessage(err, "Could not load FAQs."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const busy = saving || deleting;
+  const searchTerm = search.trim();
+  const requestKey = JSON.stringify([filter, searchTerm, page, revision]);
+  const current = result?.key === requestKey ? result : undefined;
+  const loading = !current;
+  const loadError = current?.error;
+  const data = current?.data;
+  const counts = result?.data?.counts;
+  const refresh = () => setRevision((value) => value + 1);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      faqsAdminApi.list({ page, view: filter, search: searchTerm || undefined }, controller.signal).then(
+        (data) => {
+          if (controller.signal.aborted) return;
+
+          if (page > data.pagination.pages) {
+            setPage(data.pagination.pages);
+            return;
+          }
+          setResult({ key: requestKey, data });
+        },
+        (err) => {
+          if (!controller.signal.aborted) setResult({ key: requestKey, error: getApiErrorMessage(err, "Could not load FAQs.") });
+        },
+      );
+    }, searchTerm ? 250 : 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [filter, page, requestKey, searchTerm]);
 
   useEffect(() => {
     if (!notice) return;
@@ -103,14 +120,10 @@ export default function FaqsAdmin() {
     return () => window.removeEventListener("keydown", onKey);
   }, [deleteTarget, deleting]);
 
-  const visible = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return items.filter((item) => {
-      if (filter !== "all" && !appearsOn(item.placement, filter)) return false;
-      if (q && !`${item.question} ${item.answer}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [items, filter, search]);
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   const setField = <K extends keyof FaqInput>(key: K, value: FaqInput[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -129,8 +142,9 @@ export default function FaqsAdmin() {
     setForm({
       question: item.question,
       answer: item.answer,
-      placement: item.placement,
+      category: item.category,
       published: item.published,
+      showOnHome: item.showOnHome,
     });
     setErrors({});
     setFormError("");
@@ -141,6 +155,7 @@ export default function FaqsAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy || loading) return;
     const found = validate(form);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
@@ -155,34 +170,34 @@ export default function FaqsAdmin() {
     setFormError("");
     try {
       if (editingId) {
-        const updated = await faqsAdminApi.update(editingId, payload);
-        setItems((current) => current.map((item) => (item._id === editingId ? updated : item)));
+        await faqsAdminApi.update(editingId, payload);
         setNotice("FAQ updated.");
       } else {
-        const created = await faqsAdminApi.create(payload);
-        setItems((current) => [created, ...current]);
+        await faqsAdminApi.create(payload);
+        setPage(1);
         setNotice("FAQ added.");
       }
       resetForm();
+      refresh();
     } catch (err) {
-      setFormError(errorMessage(err, "Could not save the FAQ."));
+      setFormError(getApiErrorMessage(err, "Could not save the FAQ."));
     } finally {
       setSaving(false);
     }
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || busy) return;
     setDeleting(true);
     setDeleteError("");
     try {
       await faqsAdminApi.remove(deleteTarget._id);
-      setItems((current) => current.filter((item) => item._id !== deleteTarget._id));
       if (editingId === deleteTarget._id) resetForm();
       setDeleteTarget(null);
       setNotice("FAQ deleted.");
+      refresh();
     } catch (err) {
-      setDeleteError(errorMessage(err, "Could not delete the FAQ."));
+      setDeleteError(getApiErrorMessage(err, "Could not delete the FAQ."));
     } finally {
       setDeleting(false);
     }
@@ -200,7 +215,7 @@ export default function FaqsAdmin() {
             Manage the questions shown on the home page and the FAQ page.
           </p>
         </div>
-        <span className={styles.countPill}>{items.length} total</span>
+        <span className={styles.countPill}>{counts?.all ?? 0} total</span>
       </header>
 
       {notice && (
@@ -215,36 +230,24 @@ export default function FaqsAdmin() {
           <div className={styles.cardHeader}>
             <h2 className={styles.cardTitle}>{editingId ? "Edit FAQ" : "Add FAQ"}</h2>
             {editingId && (
-              <button type="button" className={styles.linkBtn} onClick={resetForm}>
+              <button type="button" className={styles.linkBtn} onClick={resetForm} disabled={busy}>
                 <X size={14} aria-hidden /> Cancel edit
               </button>
             )}
           </div>
 
           <div className={styles.field}>
-            <span className={styles.label} id="f-placement-label">
-              Show on
-            </span>
-            <div
-              className={styles.segmented}
-              role="radiogroup"
-              aria-labelledby="f-placement-label"
+            <label htmlFor="f-category" className={styles.label}>Category</label>
+            <select
+              id="f-category"
+              className={styles.input}
+              value={form.category}
+              onChange={(e) => setField("category", e.target.value as FaqCategory)}
             >
-              {PLACEMENT_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  role="radio"
-                  aria-checked={form.placement === option.value}
-                  className={`${styles.segment} ${
-                    form.placement === option.value ? styles.segmentActive : ""
-                  }`}
-                  onClick={() => setField("placement", option.value)}
-                >
-                  {option.label}
-                </button>
+              {FAQ_CATEGORIES.map((category) => (
+                <option key={category} value={category}>{category}</option>
               ))}
-            </div>
+            </select>
           </div>
 
           <div className={styles.field}>
@@ -313,6 +316,17 @@ export default function FaqsAdmin() {
             </span>
           </label>
 
+          <label className={styles.switchRow}>
+            <input
+              type="checkbox"
+              className={styles.switchInput}
+              checked={form.showOnHome}
+              onChange={(e) => setField("showOnHome", e.target.checked)}
+            />
+            <span className={styles.switchTrack} aria-hidden />
+            <span className={styles.switchText}>Show on homepage</span>
+          </label>
+
           {formError && (
             <p className={styles.formError} role="alert">
               {formError}
@@ -320,7 +334,7 @@ export default function FaqsAdmin() {
           )}
 
           <div className={styles.actions}>
-            <button type="submit" className={styles.primaryBtn} disabled={saving}>
+            <button type="submit" className={styles.primaryBtn} disabled={busy || loading}>
               {!editingId && !saving && <Plus size={16} aria-hidden />}
               {saving ? "Saving..." : editingId ? "Update FAQ" : "Add FAQ"}
             </button>
@@ -329,7 +343,7 @@ export default function FaqsAdmin() {
                 type="button"
                 className={styles.secondaryBtn}
                 onClick={resetForm}
-                disabled={saving}
+                disabled={busy}
               >
                 Cancel
               </button>
@@ -354,10 +368,13 @@ export default function FaqsAdmin() {
                   role="tab"
                   aria-selected={filter === f.value}
                   className={`${styles.tab} ${filter === f.value ? styles.tabActive : ""}`}
-                  onClick={() => setFilter(f.value)}
+                  onClick={() => {
+                    setFilter(f.value);
+                    setPage(1);
+                  }}
                 >
                   {f.label}
-                  <span className={styles.tabCount}>{countFor(items, f.value)}</span>
+                  <span className={styles.tabCount}>{counts?.[f.value] ?? 0}</span>
                 </button>
               ))}
             </div>
@@ -368,16 +385,17 @@ export default function FaqsAdmin() {
                 type="text"
                 className={styles.searchInput}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => changeSearch(e.target.value)}
                 placeholder="Search FAQs"
                 aria-label="Search FAQs"
                 autoComplete="off"
+                maxLength={FAQ_SEARCH_MAX_LENGTH}
               />
               {search && (
                 <button
                   type="button"
                   className={styles.searchClear}
-                  onClick={() => setSearch("")}
+                  onClick={() => changeSearch("")}
                   aria-label="Clear search"
                 >
                   <X size={12} />
@@ -391,23 +409,23 @@ export default function FaqsAdmin() {
           {!loading && loadError && (
             <div className={styles.errorBox} role="alert">
               <p>{loadError}</p>
-              <button type="button" className={styles.secondaryBtn} onClick={load}>
+              <button type="button" className={styles.secondaryBtn} onClick={refresh}>
                 Try again
               </button>
             </div>
           )}
 
-          {!loading && !loadError && items.length === 0 && (
+          {data && data.counts.all === 0 && (
             <p className={styles.state}>No FAQs yet. Add your first one using the form.</p>
           )}
 
-          {!loading && !loadError && items.length > 0 && visible.length === 0 && (
+          {data && data.counts.all > 0 && data.faqs.length === 0 && (
             <p className={styles.state}>No FAQs match this filter.</p>
           )}
 
-          {!loading && !loadError && visible.length > 0 && (
+          {data && data.faqs.length > 0 && (
             <ul className={styles.list}>
-              {visible.map((item) => (
+              {data.faqs.map((item) => (
                 <li
                   key={item._id}
                   className={`${styles.listItem} ${
@@ -415,9 +433,10 @@ export default function FaqsAdmin() {
                   }`}
                 >
                   <div className={styles.badges}>
-                    <span className={`${styles.badge} ${styles.badgePlacement}`}>
-                      {placementLabel(item.placement)}
+                    <span className={`${styles.badge} ${styles.badgeCategory}`}>
+                      {item.category}
                     </span>
+                    {item.showOnHome && <span className={`${styles.badge} ${styles.badgeDraft}`}>Home page</span>}
                     <span
                       className={`${styles.badge} ${
                         item.published ? styles.badgeLive : styles.badgeDraft
@@ -435,6 +454,7 @@ export default function FaqsAdmin() {
                       type="button"
                       className={styles.editBtn}
                       onClick={() => startEdit(item)}
+                      disabled={busy}
                       aria-label={`Edit FAQ: ${item.question}`}
                     >
                       <Pencil size={15} aria-hidden /> Edit
@@ -442,6 +462,7 @@ export default function FaqsAdmin() {
                     <button
                       type="button"
                       className={styles.deleteBtn}
+                      disabled={busy}
                       onClick={() => {
                         setDeleteError("");
                         setDeleteTarget(item);
@@ -454,6 +475,21 @@ export default function FaqsAdmin() {
                 </li>
               ))}
             </ul>
+          )}
+          {data && data.pagination.total > 0 && (
+            <nav className={styles.pagination} aria-label="FAQ pagination">
+              <span className={styles.paginationMeta}>
+                Page {data.pagination.page} of {data.pagination.pages} · {data.pagination.total} FAQ{data.pagination.total === 1 ? "" : "s"}
+              </span>
+              <div className={styles.paginationActions}>
+                <button type="button" className={styles.secondaryBtn} disabled={busy || !data.pagination.hasPrevPage} onClick={() => setPage(page - 1)}>
+                  <ChevronLeft size={15} aria-hidden /> Previous
+                </button>
+                <button type="button" className={styles.secondaryBtn} disabled={busy || !data.pagination.hasNextPage} onClick={() => setPage(page + 1)}>
+                  Next <ChevronRight size={15} aria-hidden />
+                </button>
+              </div>
+            </nav>
           )}
         </section>
       </div>

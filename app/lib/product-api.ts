@@ -35,6 +35,7 @@ export interface MouldInput {
   dimensions?: Partial<Dimensions>;
   weight?: number;
   cavities?: number;
+  coolingLines?: number | null;
   expectedCycleTime?: number;
   recommendedMachineTonnage?: number;
   runnerType?: RunnerType;

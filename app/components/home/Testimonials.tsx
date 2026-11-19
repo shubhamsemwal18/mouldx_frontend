@@ -2,45 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Quote, Star } from "lucide-react";
+import type { Testimonial } from "@/app/lib/testimonials-api";
 import styles from "./Testimonials.module.css";
-
-export interface Testimonial {
-  id: string;
-  name: string;
-  role: string;
-  location?: string;
-  quote: string;
-  /** 1 to 5 */
-  rating: number;
-}
-
-// Placeholder data: replace with real customer reviews.
-const DEFAULT_TESTIMONIALS: Testimonial[] = [
-  {
-    id: "t1",
-    name: "Customer Name",
-    role: "Furniture Manufacturer",
-    location: "City, State",
-    quote: "Write your real customer feedback here.",
-    rating: 5,
-  },
-  {
-    id: "t2",
-    name: "Customer Name",
-    role: "Plastic Moulding Unit",
-    location: "City, State",
-    quote: "Write your real customer feedback here.",
-    rating: 5,
-  },
-  {
-    id: "t3",
-    name: "Customer Name",
-    role: "Mould Supplier",
-    location: "City, State",
-    quote: "Write your real customer feedback here.",
-    rating: 4,
-  },
-];
 
 const AUTOPLAY_MS = 5000;
 const TRANSITION_MS = 450;
@@ -49,7 +12,7 @@ const SWIPE_THRESHOLD = 50;
 interface TestimonialsProps {
   title?: string;
   subtitle?: string;
-  testimonials?: Testimonial[];
+  testimonials: Testimonial[];
   autoPlay?: boolean;
 }
 
@@ -64,7 +27,7 @@ const initialsOf = (name: string) =>
 export default function Testimonials({
   title = "What our customers say",
   subtitle = "Trusted by manufacturers and buyers across India",
-  testimonials = DEFAULT_TESTIMONIALS,
+  testimonials,
   autoPlay = true,
 }: TestimonialsProps) {
   const count = testimonials.length;
@@ -75,11 +38,11 @@ export default function Testimonials({
   // jump (without animation) to the real slide, which makes the loop seamless.
   const slides = loop
     ? [
-        { item: testimonials[count - 1], key: `${testimonials[count - 1].id}-head`, clone: true },
-        ...testimonials.map((item) => ({ item, key: item.id, clone: false })),
-        { item: testimonials[0], key: `${testimonials[0].id}-tail`, clone: true },
+        { item: testimonials[count - 1], key: `${testimonials[count - 1]._id}-head`, clone: true },
+        ...testimonials.map((item) => ({ item, key: item._id, clone: false })),
+        { item: testimonials[0], key: `${testimonials[0]._id}-tail`, clone: true },
       ]
-    : testimonials.map((item) => ({ item, key: item.id, clone: false }));
+    : testimonials.map((item) => ({ item, key: item._id, clone: false }));
 
   const [position, setPosition] = useState(loop ? 1 : 0);
   const [animate, setAnimate] = useState(true);
@@ -90,12 +53,6 @@ export default function Testimonials({
   const widthRef = useRef(1);
 
   const active = loop ? (((position - 1) % count) + count) % count : 0;
-
-  // Reset when the number of testimonials changes.
-  useEffect(() => {
-    setAnimate(false);
-    setPosition(count > 1 ? 1 : 0);
-  }, [count]);
 
   const next = useCallback(() => {
     if (!loop) return;
@@ -275,7 +232,7 @@ export default function Testimonials({
             <div className={styles.dots} role="tablist" aria-label="Choose testimonial">
               {testimonials.map((item, i) => (
                 <button
-                  key={item.id}
+                  key={item._id}
                   type="button"
                   role="tab"
                   aria-selected={i === active}
