@@ -30,6 +30,7 @@ import {
   BookingProductImage,
   paymentMethodLabel,
 } from "./BookingVisuals";
+import DateFilter from "./DateFilter"; // NEW
 import styles from "./Bookings.module.css";
 
 // "2026-11-19T00:00:00.000Z" ya Date -> "2026-11-19"
@@ -134,17 +135,7 @@ export default function BookingList({ view }: { view: BookingView }) {
         : "";
   });
   const sentinel = useRef<HTMLDivElement>(null);
-  const dateInput = useRef<HTMLInputElement>(null);
-  const openCalendar = () => {
-    const input = dateInput.current;
-    if (!input) return;
-    try {
-      input.showPicker();
-    } catch {
-      input.focus();
-      input.click();
-    }
-  };
+
   useEffect(() => {
     const timer = window.setTimeout(() => setSearch(searchInput.trim()), 350);
     return () => window.clearTimeout(timer);
@@ -238,52 +229,33 @@ export default function BookingList({ view }: { view: BookingView }) {
         })}
       </div>
       <div className={styles.searchArea}>
-      <div className={styles.searchRow}>
-        <SearchBar
-          value={searchInput}
-          onChange={setSearchInput}
-          onSubmit={() => setSearch(searchInput.trim())}
-          ariaLabel="Search bookings"
-          placeholder={
-            isAdmin
-              ? "Search booking, product, customer or host"
-              : "Search booking or product"
-          }
-        />
-        <div className={styles.dateWrap}>
-          <button
-            type="button"
-            className={`${styles.dateButton} ${date ? styles.dateButtonActive : ""}`}
-            onClick={openCalendar}
-            aria-label="Open calendar"
-          >
-            <CalendarDays size={20} aria-hidden />
-            <span className={styles.dateButtonText}>Calendar</span>
-          </button>
-          <input
-            ref={dateInput}
-            type="date"
-            className={styles.dateNative}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            tabIndex={-1}
-            aria-hidden
+        <div className={styles.searchRow}>
+          <SearchBar
+            value={searchInput}
+            onChange={setSearchInput}
+            onSubmit={() => setSearch(searchInput.trim())}
+            ariaLabel="Search bookings"
+            placeholder={
+              isAdmin
+                ? "Search booking, product, customer or host"
+                : "Search booking or product"
+            }
           />
+          <DateFilter value={date} onChange={setDate} />
         </div>
-      </div>
-      {date && (
-        <div className={styles.dateChip}>
-          <CalendarDays size={14} aria-hidden />
-          <span>{formatBookingDate(date)}</span>
-          <button
-            type="button"
-            onClick={() => setDate("")}
-            aria-label="Clear date filter"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
+        {date && (
+          <div className={styles.dateChip}>
+            <CalendarDays size={14} aria-hidden />
+            <span>{formatBookingDate(date)}</span>
+            <button
+              type="button"
+              onClick={() => setDate("")}
+              aria-label="Clear date filter"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
       </div>
       <div className={styles.resultsHeading}>
         <h2>
