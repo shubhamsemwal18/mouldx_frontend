@@ -377,6 +377,10 @@
   gap: 8px;
 }
 
+.actionsRowTwo {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .actionBtn {
   display: flex;
   align-items: center;
@@ -918,9 +922,10 @@
     width: 100%;
   }
 
-  .actionsRow {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  .actionsRow,
+.actionsRowTwo {
+  grid-template-columns: minmax(0, 1fr);
+}
 
   .sheet {
     padding: 12px 12px 20px;

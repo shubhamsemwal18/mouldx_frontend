@@ -393,6 +393,9 @@ function ListingCard({
   deleting: boolean;
 }) {
   const displayStatus = getListingDisplayStatus(listing);
+  // Calendar is only for approved listings that are live (not draft,
+  // pending approval, rejected or under maintenance).
+  const showCalendar = displayStatus === "live";
   const detailsHref = `/owner/moulds/${listing._id}`;
   const mouldSetCount = getMouldSetCount(listing);
   const categoryLine = [listing.category?.title, listing.subCategory?.title]
@@ -464,13 +467,19 @@ function ListingCard({
 
       <hr className={styles.divider} />
 
-      <div className={styles.actionsRow}>
-        <Link
-          href={`/owner/moulds/${listing._id}/calendar`}
-          className={styles.actionBtn}
-        >
-          <span aria-hidden>📅</span> Calendar
-        </Link>
+      <div
+        className={`${styles.actionsRow} ${
+          showCalendar ? "" : styles.actionsRowTwo
+        }`}
+      >
+        {showCalendar && (
+          <Link
+            href={`/owner/moulds/${listing._id}/calendar`}
+            className={styles.actionBtn}
+          >
+            <span aria-hidden>📅</span> Calendar
+          </Link>
+        )}
         <button
           type="button"
           className={styles.actionBtn}
@@ -483,25 +492,31 @@ function ListingCard({
             href={`/owner/moulds/new/product?id=${listing._id}`}
             className={styles.actionBtn}
           >
-            <span aria-hidden>✎</span> {listing.pendingUpdate?.status === "rejected" ? "Revise" : "Edit"}
+            <span aria-hidden>✎</span>{" "}
+            {listing.pendingUpdate?.status === "rejected" ? "Revise" : "Edit"}
           </Link>
         ) : (
-          <button type="button" className={styles.actionBtn} disabled title="Editing is locked while admin reviews this request">
+          <button
+            type="button"
+            className={styles.actionBtn}
+            disabled
+            title="Editing is locked while admin reviews this request"
+          >
             In review
           </button>
         )}
       </div>
 
       {listing.status === "draft" && (
-  <button
-    type="button"
-    className={styles.deleteLink}
-    onClick={() => onDelete(listing._id)}
-    disabled={deleting}
-  >
-    <TrashIcon /> {deleting ? "Deleting..." : "Delete draft"}
-  </button>
-)}
+        <button
+          type="button"
+          className={styles.deleteLink}
+          onClick={() => onDelete(listing._id)}
+          disabled={deleting}
+        >
+          <TrashIcon /> {deleting ? "Deleting..." : "Delete draft"}
+        </button>
+      )}
     </div>
   );
 }
@@ -737,7 +752,7 @@ export default function MyMouldsPage() {
           })}
         </div>
 
-                <SearchBar
+        <SearchBar
           value={search}
           onChange={setSearch}
           ariaLabel="Search listings"

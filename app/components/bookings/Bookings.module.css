@@ -2217,7 +2217,6 @@
 
 /* =========================================================
    PAGINATION
-   Paste this at the END of Bookings.module.css
    ========================================================= */
 
 .listLoading {
@@ -2343,6 +2342,126 @@
 
 @media (max-width: 359px) {
   .pageButtonText {
+    display: none;
+  }
+}
+
+/* =========================================================
+   CALENDAR (DATE) FILTER  
+   ========================================================= */
+
+.searchArea {
+  margin-bottom: 28px;
+}
+
+.searchRow {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.searchRow > :first-child {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.dateWrap {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.dateButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 58px;
+  padding: 0 18px;
+  border: 1px solid var(--primary-ring);
+  border-radius: var(--radius);
+  background: var(--primary-soft);
+  color: var(--primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .2s ease;
+}
+
+.dateButton:hover {
+  background: var(--primary-ring);
+  border-color: var(--primary-border);
+}
+
+.dateButtonActive,
+.dateButtonActive:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, .3);
+}
+
+.dateNative {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+}
+
+.dateChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 6px 6px 6px 12px;
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-ring);
+  border-radius: 999px;
+  color: var(--primary-hover);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dateChip > svg {
+  flex-shrink: 0;
+}
+
+.dateChip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--primary);
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.dateChip button:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+@media (max-width: 479px) {
+  .searchArea {
+    margin-bottom: 20px;
+  }
+
+  .dateButton {
+    width: 58px;
+    padding: 0;
+  }
+
+  .dateButtonText {
     display: none;
   }
 }
