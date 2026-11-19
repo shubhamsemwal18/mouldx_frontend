@@ -11,6 +11,7 @@ import {
   Layers,
   Package,
   RefreshCw,
+  X,
   XCircle,
 } from "lucide-react";
 import { bookingMoney, formatBookingDate } from "@/app/lib/booking-dates";
@@ -30,6 +31,16 @@ import {
   paymentMethodLabel,
 } from "./BookingVisuals";
 import styles from "./Bookings.module.css";
+
+// "2026-11-19T00:00:00.000Z" ya Date -> "2026-11-19"
+function dayKey(value: string | Date) {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+  const d = new Date(value);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 const FILTERS = [
   { key: "total", label: "All bookings", icon: Layers },
@@ -109,6 +120,7 @@ export default function BookingList({ view }: { view: BookingView }) {
   const searchParams = useSearchParams();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [date, setDate] = useState("");
   const [status, setStatus] = useState<BookingFilter>(() => {
     const tab = searchParams.get("tab");
     const allowed =
@@ -122,6 +134,17 @@ export default function BookingList({ view }: { view: BookingView }) {
         : "";
   });
   const sentinel = useRef<HTMLDivElement>(null);
+  const dateInput = useRef<HTMLInputElement>(null);
+  const openCalendar = () => {
+    const input = dateInput.current;
+    if (!input) return;
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+      input.click();
+    }
+  };
   useEffect(() => {
     const timer = window.setTimeout(() => setSearch(searchInput.trim()), 350);
     return () => window.clearTimeout(timer);
@@ -141,6 +164,12 @@ export default function BookingList({ view }: { view: BookingView }) {
     observer.observe(target);
     return () => observer.disconnect();
   }, [hasMore, loading, error, loadMore]);
+
+  // Date select hone par baaki pages bhi load karo, taaki us date ki saari bookings mil jaayein
+  useEffect(() => {
+    if (date && hasMore && !loading && !error) loadMore();
+  }, [date, hasMore, loading, error, loadMore, query.data]);
+
   const data = query.data;
   const stats = query.stats;
   const base = bookingBasePath(view);
@@ -151,6 +180,13 @@ export default function BookingList({ view }: { view: BookingView }) {
       : isAdmin
         ? FILTERS
         : [...FILTERS, COMPLETED_FILTER];
+
+  // Selected date rental period (startDate..endDate) ke andar aani chahiye
+  const visibleBookings = (data?.bookings ?? []).filter(
+    (b) => !date || (dayKey(b.startDate) <= date && date <= dayKey(b.endDate)),
+  );
+  const stillScanning = Boolean(date) && hasMore;
+  const countLabel = (n: number) => `${n} ${n === 1 ? "booking" : "bookings"}`;
 
   return (
     <div
@@ -201,26 +237,67 @@ export default function BookingList({ view }: { view: BookingView }) {
           );
         })}
       </div>
-      <SearchBar
-        value={searchInput}
-        onChange={setSearchInput}
-        onSubmit={() => setSearch(searchInput.trim())}
-        ariaLabel="Search bookings"
-        placeholder={
-          isAdmin
-            ? "Search booking, product, customer or host"
-            : "Search booking or product"
-        }
-      />
+      <div className={styles.searchArea}>
+      <div className={styles.searchRow}>
+        <SearchBar
+          value={searchInput}
+          onChange={setSearchInput}
+          onSubmit={() => setSearch(searchInput.trim())}
+          ariaLabel="Search bookings"
+          placeholder={
+            isAdmin
+              ? "Search booking, product, customer or host"
+              : "Search booking or product"
+          }
+        />
+        <div className={styles.dateWrap}>
+          <button
+            type="button"
+            className={`${styles.dateButton} ${date ? styles.dateButtonActive : ""}`}
+            onClick={openCalendar}
+            aria-label="Open calendar"
+          >
+            <CalendarDays size={20} aria-hidden />
+            <span className={styles.dateButtonText}>Calendar</span>
+          </button>
+          <input
+            ref={dateInput}
+            type="date"
+            className={styles.dateNative}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            tabIndex={-1}
+            aria-hidden
+          />
+        </div>
+      </div>
+      {date && (
+        <div className={styles.dateChip}>
+          <CalendarDays size={14} aria-hidden />
+          <span>{formatBookingDate(date)}</span>
+          <button
+            type="button"
+            onClick={() => setDate("")}
+            aria-label="Clear date filter"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      </div>
       <div className={styles.resultsHeading}>
         <h2>
-          {status
-            ? `${status[0].toUpperCase()}${status.slice(1)} bookings`
-            : "All bookings"}
+          {date
+            ? `Booked on ${formatBookingDate(date)}`
+            : status
+              ? `${status[0].toUpperCase()}${status.slice(1)} bookings`
+              : "All bookings"}
         </h2>
         <span className={styles.note} aria-live="polite">
           {data
-            ? `${data.pagination.total} ${data.pagination.total === 1 ? "booking" : "bookings"}`
+            ? date
+              ? `${countLabel(visibleBookings.length)}${stillScanning ? "…" : ""}`
+              : countLabel(data.pagination.total)
             : "Updating..."}
         </span>
       </div>
@@ -235,18 +312,26 @@ export default function BookingList({ view }: { view: BookingView }) {
           {query.error.message} <button onClick={query.retry}>Try again</button>
         </div>
       )}
-      {data && data.bookings.length === 0 && (
+      {data && visibleBookings.length === 0 && stillScanning && !query.error && (
+        <div className={styles.state} role="status">
+          <RefreshCw size={22} className={styles.spinner} />
+          <p>Checking bookings for this date...</p>
+        </div>
+      )}
+      {data && visibleBookings.length === 0 && !stillScanning && (
         <div className={styles.emptyState}>
           <Package size={36} strokeWidth={1.5} />
           <h2>No bookings found</h2>
           <p>
-            {view === "host" && !search
-              ? "Confirmed bookings will appear here after admin approval."
-              : search || status
-                ? "Try another status or search."
-                : "Your booking requests will appear here."}
+            {date
+              ? "Is date par koi mould booked nahi hai."
+              : view === "host" && !search
+                ? "Confirmed bookings will appear here after admin approval."
+                : search || status
+                  ? "Try another status or search."
+                  : "Your booking requests will appear here."}
           </p>
-          {view === "customer" && (
+          {view === "customer" && !date && (
             <Link
               className={`${styles.button} ${styles.primary}`}
               href="/explore"
@@ -257,7 +342,7 @@ export default function BookingList({ view }: { view: BookingView }) {
           )}
         </div>
       )}
-      {data && data.bookings.length > 0 && (
+      {data && visibleBookings.length > 0 && (
         <>
           {isAdmin && (
             <div className={styles.tableWrap}>
@@ -273,7 +358,7 @@ export default function BookingList({ view }: { view: BookingView }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.bookings.map((booking) => (
+                  {visibleBookings.map((booking) => (
                     <tr key={booking._id}>
                       <td>
                         <Link href={`${base}/${booking._id}`}>
@@ -334,7 +419,7 @@ export default function BookingList({ view }: { view: BookingView }) {
           <div
             className={isAdmin ? styles.adminMobileList : styles.bookingGrid}
           >
-            {data.bookings.map((booking) => (
+            {visibleBookings.map((booking) => (
               <BookingCard key={booking._id} booking={booking} view={view} />
             ))}
           </div>
@@ -349,6 +434,13 @@ export default function BookingList({ view }: { view: BookingView }) {
                 Try again
               </button>
             </div>
+          ) : date ? (
+            stillScanning ? (
+              <p role="status" aria-live="polite">
+                <RefreshCw size={16} className={styles.spinner} />
+                Checking more bookings...
+              </p>
+            ) : null
           ) : (
             <p role="status" aria-live="polite">
               {query.loadingMore ? (

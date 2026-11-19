@@ -60,6 +60,9 @@ const DEFAULT_STATS: AdminKycStats = {
 
 const SEARCH_DEBOUNCE_MS = 400;
 
+/** Earliest date selectable in the export calendar (YYYY-MM-DD). */
+const EXPORT_MIN_DATE = "2026-03-01";
+
 type ExportStatus = "all" | "approved" | "rejected";
 
 const EXPORT_STATUS_OPTIONS: { key: ExportStatus; label: string }[] = [
@@ -95,6 +98,10 @@ export default function KycApprovalsPage() {
   const handleExport = async () => {
     if (!exportRange.from || !exportRange.to) {
       setExportError("Select both a start and an end date to download KYC history.");
+      return;
+    }
+    if (exportRange.from < EXPORT_MIN_DATE || exportRange.to < EXPORT_MIN_DATE) {
+      setExportError("Dates cannot be earlier than 01 Mar 2026.");
       return;
     }
     if (exportRange.to < exportRange.from) {
@@ -290,6 +297,7 @@ export default function KycApprovalsPage() {
             aria-label="Export start date"
             className={styles.dateInput}
             value={exportRange.from}
+            min={EXPORT_MIN_DATE}
             max={exportRange.to || todayInIndia()}
             onChange={(e) => { setExportError(""); setExportRange((prev) => ({ ...prev, from: e.target.value })); }}
           />
@@ -299,7 +307,8 @@ export default function KycApprovalsPage() {
             aria-label="Export end date"
             className={styles.dateInput}
             value={exportRange.to}
-            min={exportRange.from || undefined}
+            min={exportRange.from || EXPORT_MIN_DATE}
+            max={todayInIndia()}
             onChange={(e) => { setExportError(""); setExportRange((prev) => ({ ...prev, to: e.target.value })); }}
           />
         </div>

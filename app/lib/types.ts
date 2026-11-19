@@ -261,6 +261,8 @@ export interface PublicProductCard {
   componentCount?: number;
   mouldCount?: number;
   mouldTypes?: MouldType[];
+   avgRating?: number;
+  reviewCount?: number;
   publishedAt?: string;
   location?: LatLng;
 }

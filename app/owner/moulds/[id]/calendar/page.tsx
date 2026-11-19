@@ -1,9 +1,12 @@
 "use client";
 
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import styles from "./AvailabilityCalendar.module.css";
+import { productApi } from "@/app/lib/product-api";
+import type { Product } from "@/app/lib/types";
+import { getListingDisplayStatus } from "../../listing-status";
 
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTH_NAMES = [
@@ -18,11 +21,6 @@ interface DayCell {
 }
 
 // TEMP dummy data — will come from the real bookings API (customer-confirmed bookings, read-only)
-const MOULD_CODE: Record<string, string> = {
-  "1": "MX-000123",
-  "2": "MX-000198",
-};
-
 // Days already booked by customers — owner cannot toggle these
 const BOOKED_DAYS = new Set([7, 8, 9, 10, 11, 12]);
 
@@ -37,7 +35,39 @@ export default function AvailabilityCalendarPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const mouldCode = MOULD_CODE[id] ?? "—";
+
+  // Listing is loaded first so the page can be blocked for non-live listings.
+  const [listing, setListing] = useState<Product | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // NOTE: adjust this call to match your productApi (get / getById / details).
+        const response = await productApi.get(id);
+        const product: Product = response.product;
+        if (cancelled) return;
+
+        if (getListingDisplayStatus(product) !== "live") {
+          router.replace(`/owner/moulds/${id}`);
+          return;
+        }
+
+        setListing(product);
+        setChecking(false);
+      } catch {
+        if (!cancelled) router.replace("/owner/moulds");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, router]);
+
+  const mouldCode = listing?.code ?? "—";
 
   const initialMonth = 8; // September (0-indexed)
   const initialYear = 2026;
@@ -114,6 +144,11 @@ export default function AvailabilityCalendarPage({
     // TODO: call save-availability API with { mouldId: id, blockedDates: Array.from(selectedDays) }
     router.push(`/owner/moulds/${id}/edit`);
   };
+
+  // Render nothing until we know the listing is live (avoids a flash of the calendar).
+  if (checking || !listing) {
+    return null;
+  }
 
   return (
     <div className={styles.page}>
