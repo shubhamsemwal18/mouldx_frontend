@@ -21,7 +21,7 @@ const QUICK_LINKS = [
 
 const SOCIAL_LINKS = [
   // { label: "Facebook", href: "#", icon: FaFacebookF },
-  { label: "Instagram", href: "#", icon: FaInstagram },
+  { label: "Instagram", href: "https://www.instagram.com/mouldx.in?evlk=cjlvYjFyNnFzN2hw", icon: FaInstagram },
    { label: "LinkedIn", href: "#", icon: FaLinkedinIn },
  
 ];
