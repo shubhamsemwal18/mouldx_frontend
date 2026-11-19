@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Search, Phone, X } from "lucide-react";
 import { FAQ_CATEGORIES, FAQ_SEARCH_MAX_LENGTH, faqsApi, type FaqCategory, type FaqPage } from "@/app/lib/faqs-api";
+import LinkifiedText from "@/app/components/shared/LinkifiedText";
 import styles from "./Faqs.module.css";
 
 const CATEGORIES = ["All", ...FAQ_CATEGORIES] as const;
@@ -204,7 +205,9 @@ function FaqResults({ search, category, openId, onOpen }: FaqResultsProps) {
                 className={styles.panel}
               >
                 <div className={styles.panelInner}>
-                  <p className={styles.answer}>{f.answer}</p>
+                  <p className={styles.answer}>
+                    <LinkifiedText text={f.answer} linkClassName={styles.answerLink} />
+                  </p>
                   {hasQuery && <span className={styles.badge}>{f.category}</span>}
                 </div>
               </div>

@@ -147,6 +147,25 @@
   font-size: 14px;
   line-height: 1.7;
   color: #4b5563;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.answerLink {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.answerLink:hover {
+  color: #1d4ed8;
+}
+
+.answerLink:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* ---------- Footer link ---------- */
