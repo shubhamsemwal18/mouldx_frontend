@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
 import { getApiErrorMessage } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
 import { reviewApi, type ReviewList as List, type ReviewScope } from "@/app/lib/review-api";
@@ -47,7 +46,7 @@ export default function ReviewList({ scope, slug, showSummary = true }: { scope:
   }, [current, loadMore]);
   return <div>
     {showSummary && current?.data && <RatingSummary summary={current.data.summary} label={scope === "customer" ? "Your rating as a customer" : "Product rating"} />}
-    <div className={styles.filters} aria-label="Filter reviews by rating"><button type="button" aria-label="Refresh reviews" onClick={() => setAttempt((n) => n + 1)}><RefreshCw size={16} /></button>{[undefined, 5, 4, 3, 2, 1].map((value) => <button key={value || "all"} type="button" aria-pressed={rating === value} onClick={() => setRating(value)}>{value ? `${value} ★` : "All reviews"}</button>)}</div>
+    <div className={styles.filters} aria-label="Filter reviews by rating">{[undefined, 5, 4, 3, 2, 1].map((value) => <button key={value || "all"} type="button" aria-pressed={rating === value} onClick={() => setRating(value)}>{value ? `${value} ★` : "All reviews"}</button>)}</div>
     {!current && <p className={styles.state} role="status">Loading reviews…</p>}
     {current?.data && !current.data.reviews.length && <p className={styles.state}>{rating ? "No reviews with this rating yet." : "No reviews yet. Reviews are available after a completed booking."}</p>}
     <div className={styles.list}>{current?.data?.reviews.map((review) => <ReviewCard key={review._id} review={review} allowReply={scope === "host"} onReply={(updated) => setState((prev) => prev?.key === key && prev.data ? { ...prev, data: { ...prev.data, reviews: prev.data.reviews.map((r) => r._id === updated._id ? updated : r) } } : prev)} />)}</div>

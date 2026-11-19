@@ -2,7 +2,6 @@
 import { useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { RefreshCw } from "lucide-react";
 import { hostApi, type DashboardBooking } from "@/app/lib/host-api";
 import { useAuth } from "@/app/lib/auth-context";
 import { bookingMoney, formatBookingDate } from "@/app/lib/booking-dates";
@@ -70,14 +69,6 @@ export default function OwnerHome() {
       <div className={styles.content}>
         <div className={styles.sectionHeader}>
           <p className={styles.subtitle}>Your MouldX business at a glance.</p>
-          <button
-            className={styles.refresh}
-            aria-label="Refresh dashboard"
-            onClick={query.reload}
-            disabled={query.loading}
-          >
-            <RefreshCw size={18} />
-          </button>
         </div>
         {query.loading && (
           <p className={styles.empty} role="status">
