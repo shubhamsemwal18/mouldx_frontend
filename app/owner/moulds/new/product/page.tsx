@@ -180,7 +180,11 @@ function validateAll(
   product: ProductState,
   components: ComponentState[],
   moulds: MouldState[],
-  hasSubCategories: boolean
+  { hasCategory, hasSubCategory, requiresSubCategory }: {
+    hasCategory: boolean;
+    hasSubCategory: boolean;
+    requiresSubCategory: boolean;
+  }
 ) {
   const e: Record<string, string> = {};
   const add = (key: string, msg: string) => {
@@ -190,10 +194,10 @@ function validateAll(
   const count = Number(product.componentCount);
 
   add("p.productName", req(product.productName, REGEX.name, "2–80 characters, letters/numbers only"));
-  if (!product.category) {
+  if (!hasCategory) {
     add("p.category", "Required");
   }
-  if (hasSubCategories && !product.subCategory) {
+  if (requiresSubCategory && !hasSubCategory) {
     add("p.subCategory", "Required");
   }
   add("p.images", product.images.length > 0 ? "" : "At least one image is required");
@@ -673,9 +677,21 @@ export default function ProductDetailsPage() {
   const [coords, setCoords] = useState<Coords | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
 
-  const [rootCategories, setRootCategories] = useState<PublishedCategory[]>([]);
-  const [subCategories, setSubCategories] = useState<PublishedCategory[]>([]);
+  const [rootCategories, setRootCategories] = useState<PublishedCategory[] | null>(null);
+  const [subCategoryResult, setSubCategoryResult] = useState<{
+    parentId: string;
+    categories: PublishedCategory[];
+    error?: string;
+  } | null>(null);
   const [categoryError, setCategoryError] = useState("");
+  const [categoryLoadAttempt, setCategoryLoadAttempt] = useState(0);
+
+  const selectedCategory = rootCategories?.find((category) => category._id === product.category);
+  const currentSubCategories = subCategoryResult?.parentId === selectedCategory?._id ? subCategoryResult : null;
+  const subCategories = currentSubCategories?.categories ?? [];
+  const selectedSubCategory = subCategories.find((category) => category._id === product.subCategory);
+  const loadingSubCategories = Boolean(selectedCategory && !currentSubCategories);
+  const categoryOptionsBlocked = rootCategories === null || loadingSubCategories || Boolean(currentSubCategories?.error);
 
   const { user, loading: authLoading } = useAuth();
   const [saving, setSaving] = useState<null | "draft" | "submit">(null);
@@ -709,7 +725,7 @@ export default function ProductDetailsPage() {
     let cancelled = false;
 
     categoryApi
-      .listPublished({ limit: 100 })
+      .listPublished({ limit: 100, showAll: true })
       .then((data) => {
         if (cancelled) return;
         setRootCategories(data.categories);
@@ -718,40 +734,39 @@ export default function ProductDetailsPage() {
         );
       })
       .catch((err) => {
-        if (!cancelled) setCategoryError(getApiErrorMessage(err, "Could not load categories"));
+        if (cancelled) return;
+        setRootCategories([]);
+        setCategoryError(getApiErrorMessage(err, "Could not load categories"));
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [categoryLoadAttempt]);
 
   useEffect(() => {
+    if (!selectedCategory) return;
+
     let cancelled = false;
 
-    const timer = window.setTimeout(() => {
-      const selected = rootCategories.find((category) => category._id === product.category);
-
-      if (!selected) {
-        setSubCategories([]);
-        return;
-      }
-
-      categoryApi
-        .listPublished({ parentSlug: selected.slug, limit: 100 })
-        .then((data) => {
-          if (!cancelled) setSubCategories(data.categories);
-        })
-        .catch(() => {
-          if (!cancelled) setSubCategories([]);
+    categoryApi
+      .listPublished({ parentSlug: selectedCategory.slug, limit: 100, showAll: true })
+      .then((data) => {
+        if (!cancelled) setSubCategoryResult({ parentId: selectedCategory._id, categories: data.categories });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSubCategoryResult({
+          parentId: selectedCategory._id,
+          categories: [],
+          error: getApiErrorMessage(err, "Could not load subcategories"),
         });
-    }, 0);
+      });
 
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
     };
-  }, [product.category, rootCategories]);
+  }, [selectedCategory]);
 
   const [loadingListing, setLoadingListing] = useState(Boolean(editingId));
   const [listingStatus, setListingStatus] = useState<string | null>(null);
@@ -858,7 +873,11 @@ export default function ProductDetailsPage() {
     };
   }, [editingId, loadAttempt]);
 
-  const errors = validateAll(product, components, moulds, subCategories.length > 0);
+  const errors = validateAll(product, components, moulds, {
+    hasCategory: Boolean(selectedCategory),
+    hasSubCategory: Boolean(selectedSubCategory),
+    requiresSubCategory: subCategories.length > 0,
+  });
   const ctx: Ctx = {
     errors,
     touched,
@@ -875,6 +894,14 @@ export default function ProductDetailsPage() {
 
   const handleCategoryChange = (category: string) => {
     setP({ category, subCategory: "" });
+    setSubCategoryResult(null);
+  };
+
+  const reloadCategories = () => {
+    setRootCategories(null);
+    setSubCategoryResult(null);
+    setCategoryError("");
+    setCategoryLoadAttempt((attempt) => attempt + 1);
   };
 
   const handleCountChange = (value: string) => {
@@ -978,6 +1005,7 @@ export default function ProductDetailsPage() {
   };
 
   const goNext = () => {
+    if (categoryOptionsBlocked) return;
     const stepKeys = Object.keys(errors).filter(isStepOneKey);
     if (stepKeys.length > 0) {
       setTouched((prev) => ({ ...prev, ...Object.fromEntries(stepKeys.map((k) => [k, true])) }));
@@ -1082,8 +1110,8 @@ export default function ProductDetailsPage() {
 
     return {
       name: product.productName.trim(),
-      categoryId: product.category || null,
-      subCategoryId: product.subCategory || null,
+      categoryId: selectedCategory?._id ?? null,
+      subCategoryId: selectedSubCategory?._id ?? null,
       imageIds: productImageIds,
       videoIds: productVideoIds,
       dimensions: {
@@ -1107,7 +1135,7 @@ export default function ProductDetailsPage() {
   };
 
   const save = async (mode: "draft" | "submit") => {
-    if (saving || saveInFlight.current) return;
+    if (saving || saveInFlight.current || categoryOptionsBlocked || (categoryError && product.category)) return;
 
     setServerError("");
     setServerDetails([]);
@@ -1220,25 +1248,33 @@ export default function ProductDetailsPage() {
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <SelectField
                   label="Category"
-                  value={product.category}
-                  options={toCategoryOptions(rootCategories)}
+                  value={selectedCategory?._id ?? ""}
+                  options={toCategoryOptions(rootCategories ?? [])}
                   onChange={handleCategoryChange}
-                  placeholder={rootCategories.length === 0 ? "Loading..." : "Select category"}
-                  disabled={rootCategories.length === 0}
+                  placeholder={rootCategories === null ? "Loading..." : "Select category"}
+                  disabled={!rootCategories?.length}
                   error={touched["p.category"] ? errors["p.category"] : ""}
                 />
                 <SelectField
                   label="Sub Category"
-                  value={product.subCategory}
+                  value={selectedSubCategory?._id ?? ""}
                   options={toCategoryOptions(subCategories)}
                   onChange={(v) => setP({ subCategory: v })}
-                  placeholder={subCategories.length === 0 ? "—" : "Select sub category"}
+                  placeholder={loadingSubCategories ? "Loading..." : subCategories.length === 0 ? "—" : "Select sub category"}
                   disabled={subCategories.length === 0}
                   error={touched["p.subCategory"] ? errors["p.subCategory"] : ""}
                 />
               </div>
 
-              {categoryError && <p className={styles.errorText}>{categoryError}</p>}
+              {(categoryError || currentSubCategories?.error) && (
+                <div role="alert">
+                  <p className={styles.errorText}>{categoryError || currentSubCategories?.error}</p>
+                  <button type="button" className="btn btn-link p-0" onClick={reloadCategories}>Retry loading categories</button>
+                </div>
+              )}
+              {editingId && rootCategories?.length && !selectedCategory ? (
+                <p className={styles.errorText} role="status">Choose a published category for this listing to continue.</p>
+              ) : null}
 
               <MediaSection
                 ctx={ctx}
@@ -1439,7 +1475,7 @@ export default function ProductDetailsPage() {
           <button
             type="button"
             onClick={() => save("draft")}
-            disabled={isBusy}
+            disabled={isBusy || categoryOptionsBlocked || Boolean(categoryError && product.category)}
             className={styles.ctaDraftBtn}
           >
             {saving === "draft" ? "Saving..." : isUpdate ? "Save Draft" : editingId ? "Save Changes" : "Save as Draft"}
@@ -1448,7 +1484,7 @@ export default function ProductDetailsPage() {
             <button
               type="button"
               onClick={goNext}
-              disabled={isBusy}
+              disabled={isBusy || categoryOptionsBlocked}
               className={`${styles.ctaBtn} btn-primary`}
             >
               Next
@@ -1457,7 +1493,7 @@ export default function ProductDetailsPage() {
             <button
               type="button"
               onClick={() => save("submit")}
-              disabled={isBusy}
+              disabled={isBusy || categoryOptionsBlocked}
               className={`${styles.ctaBtn} btn-primary`}
             >
               {saving === "submit"
