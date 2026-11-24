@@ -30,7 +30,7 @@ import {
   BookingProductImage,
   paymentMethodLabel,
 } from "./BookingVisuals";
-import DateFilter from "./DateFilter"; // NEW
+import BookingCalendar from "./BookingCalendar";
 import styles from "./Bookings.module.css";
 
 // "2026-11-19T00:00:00.000Z" ya Date -> "2026-11-19"
@@ -241,7 +241,12 @@ export default function BookingList({ view }: { view: BookingView }) {
                 : "Search booking or product"
             }
           />
-          <DateFilter value={date} onChange={setDate} />
+          <BookingCalendar
+            value={date}
+            onChange={setDate}
+            bookings={data?.bookings ?? []}
+            view={view}
+          />
         </div>
         {date && (
           <div className={styles.dateChip}>

@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Check, CheckCircle2, Clock3, CreditCard, RefreshCw, ShieldCheck, X, XCircle } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, CheckCircle2, Clock3, CreditCard, ShieldCheck, X, XCircle } from "lucide-react";
 import { bookingApi, bookingError } from "@/app/lib/booking-api";
 import { bookingMoney, formatBookingDate } from "@/app/lib/booking-dates";
 import { bookingBasePath } from "@/app/lib/booking-routing";
@@ -103,7 +103,7 @@ function BookingContent({ booking, view, reload }: { booking: Booking; view: Boo
 
   return <article className={`${styles.page} ${styles.detail} ${isAdmin ? styles.adminPage : ""}`}>
     <div className={styles.heading}><div>
-      <h1>{booking.code}</h1></div><div className={styles.headerActions}><BookingBadge status={booking.status} phase={!isAdmin ? booking.rentalPhase : undefined} /><button type="button" className={styles.iconButton} onClick={reload} disabled={busy} aria-label="Refresh status" title="Refresh status"><RefreshCw size={17} /></button></div></div>
+      <h1>{booking.code}</h1></div><div className={styles.headerActions}><BookingBadge status={booking.status} phase={!isAdmin ? booking.rentalPhase : undefined} /></div></div>
     <div className={`${styles.statusNotice} ${styles[`notice_${booking.status}`]}`}><StatusIcon size={24} /><div>
       {booking.status === "pending" && <><strong>Approval pending</strong><p>Request submitted. Dates are not reserved until admin approval.</p></>}
       {booking.status === "approved" && <><strong>{booking.rentalPhase === "completed" ? "Booking completed" : booking.rentalPhase === "active" ? "Booking active" : "Booking approved"}</strong><p>{booking.rentalPhase === "completed" ? "Rental completed for" : "Booking confirmed for"} {formatBookingDate(booking.startDate)} to {formatBookingDate(booking.endDate)}.</p></>}

@@ -663,7 +663,7 @@ export default function ListingReviewDetailPage({
                   <SubHeading>Mould specifications</SubHeading>
                   <Row label="Mould Name / ID" value={dash(mould.mouldNameOrId)} />
                   <Row label="Type" value={dash(mould.mouldType)} />
-                  <Row label="Year" value={dash(mould.yearOfManufacturing)} />
+                  {/* <Row label="Year" value={dash(mould.yearOfManufacturing)} /> */}
                   <Row label="Dimensions" value={formatDimensions(mould.dimensions)} />
                   <Row label="Weight" value={dash(mould.weight, " kg")} />
                   <Row label="Cavities / Core" value={dash(mould.cavities)} />

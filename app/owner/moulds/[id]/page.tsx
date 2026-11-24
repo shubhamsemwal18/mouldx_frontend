@@ -561,7 +561,7 @@ function MouldRows({ mould }: { mould: Mould }) {
     <>
       <Row label="Mould Name / ID" value={dash(mould.mouldNameOrId)} />
       <Row label="Mould Type" value={dash(mould.mouldType)} />
-      <Row label="Year of Manufacturing" value={dash(mould.yearOfManufacturing)} />
+      {/* <Row label="Year of Manufacturing" value={dash(mould.yearOfManufacturing)} /> */}
       <Row label="Dimensions (L × B × H)" value={formatDimensions(mould.dimensions)} />
       <Row label="Weight" value={dash(mould.weight, " kg")} />
       <Row label="No. of Cavities / Core" value={dash(mould.cavities)} />

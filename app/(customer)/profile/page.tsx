@@ -1,12 +1,12 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ChevronDown,
   FileText,
   HelpCircle,
   Mail,
-  RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import { useLogout } from "@/app/lib/use-logout";
@@ -45,7 +45,6 @@ export default function ProfilePage() {
   const { activeRole, switchRole } = useActiveRole(
     sessionUser?.approvedRoles.includes("owner"),
   );
-  const [moreOpen, setMoreOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const reviewsRef = useRef<HTMLDivElement>(null);
@@ -63,6 +62,22 @@ export default function ProfilePage() {
     fetcher,
     Boolean(sessionUser),
   );
+  // Auto refresh: when the tab becomes visible/focused again, and every 60s while visible.
+  const reloadRef = useRef(query.reload);
+  reloadRef.current = query.reload;
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") reloadRef.current();
+    };
+    const interval = window.setInterval(refresh, 60_000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
   if (query.loading)
     return (
       <div className={styles.page}>
@@ -107,13 +122,6 @@ export default function ProfilePage() {
     <div className={styles.page}>
       <div className={styles.heading}>
         <h1>Profile</h1>
-        <button
-          className={styles.refresh}
-          aria-label="Refresh profile"
-          onClick={query.reload}
-        >
-          <RefreshCw size={18} />
-        </button>
       </div>
       <div className={styles.identityCard}>
         <div className={styles.avatar}>
@@ -138,20 +146,19 @@ export default function ProfilePage() {
         reviewsOpen={reviewsOpen}
         onToggleReviews={() => setReviewsOpen((open) => !open)}
       />
-      <Section title="Personal Details">
+      <Section title="Personal Details" collapsible>
         <Fields
           items={[
             ["Name", user.fullName],
             ["Phone No.", phone],
             ["Email ID", user.email],
-           
           ]}
         />
       </Section>
-      <Section title="Firm Details">
+      <Section title="Firm Details" collapsible>
         <Fields
           items={[
-             ["PAN", personal?.panNumber],
+            ["PAN", personal?.panNumber],
             ["Firm", firm?.name],
             ["GSTIN", firm?.gstNumber],
             ["Email", firm?.email],
@@ -160,7 +167,7 @@ export default function ProfilePage() {
           verifiedField={status === "approved" ? "GSTIN" : undefined}
         />
       </Section>
-      <Section title="Payout Details">
+      <Section title="Payout Details" collapsible>
         <Fields
           items={[
             [
@@ -219,35 +226,15 @@ export default function ProfilePage() {
           </Section>
         </div>
       )}
-      <div className={styles.sectionCard}>
-        <button
-          type="button"
-          onClick={() => setMoreOpen((v) => !v)}
-          className={styles.moreToggle}
-          aria-expanded={moreOpen}
-        >
-          <span className={styles.sectionTitle} style={{ margin: 0 }}>
-            More
-          </span>
-          <span
-            className={`${styles.moreChevron} ${moreOpen ? styles.moreChevronOpen : ""}`}
-            aria-hidden
-          >
-            ▾
-          </span>
-        </button>
-        {moreOpen && (
-          <div className={styles.moreGrid}>
-            {MORE_ITEMS.map(({ label, href, icon: Icon }) => (
-              <Link key={href} className={styles.moreCard} href={href}>
-                <span className={styles.moreCardIcon} aria-hidden>
-                  <Icon size={18} />
-                </span>
-                <span className={styles.moreCardLabel}>{label}</span>
-              </Link>
-            ))}
-          </div>
-        )}
+      <div className={styles.moreGrid}>
+        {MORE_ITEMS.map(({ label, href, icon: Icon }) => (
+          <Link key={href} className={styles.moreCard} href={href}>
+            <span className={styles.moreCardIcon} aria-hidden>
+              <Icon size={18} />
+            </span>
+            <span className={styles.moreCardLabel}>{label}</span>
+          </Link>
+        ))}
       </div>
       <button
         className={styles.logoutRow}
@@ -275,14 +262,48 @@ export default function ProfilePage() {
 function Section({
   title,
   children,
+  collapsible = false,
 }: {
   title: string;
   children: React.ReactNode;
+  collapsible?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const bodyId = useId();
+
+  if (!collapsible) {
+    return (
+      <section className={styles.sectionCard}>
+        <h2 className={styles.sectionTitle}>{title}</h2>
+        {children}
+      </section>
+    );
+  }
+
   return (
     <section className={styles.sectionCard}>
-      <h2 className={styles.sectionTitle}>{title}</h2>
-      {children}
+      <button
+        type="button"
+        className={styles.collapseToggle}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={bodyId}
+      >
+        <h2 className={`${styles.sectionTitle} ${styles.sectionTitleInline}`}>
+          {title}
+        </h2>
+        <span
+          className={`${styles.collapseChevron} ${open ? styles.collapseChevronOpen : ""}`}
+          aria-hidden
+        >
+          <ChevronDown size={16} />
+        </span>
+      </button>
+      {open && (
+        <div id={bodyId} className={styles.collapseBody}>
+          {children}
+        </div>
+      )}
     </section>
   );
 }
