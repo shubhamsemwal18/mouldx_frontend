@@ -33,7 +33,7 @@ import {
 import BookingCalendar from "./BookingCalendar";
 import styles from "./Bookings.module.css";
 
-// "2026-11-19T00:00:00.000Z" ya Date -> "2026-11-19"
+// "2026-11-19T00:00:00.000Z" or Date -> "2026-11-19"
 function dayKey(value: string | Date) {
   if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
     return value.slice(0, 10);
@@ -156,7 +156,7 @@ export default function BookingList({ view }: { view: BookingView }) {
     return () => observer.disconnect();
   }, [hasMore, loading, error, loadMore]);
 
-  // Date select hone par baaki pages bhi load karo, taaki us date ki saari bookings mil jaayein
+  // When a date is selected, keep loading the remaining pages so every booking for that date is found
   useEffect(() => {
     if (date && hasMore && !loading && !error) loadMore();
   }, [date, hasMore, loading, error, loadMore, query.data]);
@@ -172,7 +172,7 @@ export default function BookingList({ view }: { view: BookingView }) {
         ? FILTERS
         : [...FILTERS, COMPLETED_FILTER];
 
-  // Selected date rental period (startDate..endDate) ke andar aani chahiye
+  // The selected date must fall within the rental period (startDate..endDate)
   const visibleBookings = (data?.bookings ?? []).filter(
     (b) => !date || (dayKey(b.startDate) <= date && date <= dayKey(b.endDate)),
   );
@@ -301,7 +301,7 @@ export default function BookingList({ view }: { view: BookingView }) {
           <h2>No bookings found</h2>
           <p>
             {date
-              ? "Is date par koi mould booked nahi hai."
+              ? "No mould is booked on this date."
               : view === "host" && !search
                 ? "Confirmed bookings will appear here after admin approval."
                 : search || status
