@@ -28,8 +28,6 @@
 
 .heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
 .heading h1 { margin: 0; font-size: 28px; font-weight: 800; line-height: 1.25; color: var(--text); }
-.refresh { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: 14px; color: var(--primary); background: #fff; cursor: pointer; box-shadow: var(--shadow-sm); transition: background-color 0.15s ease, border-color 0.15s ease; }
-.refresh:hover { background: var(--primary-soft); border-color: var(--primary-ring); }
 
 .description { font-size: 13px; font-weight: 500; color: var(--muted); line-height: 1.7; margin: 8px 0 16px; }
 .reviewsPanel { scroll-margin-top: 88px; }
@@ -121,6 +119,14 @@ a.statChip:hover, button.statChip:hover { background: rgba(255, 255, 255, 0.24);
   color: var(--text);
 }
 .sectionTitle::before { content: ""; width: 4px; height: 18px; border-radius: 4px; background: var(--primary); flex-shrink: 0; }
+.sectionTitleInline { margin: 0; }
+
+/* ---------- Collapsible section (Personal / Firm details) ---------- */
+.collapseToggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: none; border: none; padding: 0; cursor: pointer; text-align: left; color: inherit; }
+.collapseChevron { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary-soft); color: var(--primary); transition: transform 0.2s ease, background-color 0.15s ease; }
+.collapseToggle:hover .collapseChevron { background: var(--primary-ring); }
+.collapseChevronOpen { transform: rotate(180deg); }
+.collapseBody { margin-top: 16px; animation: moreExpand 0.2s ease; }
 
 /* ---------- Detail fields (labels are visible) ---------- */
 .fieldGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px 20px; margin: 0; }
@@ -139,12 +145,9 @@ a.statChip:hover, button.statChip:hover { background: rgba(255, 255, 255, 0.24);
 .document:hover:not(:disabled) { background: var(--primary-ring); border-color: #bfdbfe; }
 .document:disabled { color: var(--faint); background: #f8fafc; border-color: var(--line); cursor: default; }
 
-/* ---------- More ---------- */
-.moreToggle { width: 100%; display: flex; align-items: center; justify-content: space-between; background: none; border: none; padding: 0; cursor: pointer; text-align: left; }
-.moreChevron { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--primary-soft); font-size: 14px; color: var(--primary); transition: transform 0.2s ease; }
-.moreChevronOpen { transform: rotate(180deg); }
+/* ---------- More cards (always visible, no dropdown) ---------- */
+.moreGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
-.moreGrid { margin-top: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; animation: moreExpand 0.2s ease; }
 @keyframes moreExpand { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
 .moreCard { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 12px; min-width: 0; min-height: 104px; padding: 14px; border-radius: 16px; background: var(--primary-soft); border: 1px solid var(--primary-ring); color: var(--primary-hover); text-decoration: none; transition: box-shadow 0.15s ease, background-color 0.15s ease, border-color 0.15s ease; }
@@ -163,7 +166,7 @@ a.statChip:hover, button.statChip:hover { background: rgba(255, 255, 255, 0.24);
 
 /* ---------- Responsive ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .moreGrid { animation: none; }
+  .collapseBody { animation: none; }
   .page *, .page *::before, .page *::after { transition: none !important; }
 }
 

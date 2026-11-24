@@ -1,0 +1,316 @@
+/* =========================================================
+   SCHEDULE LIST – Google Calendar style agenda
+   (opens inside the calendar popover)
+   ========================================================= */
+
+.agenda {
+  --day-col: 48px;
+  --day-gap: 14px;
+  --cal-blue: #1a73e8;
+  --cal-green: #3f8f3a;
+  --cal-red: #d93025;
+  --cal-amber: #b45309;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* ---------- Week label ---------- */
+.week {
+  min-width: 0;
+}
+
+.weekLabel {
+  margin: 20px 0 6px;
+  padding-left: calc(var(--day-col) + var(--day-gap));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--muted, #64748b);
+}
+
+.week:first-child .weekLabel {
+  margin-top: 10px;
+}
+
+/* ---------- Day row ---------- */
+.dayRow {
+  display: grid;
+  grid-template-columns: var(--day-col) minmax(0, 1fr);
+  column-gap: var(--day-gap);
+  align-items: start;
+  padding: 8px 0;
+}
+
+.dayHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 2px;
+  text-align: center;
+}
+
+.dayHeadButton {
+  width: 100%;
+  margin: 0;
+  padding: 2px 0 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.dayHeadButton:hover .dayNum {
+  background: var(--primary-soft, #eff6ff);
+}
+
+.today .dayHeadButton:hover .dayNum {
+  background: var(--cal-blue);
+  filter: brightness(0.95);
+}
+
+.weekday {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.4px;
+  color: var(--muted, #64748b);
+}
+
+.dayNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-soft, #334155);
+  transition: background-color 0.15s ease;
+}
+
+.today .weekday {
+  color: var(--cal-blue);
+}
+
+.today .dayNum {
+  background: var(--cal-blue);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Selected date filter */
+.selected .weekday {
+  color: var(--cal-blue);
+}
+
+.selected .dayNum {
+  box-shadow: 0 0 0 2px var(--cal-blue) inset;
+  color: var(--cal-blue);
+  font-weight: 700;
+}
+
+.selected.today .dayNum {
+  color: #fff;
+  box-shadow: 0 0 0 3px #bfdbfe;
+}
+
+.dayBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.noBookings {
+  margin: 0;
+  padding: 8px 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--faint, #94a3b8);
+}
+
+/* Current day marker (dot + line) */
+.nowLine {
+  position: relative;
+  height: 2px;
+  margin: 6px 0 0 0;
+  background: var(--text-soft, #334155);
+  border-radius: 2px;
+}
+
+.nowLine::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-soft, #334155);
+  transform: translateY(-50%);
+}
+
+/* ---------- Booking card ---------- */
+.card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--cal-blue);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--cal-blue);
+  text-decoration: none;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+  transform: translateY(-1px);
+}
+
+.card:active {
+  transform: scale(0.99);
+}
+
+.cardMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cardTitle {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.cardMeta {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  opacity: 0.88;
+}
+
+.cardSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.cardAmount {
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+
+.cardStatus {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: inherit;
+  opacity: 0.85;
+}
+
+/* ---------- Status colours ---------- */
+.tone_pending {
+  border-color: #f59e0b;
+  color: var(--cal-amber);
+  background: #fffbeb;
+}
+
+.tone_approved,
+.tone_upcoming {
+  border-color: var(--cal-blue);
+  color: var(--cal-blue);
+  background: #fff;
+}
+
+.tone_active {
+  border-color: var(--cal-blue);
+  background: var(--cal-blue);
+  color: #fff;
+}
+
+.tone_completed {
+  border-color: var(--cal-green);
+  background: var(--cal-green);
+  color: #fff;
+}
+
+.tone_rejected {
+  border-color: var(--cal-red);
+  background: var(--cal-red);
+  color: #fff;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 479px) {
+  .agenda {
+    --day-col: 44px;
+    --day-gap: 12px;
+  }
+
+  .card {
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 359px) {
+  .agenda {
+    --day-col: 40px;
+    --day-gap: 10px;
+  }
+
+  .dayNum {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+  }
+
+  .cardAmount {
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .dayNum {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+}
