@@ -393,9 +393,6 @@ function ListingCard({
   deleting: boolean;
 }) {
   const displayStatus = getListingDisplayStatus(listing);
-  // Calendar is only for approved listings that are live (not draft,
-  // pending approval, rejected or under maintenance).
-  const showCalendar = displayStatus === "live";
   const detailsHref = `/owner/moulds/${listing._id}`;
   const mouldSetCount = getMouldSetCount(listing);
   const categoryLine = [listing.category?.title, listing.subCategory?.title]
@@ -403,7 +400,7 @@ function ListingCard({
     .join(" · ");
 
   // The whole card opens the owner details page, except clicks that land on
-  // one of its own links or buttons (Calendar, Status, Edit, Delete).
+  // one of its own links or buttons (Status, Edit, Delete).
   const handleCardClick = (e: MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest("a, button")) return;
     onOpen(listing._id);
@@ -467,19 +464,7 @@ function ListingCard({
 
       <hr className={styles.divider} />
 
-      <div
-        className={`${styles.actionsRow} ${
-          showCalendar ? "" : styles.actionsRowTwo
-        }`}
-      >
-        {showCalendar && (
-          <Link
-            href={`/owner/moulds/${listing._id}/calendar`}
-            className={styles.actionBtn}
-          >
-            <span aria-hidden>📅</span> Calendar
-          </Link>
-        )}
+      <div className={`${styles.actionsRow} ${styles.actionsRowTwo}`}>
         <button
           type="button"
           className={styles.actionBtn}

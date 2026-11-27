@@ -182,7 +182,7 @@ export default function ConfirmBooking({ slug, start, end }: { slug: string; sta
           <p className={styles.transferNote}>A reference or receipt reports your payment; it does not confirm receipt. Your booking still requires admin approval.</p>
         </div>}
 
-        <label className={styles.ackRow}><input className={styles.checkbox} type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} /><span>I understand that payment is arranged with the host and this request requires admin approval.</span></label>
+        <label className={styles.ackRow}><input className={styles.checkbox} type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} /><span>I understand that the transactions are being made with the HOST directly and MOULDX will not be held responsible for furture disputes.</span></label>
       </fieldset>
       {error && <div role="alert" className={shared.error}><p>{error.message}</p>{error.bookingId && <Link href={`/bookings/${encodeURIComponent(error.bookingId)}`}>View existing booking {error.bookingCode || ""}</Link>}{error.paymentOptionsChanged && <Link href="/contact">Contact support</Link>}</div>}
     </div>

@@ -7,13 +7,13 @@ const IMG = {
   cta: FALLBACK,
 };
 
-const PHONE_DISPLAY = "+91 75001 52505";
-const PHONE_TEL = "+917500152505";
-const WHATSAPP_NUMBER = "917500152505";
+const PHONE_DISPLAY = "+91 9258021090";
+const PHONE_TEL = "+919258021090";
+const WHATSAPP_NUMBER = "919258021090";
 const WHATSAPP_MSG = "Hello MouldX, I would like some information about mould rental.";
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MSG)}`;
 
-const EMAIL = "contact@mouldx.in";
+const EMAIL = "info@mouldx.in";
 
 const ADDRESS_LINES = [
   "Nadehi Road, KDK Complex,",
@@ -38,15 +38,15 @@ const METHODS = [
 ];
 
 const SOCIALS = [
-  {
-    name: "Facebook",
-    href: "https://facebook.com/",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z" />
-      </svg>
-    ),
-  },
+  // {
+  //   name: "Facebook",
+  //   href: "https://facebook.com/",
+  //   icon: (
+  //     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+  //       <path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.78-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z" />
+  //     </svg>
+  //   ),
+  // },
   {
     name: "Instagram",
     href: "https://instagram.com/",
@@ -67,15 +67,15 @@ const SOCIALS = [
       </svg>
     ),
   },
-  {
-    name: "YouTube",
-    href: "https://youtube.com/",
-    icon: (
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-        <path d="M21.6 7.2a2.5 2.5 0 0 0-1.76-1.77C18.3 5 12 5 12 5s-6.3 0-7.84.43A2.5 2.5 0 0 0 2.4 7.2C2 8.75 2 12 2 12s0 3.25.4 4.8a2.5 2.5 0 0 0 1.76 1.77C5.7 19 12 19 12 19s6.3 0 7.84-.43a2.5 2.5 0 0 0 1.76-1.77C22 15.25 22 12 22 12s0-3.25-.4-4.8zM10 15V9l5.2 3z" />
-      </svg>
-    ),
-  },
+  // {
+  //   name: "YouTube",
+  //   href: "https://youtube.com/",
+  //   icon: (
+  //     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+  //       <path d="M21.6 7.2a2.5 2.5 0 0 0-1.76-1.77C18.3 5 12 5 12 5s-6.3 0-7.84.43A2.5 2.5 0 0 0 2.4 7.2C2 8.75 2 12 2 12s0 3.25.4 4.8a2.5 2.5 0 0 0 1.76 1.77C5.7 19 12 19 12 19s6.3 0 7.84-.43a2.5 2.5 0 0 0 1.76-1.77C22 15.25 22 12 22 12s0-3.25-.4-4.8zM10 15V9l5.2 3z" />
+  //     </svg>
+  //   ),
+  // },
 ];
 
 const FAQ = [
@@ -196,7 +196,7 @@ export default function ContactUs() {
         </ul>
       </section>
 
-      <section className={styles.section}>
+      {/* <section className={styles.section}>
         <div className={styles.head}>
           <p className={styles.tag}>Quick answers</p>
           <h2 className={styles.h2}>Common questions</h2>
@@ -209,7 +209,7 @@ export default function ContactUs() {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
 
       <section className={styles.cta}>
         <Image src={IMG.cta} alt="" fill className={styles.cover} aria-hidden />
